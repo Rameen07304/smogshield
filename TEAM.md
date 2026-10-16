@@ -17,37 +17,37 @@ Repo: https://github.com/Rameen07304/smogshield. Read the [README](README.md) fi
 
 | # | Role | Name | Owns |
 |---|------|------|------|
-| 1 | Lead / Orchestrator | ______ | `graph.py`, `schemas.py`, `app.py`, merges PRs |
-| 2 | Monitor agent | ______ | `agents/monitor.py`, `data/` |
-| 3 | Analysis agent | ______ | `agents/analysis.py` |
-| 4 | Advisory agent | ______ | `agents/advisory.py` |
-| 5 | Alert agent + Dashboard | ______ | `agents/alert.py`, `web/` |
+| 1 | Lead / Orchestrator | Rameen | `graph.py`, `schemas.py`, `app.py`, merges PRs |
+| 2 | Monitor agent | Halima | `agents/monitor.py`, `data/` |
+| 3 | Analysis agent | Fatima | `agents/analysis.py` |
+| 4 | Advisory agent | Rida | `agents/advisory.py` |
+| 5 | Alert agent + Dashboard | Dania | `agents/alert.py`, `web/` |
 
-### 1. Lead / Orchestrator
+1. Lead / Orchestrator
 - Review and merge PRs; keep `main` always runnable.
 - Own `schemas.py`; approve contract changes.
 - Optional: LangGraph conditional routing (for example, skip the alert node when air is good).
 - Write the demo script (what we click and say, minute by minute) and run rehearsals.
 - Prepare the pitch slides with the team.
 
-### 2. Monitor agent (data)
+2. Monitor agent (data)
 - Get an OpenAQ API key and find a working PM2.5 location for our city.
 - Make sure the OpenAQ → mock fallback works when the network is off.
 - Stretch: multiple cities/stations, or a "demo mode" toggle that forces the smog spike on stage.
 - Contract: returns `{"readings": [Reading, ...]}`, oldest first.
 
-### 3. Analysis agent
+3. Analysis agent
 - Verify AQI math against an official EPA AQI calculator; add PM10 AQI (take the worse of the two).
 - Improve trend detection (for example, rate of change per hour).
 - Stretch: a simple next-hours forecast (a moving average is fine).
 - Contract: returns `{"analysis": Analysis}`.
 
-### 4. Advisory agent
+4. Advisory agent
 - Improve guidance text for each level; add advice for specific groups (kids, elderly, asthma, outdoor workers).
 - Stretch: generate guidance with an LLM (keep the rule-based version as fallback) and/or add an Urdu translation.
 - Contract: returns `{"advisory": Advisory}`.
 
-### 5. Alert agent + Dashboard
+5. Alert agent + Dashboard
 - Tune alert rules (for example, don't repeat the same alert every poll).
 - Dashboard: add a PM2.5/AQI chart over time, a nicer layout, a clear alert banner.
 - Stretch: a real channel (Telegram bot) behind an env var.
