@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmogShield</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 0 auto; padding: 16px; background: #f6f7f9; color: #1d2330; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px #0001; }
+    #aqi { font-size: 64px; font-weight: 700; line-height: 1; }
+    .muted { color: #667; font-size: 14px; }
+    .alert { padding: 12px; border-radius: 8px; margin-top: 8px; }
+    .info { background: #e7f0ff; } .warning { background: #fff3d6; } .critical { background: #ffe0e0; }
+    /* EPA level colors */
+    .good { color: #00a14b; } .moderate { color: #c9a800; } .unhealthy_sensitive { color: #ff7e00; }
+    .unhealthy { color: #e00; } .very_unhealthy { color: #8f3f97; } .hazardous { color: #7e0023; }
+  </style>
+</head>
+<body>
+  <h1>SmogShield</h1>
+
+  <div class="card">
+    <div class="muted" id="location">Loading…</div>
+    <div id="aqi">--</div>
+    <div id="level"></div>
+    <div class="muted" id="meta"></div>
+  </div>
+
+  <div class="card">
+    <h2 id="headline"></h2>
+    <ul id="actions"></ul>
+  </div>
+
+  <div class="card">
+    <h2>Alerts</h2>
+    <div id="alerts" class="muted">None right now.</div>
+  </div>
+
+  <script>
+    const POLL_MS = 5000;
+    const $ = (id) => document.getElementById(id);
+
+    // textContent everywhere: never inject API data as HTML
+    function li(text) { const el = document.createElement("li"); el.textContent = text; return el; }
+
+    async function refresh() {
+      try {
+        const s = await (await fetch("/api/status")).json();
+        const latest = s.readings.at(-1);
+        $("location").textContent = `${latest.location} · ${latest.source}`;
+        $("aqi").textContent = s.analysis.aqi;
+        $("aqi").className = s.analysis.level;
+        $("level").textContent = s.analysis.level.replaceAll("_", " ");
+        $("meta").textContent = `PM2.5 ${latest.pm25} µg/m³ · trend ${s.analysis.trend} · ${latest.timestamp}`;
+        $("headline").textContent = s.advisory.headline;
+        $("actions").replaceChildren(...s.advisory.actions.map(li));
+
+        if (s.alerts.length) {
+          $("alerts").replaceChildren(...s.alerts.map((a) => {
+            const el = document.createElement("div");
+            el.className = `alert ${a.severity}`;
+            el.textContent = `[${a.severity.toUpperCase()}] ${a.message}`;
+            return el;
+          }));
+        } else {
+          $("alerts").textContent = "None right now.";
+        }
+      } catch (e) {
+        $("location").textContent = "Can't reach the server.";
+      }
+    }
+
+    refresh();
+    setInterval(refresh, POLL_MS);
+  </script>
+</body>
+</html>
