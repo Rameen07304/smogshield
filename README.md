@@ -62,7 +62,8 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 
 | Method and path | What it does |
 |-----------------|--------------|
-| `GET /` | The dashboard |
+| `GET /` | The live dashboard (Screen 1) |
+| `GET /how` | How it works (Screen 2): the agent pipeline, a live example, data honesty and safeguards |
 | `GET /api/status` | Runs the whole pipeline once and returns `readings`, `analysis`, `advisory`, `alerts` (new alerts from this run). The dashboard polls it every 5 s. |
 | `GET /api/alerts?limit=20` | The alert feed, newest first |
 | `GET /api/scenario` | The forced mock scenario (`live` = none) and the list of options |

@@ -93,10 +93,26 @@ a { color: inherit; }
 }
 .topbar__brand { display: flex; align-items: center; gap: 12px; font-size: 1.6rem; font-weight: 800; }
 .logo { width: 1.6em; height: 1.6em; color: var(--text); flex: none; }
-.topbar__controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.topbar__controls { display: flex; flex-wrap: wrap; align-items: end; justify-content: flex-end; gap: 12px; margin-inline-start: auto; }
 .topbar__status { flex-basis: 100%; margin: 0; min-height: 1.2em; color: var(--muted); font-size: .9rem; text-align: right; }
 .topbar__status[data-tone="error"] { color: #c4001d; font-weight: 700; }
 @media (prefers-color-scheme: dark) { .topbar__status[data-tone="error"] { color: #ff8a8a; } }
+
+/* Page links: Live dashboard | How it works (plain links, the current page is filled) */
+.site-nav { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.site-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding: 4px 16px;
+  border-radius: 9px;
+  font-weight: 800;
+  text-decoration: none;
+  color: var(--muted);
+}
+.site-nav a:hover { color: var(--text); text-decoration: underline; }
+.site-nav a[aria-current="page"] { background: var(--text); color: var(--surface); }
+.site-nav a[aria-current="page"]:hover { text-decoration: none; }
 
 .mode-badge {
   display: inline-flex;
