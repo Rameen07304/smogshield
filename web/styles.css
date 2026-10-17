@@ -1,6 +1,14 @@
 /* SmogShield dashboard. Projector-first: big type, strong contrast, roomy spacing.
    Colors are tokens on :root; dark mode switches them with a media query. */
 
+/* Urdu Nastaliq font, bundled so it works offline (SIL Open Font License, see fonts/OFL.txt) */
+@font-face {
+  font-family: "Noto Nastaliq Urdu";
+  src: url("fonts/NotoNastaliqUrdu.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light dark;
 
@@ -280,6 +288,57 @@ select {
 .chart__line { fill: none; stroke: var(--text); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
 .chart__point { fill: var(--surface); stroke: var(--text); stroke-width: 3; }
 .chart__summary { margin-top: 8px; color: var(--muted); font-size: .95rem; }
+
+/* ---------- advisory ---------- */
+.lang-toggle { display: inline-flex; border: 2px solid var(--border); border-radius: 12px; overflow: hidden; }
+.lang-toggle button {
+  font: inherit;
+  font-weight: 800;
+  min-block-size: 44px;
+  padding: 4px 18px;
+  border: 0;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.lang-toggle button[lang="ur"] { font-family: "Noto Nastaliq Urdu", serif; font-weight: 400; line-height: 1.6; }
+.lang-toggle button[aria-pressed="true"] { background: var(--text); color: var(--surface); }
+
+.advice__headline { margin: 0 0 10px; font-size: clamp(1.3rem, 1.8vw, 1.7rem); font-weight: 800; line-height: 1.25; }
+.advice__note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border-inline-start: 6px solid #e0a800;
+  background: #fff4cc;
+  color: #2b2100;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) { .advice__note { background: #3d3410; color: #fff3c4; } }
+.advice__scope { margin: 0 0 12px; color: var(--muted); font-size: .9rem; }
+
+.audiences { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 14px; }
+.audience {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border-top: 5px solid var(--border);
+}
+.audience[data-audience="general"] { border-top-color: #1f5fd6; }
+.audience[data-audience="children"] { border-top-color: #0b8a5f; }
+.audience[data-audience="elderly"] { border-top-color: #8a5a00; }
+.audience[data-audience="respiratory_heart"] { border-top-color: #b00020; }
+.audience h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.audience ul, .urdu__list { margin: 0; padding-inline-start: 1.2em; }
+.audience li + li { margin-top: 6px; }
+
+/* Urdu: Nastaliq needs a lot more line height than Latin text */
+.urdu { font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Urdu Typesetting", serif; }
+.urdu .advice__headline { font-weight: 700; line-height: 2.1; }
+.urdu__list { margin-bottom: 14px; font-size: 1.1rem; line-height: 2.3; }
+.urdu__list li:first-child[data-note] { font-weight: 700; }
+
+.advice__disclaimer { margin: 14px 0 0; color: var(--muted); font-size: .9rem; }
 
 /* ---------- footer ---------- */
 .footer { max-width: 1600px; margin: 0 auto; padding: 0 var(--gap) var(--gap); color: var(--muted); font-size: .85rem; }

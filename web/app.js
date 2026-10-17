@@ -225,6 +225,61 @@ new ResizeObserver(() => {
   if (lastChart) drawChart(lastChart.readings, lastChart.analysis);
 }).observe(document.querySelector(".chart"));
 
+// ---------- advisory ----------
+
+const AUDIENCES = ["general", "children", "elderly", "respiratory_heart"];
+const LANG_KEY = "smogshield.lang";
+let adviceLang = "en";
+try { if (localStorage.getItem(LANG_KEY) === "ur") adviceLang = "ur"; } catch { /* storage blocked: English */ }
+const langParam = new URLSearchParams(location.search).get("lang");  // ?lang=ur to open in Urdu
+if (langParam === "en" || langParam === "ur") adviceLang = langParam;
+
+function fillList(id, items, emptyText) {
+  const list = $(id);
+  const lines = (items || []).filter((line) => typeof line === "string" && line.trim());
+  list.replaceChildren(...(lines.length ? lines : [emptyText]).map((line) => {
+    const li = document.createElement("li");
+    li.textContent = line;
+    return li;
+  }));
+}
+
+function renderAdvisory(s) {
+  const adv = s.advisory || {};
+  $("advice-headline").textContent = adv.headline || "Advice is unavailable right now. Take care outdoors.";
+  $("advice-note").textContent = adv.time_note || "";
+  $("advice-note").hidden = !adv.time_note;
+  for (const who of AUDIENCES) {
+    const items = adv.audiences?.[who] ?? (who === "general" ? adv.actions : []);
+    fillList(`aud-${who}`, items, "No specific advice for this group right now.");
+  }
+  $("urdu-headline").textContent = adv.urdu?.headline || "اردو رہنمائی اس وقت دستیاب نہیں۔";
+  fillList("urdu-actions", adv.urdu?.actions, "براہ کرم انگریزی رہنمائی دیکھیں۔");
+  $("advice-disclaimer").textContent = adv.disclaimer || "General guidance, not medical advice.";
+  applyLanguage();
+}
+
+/** English: headline + four cards. Urdu: Urdu block replaces headline and general card. */
+function applyLanguage() {
+  const urdu = adviceLang === "ur";
+  $("advice-en").hidden = urdu;
+  $("advice-ur").hidden = !urdu;
+  $("urdu-scope").hidden = !urdu;
+  document.querySelector('.audience[data-audience="general"]').hidden = urdu;
+  for (const button of document.querySelectorAll(".lang-toggle button")) {
+    button.setAttribute("aria-pressed", String(button.dataset.lang === adviceLang));
+  }
+}
+
+for (const button of document.querySelectorAll(".lang-toggle button")) {
+  button.addEventListener("click", () => {
+    adviceLang = button.dataset.lang;
+    try { localStorage.setItem(LANG_KEY, adviceLang); } catch { /* fine: just not remembered */ }
+    applyLanguage();
+  });
+}
+applyLanguage();
+
 /** LIVE badge or the SIMULATED banner, decided by the data's own source field */
 function renderMode(s) {
   const latest = s.readings?.at(-1);
@@ -245,6 +300,7 @@ function render(s) {
   renderMode(s);
   renderHero(s);
   renderChart(s);
+  renderAdvisory(s);
 }
 
 function showOffline(error) {

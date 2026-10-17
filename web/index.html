@@ -86,6 +86,49 @@
           <figcaption id="chart-summary" class="chart__summary"></figcaption>
         </figure>
       </section>
+
+      <!-- 5. Advisory -->
+      <section class="card panel panel--advisory" aria-labelledby="advice-title">
+        <div class="panel__head">
+          <h2 id="advice-title">What to do</h2>
+          <div class="lang-toggle" role="group" aria-label="Advice language">
+            <button type="button" data-lang="en" aria-pressed="true">English</button>
+            <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
+          </div>
+        </div>
+
+        <div id="advice-en">
+          <p id="advice-headline" class="advice__headline">Loading advice…</p>
+          <p id="advice-note" class="advice__note" hidden></p>
+        </div>
+        <div id="advice-ur" class="urdu" lang="ur" dir="rtl" hidden>
+          <p id="urdu-headline" class="advice__headline"></p>
+          <ul id="urdu-actions" class="urdu__list"></ul>
+        </div>
+        <p id="urdu-scope" class="advice__scope" hidden>
+          Urdu covers advice for the general public. The groups below are shown in English.
+        </p>
+
+        <div class="audiences">
+          <article class="audience" data-audience="general">
+            <h3>General public</h3>
+            <ul id="aud-general"></ul>
+          </article>
+          <article class="audience" data-audience="children">
+            <h3>Children &amp; schools</h3>
+            <ul id="aud-children"></ul>
+          </article>
+          <article class="audience" data-audience="elderly">
+            <h3>Elderly</h3>
+            <ul id="aud-elderly"></ul>
+          </article>
+          <article class="audience" data-audience="respiratory_heart">
+            <h3>Heart &amp; lung conditions</h3>
+            <ul id="aud-respiratory_heart"></ul>
+          </article>
+        </div>
+        <p id="advice-disclaimer" class="advice__disclaimer">General guidance, not medical advice.</p>
+      </section>
     </div>
   </main>
 
