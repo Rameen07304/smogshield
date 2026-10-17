@@ -17,6 +17,10 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Tests must never send real Telegram messages, whatever the developer's shell or .env has
+for _key in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"):
+    os.environ.pop(_key, None)
+
 import requests  # noqa: E402
 
 from agents import advisory, alert, analysis  # noqa: E402

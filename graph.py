@@ -30,7 +30,17 @@ def run_once() -> SmogState:
 
 
 if __name__ == "__main__":
+    import os
+    import tempfile
+    from pathlib import Path
+
     from dotenv import load_dotenv; load_dotenv()  # same .env as app.py
+
+    # The self-check must have no side effects: never send real Telegram messages, and keep
+    # its alerts out of the real dashboard feed and alert memory (var/alerts.json).
+    for key in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"):
+        os.environ.pop(key, None)
+    alert.STORE_FILE = Path(tempfile.mkdtemp(prefix="smogshield-selfcheck-")) / "alerts.json"
 
     # AQI math against known EPA values
     assert analysis.pm25_to_aqi(9.0) == (50, "good")
