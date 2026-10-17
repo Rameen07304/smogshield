@@ -1,17 +1,22 @@
 """Forecast agent: short-term air quality forecast for the monitored city.
 
-Reads: state["readings"] (for the city, and later to anchor mock forecasts)
+Reads: state["readings"] (the city, its source, and the current PM2.5 that mock curves start from)
 Owns:  state["forecast"]
 
 Live: Open-Meteo hourly PM2.5 for 4 days (CAMS-based model estimates, not measurements).
 The series is cleaned (UTC, rounded to 0.1, nulls and negatives dropped, oldest first) and
 cached per city for FORECAST_CACHE_MINUTES (default 30). AQI uses the same pm25_to_aqi as the
-current reading, so forecast and current AQI compare directly. Never raises.
+current reading, so forecast and current AQI compare directly.
+Mock: a scripted curve per demo scenario (data/mock_forecasts.json), used when mock data is forced
+(USE_MOCK / MOCK_SCENARIO / the dashboard switch), when the reading itself is mock, or when the live
+forecast fails; marked source "mock". Never raises.
 """
+import json
 import logging
 import os
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import requests
 
@@ -24,6 +29,11 @@ FORECAST_DAYS = 4            # today (from 00:00 local, incl. past hours) + 3 mo
 HOURS_AHEAD = 24             # length of the hourly forecast handed to the other agents
 TIMEOUT_SECONDS = 10
 DEFAULT_CACHE_MINUTES = 30   # override with FORECAST_CACHE_MINUTES; 0 = no cache
+MOCK_FILE = Path(__file__).parent.parent / "data" / "mock_forecasts.json"
+MOCK_UTC_OFFSET = 5 * 3600   # every monitored city is in Pakistan Standard Time (UTC+5)
+MOCK_BASE_PM25 = 25.0        # used only when there is no current reading to anchor the curve on
+BUILTIN_CURVE = [[0, 1.0], [96, 1.0]]   # last resort if data/mock_forecasts.json is missing or broken
+MOCK_NOTE = "Simulated demo forecast (scripted for this scenario), not real data."
 BEST_TIME_HOURS = 2          # "best time to go outside" window length
 # A window's trend compares its first two hours with its last two: it counts as worsening or
 # improving only if PM2.5 moves by more than both of these, otherwise it is stable.
@@ -39,18 +49,86 @@ _cache: dict[tuple[str, float, float], tuple[float, dict]] = {}
 
 def run(state: SmogState) -> dict:
     """Graph node: the forecast for the city the monitor just read."""
-    return {"forecast": build_forecast(_city_of(state.get("readings")))}
+    readings = state.get("readings")
+    return {"forecast": build_forecast(_city_of(readings), readings=readings)}
 
 
-def build_forecast(city: str, now: datetime | None = None) -> Forecast:
-    """Forecast for a city. Never raises: on any failure, a forecast with no data and a reason."""
+def build_forecast(city: str, now: datetime | None = None, readings: list | None = None) -> Forecast:
+    """Forecast for a city. Never raises.
+
+    Mock (scripted for the active scenario) when mock data is forced, when the monitor's reading is
+    itself mock, or when the live forecast fails; live from Open-Meteo otherwise.
+    """
     now = now or datetime.now(timezone.utc)
     try:
-        series = fetch_series(city)
-    except Exception as e:  # network/API/data errors: never crash the pipeline
-        log.warning("Live forecast failed for %s: %s", city, e)
+        latest = readings[-1] if readings else None
+        if monitor._mock_requested() or (latest and latest.get("source") != "live"):
+            return mock_forecast(city, _current_pm25(readings), now=now)
+        try:
+            series = fetch_series(city)
+        except Exception as e:  # network/API/data errors: never crash the pipeline
+            log.warning("Live forecast failed for %s, using a simulated forecast: %s", city, e)
+            return mock_forecast(city, _current_pm25(readings), now=now)
+        return _forecast_from_series(city, series, "live", now)
+    except Exception:  # last safety net, e.g. a malformed readings list
+        log.exception("Forecast failed for %s, returning an empty forecast", city)
         return _empty_forecast(city, "mock", now)
-    return _forecast_from_series(city, series, "live", now)
+
+
+def mock_forecast(city: str, current_pm25: float | None, scenario: str | None = None,
+                  now: datetime | None = None) -> Forecast:
+    """The scripted forecast for the active (or given) scenario, anchored on the current PM2.5."""
+    now = now or datetime.now(timezone.utc)
+    name = scenario or monitor._pick_scenario(monitor._load_mock_data(), city, None)
+    curve = _mock_curves().get(name)
+    if curve is None:
+        log.warning("No scripted forecast for scenario %r, using a flat one", name)
+        curve = BUILTIN_CURVE
+    series = mock_series(curve, current_pm25 if current_pm25 is not None else MOCK_BASE_PM25, now)
+    return {**_forecast_from_series(city, series, "mock", now), "note": MOCK_NOTE}
+
+
+def mock_series(curve: list, base_pm25: float, now: datetime) -> dict:
+    """Hourly points from the current hour to the end of the third local day after today."""
+    start = now.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    local_start = start + timedelta(seconds=MOCK_UTC_OFFSET)
+    hours = (24 - local_start.hour) + 3 * 24                       # rest of today + 3 full days
+    points = [{"time": (start + timedelta(hours=h)).isoformat(),
+               "pm25": round(max(base_pm25 * _interpolate(curve, h), 0.0), 1)} for h in range(hours)]
+    return {"offset": MOCK_UTC_OFFSET, "points": points}
+
+
+def _interpolate(curve: list, hours_ahead: float) -> float:
+    """Straight lines between [hours, multiplier] keyframes; flat before the first and after the last."""
+    if hours_ahead <= curve[0][0]:
+        return float(curve[0][1])
+    for (h0, m0), (h1, m1) in zip(curve, curve[1:]):
+        if hours_ahead <= h1:
+            return m0 + (m1 - m0) * (hours_ahead - h0) / (h1 - h0)
+    return float(curve[-1][1])
+
+
+def _mock_curves() -> dict[str, list]:
+    """data/mock_forecasts.json, checked. Missing or broken -> {} (callers fall back to BUILTIN_CURVE)."""
+    try:
+        curves = json.loads(MOCK_FILE.read_text(encoding="utf-8"))["curves"]
+        for name, curve in curves.items():
+            if not (isinstance(curve, list) and curve and all(
+                    isinstance(k, list) and len(k) == 2 and all(isinstance(x, (int, float)) for x in k) and k[1] >= 0
+                    for k in curve)) or [k[0] for k in curve] != sorted({k[0] for k in curve}):
+                raise ValueError(f"curve {name!r} must be [hours, multiplier] pairs with rising hours")
+        return curves
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        log.warning("Mock forecast file %s is unusable (%s), using a flat built-in forecast", MOCK_FILE, e)
+        return {}
+
+
+def _current_pm25(readings) -> float | None:
+    try:
+        value = float(readings[-1]["pm25"])
+        return value if value >= 0 else None
+    except (TypeError, ValueError, IndexError, KeyError):
+        return None
 
 
 # ---------- fetch + clean ----------

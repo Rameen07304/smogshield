@@ -247,6 +247,115 @@ class OutlookTest(unittest.TestCase):
         self.assertEqual([d["confidence"] for d in result], ["high", "medium", "low", "low"])
 
 
+MOCK_READINGS = __import__("json").loads((Path(__file__).parent.parent / "data" / "mock_readings.json").read_text(encoding="utf-8"))
+UNHEALTHY_OR_WORSE = {"unhealthy", "very_unhealthy", "hazardous"}
+
+
+def reading(pm25: float, source: str = "mock", city: str = "Lahore") -> list[dict]:
+    return [{"location": city, "timestamp": NOW.isoformat(), "pm25": pm25, "pm10": None, "source": source}]
+
+
+class MockForecastTest(ForecastTestCase):
+    def scenario_forecasts(self, scenario: str):
+        """The scripted forecast from every reading this scenario can produce."""
+        for pm25 in MOCK_READINGS["scenarios"][scenario]["pm25"]:
+            yield pm25, forecast.mock_forecast("Lahore", float(pm25), scenario=scenario, now=NOW)
+
+    def test_every_scenario_has_a_scripted_forecast(self):
+        self.assertEqual(set(forecast._mock_curves()), set(MOCK_READINGS["scenarios"]))
+
+    def test_forecast_starts_at_the_current_reading(self):
+        for scenario in MOCK_READINGS["scenarios"]:
+            for pm25, result in self.scenario_forecasts(scenario):
+                with self.subTest(scenario=scenario, pm25=pm25):
+                    self.assertEqual(result["hourly"][0]["pm25"], round(float(pm25), 1))
+                    self.assertEqual((result["source"], result["is_model_estimate"]), ("mock", True))
+                    self.assertEqual(set(result), set(Forecast.__annotations__))
+
+    def test_each_scenario_tells_its_story(self):
+        checks = {
+            "good": lambda f, now: all(p["level"] == "good" for p in f["hourly"]),
+            "moderate": lambda f, now: f["next_6h"]["peak_level"] not in UNHEALTHY_OR_WORSE
+                                       and f["next_24h"]["peak_aqi"] > f["hourly"][0]["aqi"],          # worse into the evening
+            "unhealthy_sensitive": lambda f, now: f["next_6h"]["peak_level"] in UNHEALTHY_OR_WORSE,      # predictive-alert demo
+            "unhealthy": lambda f, now: f["next_24h"]["trend"] == "improving",
+            "very_unhealthy": lambda f, now: f["next_6h"]["trend"] == "worsening" and f["next_24h"]["trend"] == "improving",
+            "hazardous": lambda f, now: f["next_24h"]["trend"] == "improving"
+                                        and f["outlook"][2]["peak_aqi"] < f["hourly"][0]["aqi"],          # better in 1-2 days
+            "spike": lambda f, now: f["next_24h"]["trend"] == "improving"
+                                    and f["hourly"][8]["pm25"] < f["hourly"][0]["pm25"],                  # easing after a few hours
+        }
+        self.assertEqual(set(checks), set(MOCK_READINGS["scenarios"]))
+        for scenario, check in checks.items():
+            for pm25, result in self.scenario_forecasts(scenario):
+                with self.subTest(scenario=scenario, pm25=pm25):
+                    self.assertTrue(check(result, NOW))
+
+    def test_covers_the_rest_of_today_and_three_days(self):
+        result = forecast.mock_forecast("Lahore", 100.0, scenario="unhealthy", now=NOW)
+        self.assertEqual([d["date"] for d in result["outlook"]], ["2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20"])
+        self.assertEqual(len(result["hourly"]), 24)
+
+    def test_interpolation(self):
+        curve = [[0, 1.0], [4, 2.0], [8, 1.0]]
+        self.assertEqual([forecast._interpolate(curve, h) for h in (0, 2, 4, 6, 8, 20)], [1.0, 1.5, 2.0, 1.5, 1.0, 1.0])
+
+
+class MockSwitchTest(ForecastTestCase):
+    def test_mock_scenario_env_drives_the_forecast(self):
+        os.environ["MOCK_SCENARIO"] = "hazardous"
+        with mock.patch.object(forecast.requests, "get", side_effect=AssertionError("network called")):
+            result = forecast.build_forecast("Lahore", now=NOW, readings=reading(300.0))
+        self.assertEqual(result["source"], "mock")
+        self.assertEqual(result["next_24h"]["trend"], "improving")   # the hazardous curve
+
+    def test_use_mock_env_drives_the_forecast(self):
+        os.environ["USE_MOCK"] = "true"
+        with mock.patch.object(forecast.requests, "get", side_effect=AssertionError("network called")):
+            self.assertEqual(forecast.build_forecast("Lahore", now=NOW, readings=reading(30.0))["source"], "mock")
+
+    def test_mock_reading_gets_a_mock_forecast(self):
+        # the monitor already fell back to mock data: keep the story consistent, no network
+        with mock.patch.object(forecast.requests, "get", side_effect=AssertionError("network called")):
+            self.assertEqual(forecast.build_forecast("Lahore", now=NOW, readings=reading(30.0, source="mock"))["source"], "mock")
+
+    def test_live_reading_gets_a_live_forecast(self):
+        with mock.patch.object(forecast.requests, "get", return_value=fake_response(STEADY)):
+            self.assertEqual(forecast.build_forecast("Lahore", now=NOW, readings=reading(30.0, source="live"))["source"], "live")
+
+    def test_live_failure_falls_back_to_the_citys_scenario(self):
+        with mock.patch.object(forecast.requests, "get", side_effect=requests.ConnectionError("offline")), \
+                self.assertLogs(forecast.log, "WARNING"):
+            result = forecast.build_forecast("Lahore", now=NOW, readings=reading(80.0, source="live"))
+        self.assertEqual((result["source"], result["note"]), ("mock", forecast.MOCK_NOTE))
+        self.assertEqual(result["hourly"][0]["pm25"], 80.0)
+        self.assertIsNotNone(result["next_6h"])
+
+    def test_missing_or_broken_file_uses_a_flat_forecast(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            for content in (None, "{oops", '{"curves": {"good": [[4, 1], [0, 1]]}}'):
+                path = Path(tmp) / "mock_forecasts.json"
+                if content is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    path.write_text(content, encoding="utf-8")
+                with self.subTest(content=content), mock.patch.object(forecast, "MOCK_FILE", path):
+                    result = forecast.mock_forecast("Lahore", 40.0, scenario="good", now=NOW)
+                    self.assertTrue(all(p["pm25"] == 40.0 for p in result["hourly"]))
+
+    def test_no_reading_uses_the_base_level(self):
+        result = forecast.mock_forecast("Lahore", None, scenario="unhealthy", now=NOW)
+        self.assertEqual(result["hourly"][0]["pm25"], forecast.MOCK_BASE_PM25)
+
+    def test_bad_readings_never_raise(self):
+        for readings in (None, [], [{}], [{"pm25": "abc", "source": "mock"}], "nonsense"):
+            with self.subTest(readings=readings), mock.patch.object(forecast.requests, "get",
+                                                                    side_effect=requests.ConnectionError("x")):
+                self.assertEqual(set(forecast.build_forecast("Lahore", now=NOW, readings=readings)),
+                                 set(Forecast.__annotations__))
+
+
 class BuildTest(ForecastTestCase):
     def test_live_forecast_has_every_summary(self):
         with mock.patch.object(forecast.requests, "get", return_value=fake_response(STEADY)):
