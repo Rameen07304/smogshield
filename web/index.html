@@ -129,8 +129,22 @@
         </div>
         <p id="advice-disclaimer" class="advice__disclaimer">General guidance, not medical advice.</p>
       </section>
+
+      <!-- 6. Alert feed -->
+      <section class="card panel panel--feed" aria-labelledby="feed-title">
+        <div class="panel__head">
+          <h2 id="feed-title">Alert feed</h2>
+          <span id="feed-count" class="chip" hidden></span>
+        </div>
+        <p id="feed-empty" class="empty">Loading alerts…</p>
+        <ol id="feed" class="feed" role="list"></ol><!-- role: Safari drops list semantics with list-style: none -->
+        <p id="feed-error" class="feed__error" hidden>Couldn't refresh alerts. Showing the last ones received.</p>
+      </section>
     </div>
   </main>
+
+  <!-- One polite announcer: screen readers hear new alerts once, never every poll -->
+  <div id="announcer" class="visually-hidden" aria-live="polite"></div>
 
   <footer class="footer">
     Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data

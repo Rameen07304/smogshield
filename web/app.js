@@ -280,6 +280,109 @@ for (const button of document.querySelectorAll(".lang-toggle button")) {
 }
 applyLanguage();
 
+// ---------- alert feed ----------
+
+const FEED_LIMIT = 20;
+const SIM_PREFIX = "[SIMULATION] ";
+const SEVERITY = {
+  info: { label: "INFO", icon: "ℹ" },
+  warning: { label: "WARNING", icon: "▲" },
+  critical: { label: "CRITICAL", icon: "⬣" },
+};
+const feedItems = new Map();  // alert key -> <li>, so existing items are updated, never re-created
+let feedLoaded = false;
+
+const alertKey = (a) => `${a.created_at}|${a.location}|${a.level}|${a.message}`;
+
+function deliveryText(a) {
+  if (a.status === "queued") return "Sending to Telegram…";
+  if (a.status === "sent") return a.channel === "telegram" ? "Sent via Telegram" : "Dashboard feed";
+  return "Telegram failed, kept in the feed";
+}
+
+function buildAlertItem(a) {
+  const simulated = a.message.startsWith(SIM_PREFIX);
+  const sev = SEVERITY[a.severity] ?? SEVERITY.warning;
+  const li = document.createElement("li");
+  li.className = "alert-item";
+  li.dataset.severity = a.severity in SEVERITY ? a.severity : "warning";
+  if (simulated) li.dataset.simulated = "";
+
+  const top = document.createElement("div");
+  top.className = "alert-item__top";
+  const badge = document.createElement("span");
+  badge.className = "sev-badge";
+  badge.textContent = `${sev.icon} ${sev.label}`;
+  top.append(badge);
+  if (simulated) {
+    const tag = document.createElement("span");
+    tag.className = "sim-tag";
+    tag.textContent = "SIMULATION";
+    top.append(tag);
+  }
+  const message = document.createElement("p");
+  message.className = "alert-item__message";
+  message.textContent = simulated ? a.message.slice(SIM_PREFIX.length) : a.message;
+  const meta = document.createElement("p");
+  meta.className = "alert-item__meta";
+  li.append(top, message, meta);
+  updateAlertItem(li, a);
+  return li;
+}
+
+function updateAlertItem(li, a) {
+  li.querySelector(".alert-item__meta").textContent = `${localTime(a.created_at)} · ${deliveryText(a)}`;
+}
+
+function renderFeed(feed) {
+  const list = $("feed");
+  const keys = feed.map(alertKey);
+  // Drop items that are no longer in the feed
+  for (const [key, li] of feedItems) {
+    if (!keys.includes(key)) {
+      li.remove();
+      feedItems.delete(key);
+    }
+  }
+  // Add new ones at the top (oldest of the new first, so the newest ends up on top); update the rest
+  const fresh = [];
+  for (let i = feed.length - 1; i >= 0; i--) {
+    const a = feed[i], key = keys[i];
+    const existing = feedItems.get(key);
+    if (existing) {
+      updateAlertItem(existing, a);
+      continue;
+    }
+    const li = buildAlertItem(a);
+    if (feedLoaded) {
+      li.classList.add("is-new");  // animate only alerts that arrive while the page is open
+      fresh.push(a);
+    }
+    list.prepend(li);
+    feedItems.set(key, li);
+  }
+
+  $("feed-empty").hidden = feed.length > 0;
+  $("feed-empty").textContent = "No alerts yet. They appear here when air quality crosses a threshold or spikes.";
+  $("feed-count").hidden = feed.length === 0;
+  $("feed-count").textContent = `${feed.length} ${feed.length === 1 ? "alert" : "alerts"}`;
+  $("feed-error").hidden = true;
+  if (fresh.length) {
+    $("announcer").textContent = fresh.reverse()
+      .map((a) => `${a.severity} alert: ${a.message.replace(SIM_PREFIX, "simulation: ")}`).join(" ");
+  }
+  feedLoaded = true;
+}
+
+async function refreshFeed() {
+  try {
+    renderFeed(await getJSON(`/api/alerts?limit=${FEED_LIMIT}`));
+  } catch (error) {
+    console.error(error);
+    $("feed-error").hidden = !feedLoaded;  // before the first load, the "Loading…" text stays
+  }
+}
+
 /** LIVE badge or the SIMULATED banner, decided by the data's own source field */
 function renderMode(s) {
   const latest = s.readings?.at(-1);
@@ -393,10 +496,11 @@ async function poll() {
   polling = true;
   clearTimeout(pollTimer);
   try {
-    const s = await getJSON("/api/status");
+    const s = await getJSON("/api/status");  // runs the pipeline, which may add an alert…
     render(s);
     lastGood = s;
     $("offline").hidden = true;
+    await refreshFeed();                     // …so read the feed afterwards
     if (!controlsLoaded) loadControls().catch(console.error);
   } catch (error) {
     showOffline(error);  // keep whatever is on screen

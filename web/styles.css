@@ -340,6 +340,88 @@ select {
 
 .advice__disclaimer { margin: 14px 0 0; color: var(--muted); font-size: .9rem; }
 
+/* ---------- alert feed ---------- */
+.feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.alert-item {
+  --sev: #1f5fd6;
+  --sev-bg: #e6eeff;
+  --sev-fg: #0b2a66;
+  position: relative;
+  padding: 12px 14px 12px 18px;
+  border-radius: 12px;
+  background: var(--sev-bg);
+  color: var(--sev-fg);
+  border: 2px solid transparent;
+  border-inline-start: 8px solid var(--sev);
+}
+.alert-item[data-severity="warning"] { --sev: #c77700; --sev-bg: #fff1d6; --sev-fg: #3d2600; }
+.alert-item[data-severity="critical"] { --sev: #c4001d; --sev-bg: #ffe1e4; --sev-fg: #4a000a; }
+@media (prefers-color-scheme: dark) {
+  .alert-item { --sev: #7aa7ff; --sev-bg: #16233d; --sev-fg: #e3ecff; }
+  .alert-item[data-severity="warning"] { --sev: #ffb547; --sev-bg: #33260d; --sev-fg: #fff0d6; }
+  .alert-item[data-severity="critical"] { --sev: #ff6b7d; --sev-bg: #3d1218; --sev-fg: #ffe3e6; }
+}
+/* Simulated alerts look different: dashed border and a hatched tag */
+.alert-item[data-simulated] { border: 2px dashed var(--sev); border-inline-start: 8px solid var(--sev); }
+
+.alert-item__top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 4px; }
+.sev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .35em;
+  padding: .15em .6em;
+  border-radius: 6px;
+  background: var(--sev);
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+.alert-item[data-severity="warning"] .sev-badge { color: #000; }
+@media (prefers-color-scheme: dark) { .sev-badge { color: #000; } }
+.sim-tag {
+  padding: .1em .55em;
+  border-radius: 6px;
+  border: 1.5px solid #000;
+  background: repeating-linear-gradient(-45deg, #ffd400 0 6px, #ffbf00 6px 12px);
+  color: #000;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+.alert-item__message { margin: 0; font-weight: 650; line-height: 1.35; }
+.alert-item__meta { margin: 6px 0 0; font-size: .82rem; opacity: .85; }
+
+/* New alerts slide in and flash once; existing ones never re-animate */
+.alert-item.is-new {
+  transition: opacity .5s ease-out, translate .5s ease-out;
+  animation: alert-flash 2.4s ease-out 1;
+}
+@starting-style {
+  .alert-item.is-new { opacity: 0; translate: 0 -16px; }
+}
+@keyframes alert-flash {
+  0%, 30% { box-shadow: 0 0 0 4px var(--sev); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alert-item.is-new { transition: opacity .2s; animation: none; }
+  @starting-style { .alert-item.is-new { translate: none; } }
+}
+.feed__error { margin: 10px 0 0; color: var(--muted); font-size: .85rem; }
+
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
 /* ---------- footer ---------- */
 .footer { max-width: 1600px; margin: 0 auto; padding: 0 var(--gap) var(--gap); color: var(--muted); font-size: .85rem; }
 
