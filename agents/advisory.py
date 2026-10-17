@@ -178,10 +178,15 @@ SPIKE_NOTE = (
     "Sudden spike in pollution: postpone outdoor plans and check again within the hour.",
     "آلودگی میں اچانک اضافہ: بیرونی منصوبے ملتوی کریں اور ایک گھنٹے میں دوبارہ چیک کریں۔",
 )
-RISING_NOTE = (
+RISING_NOTE = (  # from "unhealthy_sensitive" upward
     "Conditions are worsening: postpone outdoor plans if you can and check again soon.",
     "حالات بگڑ رہے ہیں: اگر ممکن ہو تو بیرونی منصوبے ملتوی کریں اور جلد دوبارہ چیک کریں۔",
 )
+GENTLE_RISING_NOTE = (  # good / moderate: outdoor activity is still fine, so don't say postpone
+    "Air quality is trending worse; keep an eye on updates.",
+    "ہوا کا معیار خراب ہونے کی طرف جا رہا ہے؛ تازہ معلومات پر نظر رکھیں۔",
+)
+GENTLE_LEVELS = {"good", "moderate"}
 UNAVAILABLE_NOTE = (
     "No current air quality readings. Follow these precautions until data is back, and check again soon.",
     "ہوا کے معیار کی تازہ ریڈنگ دستیاب نہیں۔ ڈیٹا واپس آنے تک ان احتیاطی تدابیر پر عمل کریں اور جلد دوبارہ چیک کریں۔",
@@ -229,11 +234,11 @@ def _time_note(analysis: dict, level: str) -> tuple[str, str]:
     """(English, Urdu) note from spike flag and trend; empty strings if nothing to say."""
     if analysis.get("is_spike") is True:
         return SPIKE_NOTE
-    if level == "good":  # nothing to postpone or wait for in good air
-        return "", ""
     trend = analysis.get("trend")
     if trend == "rising":
-        return RISING_NOTE
+        return GENTLE_RISING_NOTE if level in GENTLE_LEVELS else RISING_NOTE
+    if level == "good":  # nothing to wait for when the air is already good
+        return "", ""
     if trend == "falling":
         return FALLING_NOTE
     return "", ""

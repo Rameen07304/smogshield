@@ -102,8 +102,23 @@ class TimeContextTest(unittest.TestCase):
         self.assertEqual(result["time_note"], "")
         self.assertEqual(result["actions"], result["audiences"]["general"])
 
-    def test_rising_in_good_air_has_no_note(self):
-        self.assertEqual(advisory.build_advisory(make_analysis("good", trend="rising"))["time_note"], "")
+    def test_rising_in_good_or_moderate_air_is_gentle(self):
+        for level in ("good", "moderate"):
+            with self.subTest(level=level):
+                result = advisory.build_advisory(make_analysis(level, trend="rising"))
+                self.assertEqual(result["time_note"], advisory.GENTLE_RISING_NOTE[0])
+                self.assertEqual(result["urdu"]["actions"][0], advisory.GENTLE_RISING_NOTE[1])
+                self.assertNotIn("postpone", " ".join(result["actions"]).lower())  # no contradiction
+
+    def test_rising_from_sensitive_groups_up_says_postpone(self):
+        for level in ("unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"):
+            with self.subTest(level=level):
+                self.assertEqual(advisory.build_advisory(make_analysis(level, trend="rising"))["time_note"],
+                                 advisory.RISING_NOTE[0])
+
+    def test_good_air_has_no_note_unless_rising(self):
+        for trend in ("stable", "falling"):
+            self.assertEqual(advisory.build_advisory(make_analysis("good", trend=trend))["time_note"], "")
 
     def test_time_note_never_changes_severity(self):
         for level in LEVELS:
