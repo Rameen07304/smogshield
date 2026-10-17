@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>How it works | SmogShield</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%23b00020'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z" fill="currentColor"/>
+        <path d="M9 14c2-2 4-2 6 0s4 2 6 0M9 19c2-2 4-2 6 0s4 2 6 0" stroke="var(--surface)" stroke-width="2.2"
+              fill="none" stroke-linecap="round"/>
+      </svg>
+      <span>SmogShield</span>
+    </div>
+  </header>
+
+  <main id="content" class="page">
+    <!-- 1. Title and pitch -->
+    <section class="intro">
+      <h1>How SmogShield works</h1>
+      <p class="intro__pitch">
+        <strong>SmogShield:</strong> four cooperating agents that turn raw air quality data into real-time smog response.
+      </p>
+    </section>
+
+    <!-- 2. Pipeline diagram -->
+    <section class="card panel" aria-labelledby="flow-title">
+      <h2 id="flow-title" class="how__h2">The pipeline</h2>
+      <ol class="flow" role="list">
+        <li class="flow__node">
+          <p class="flow__num" aria-hidden="true">1</p>
+          <h3>Monitor</h3>
+          <p class="flow__does">Fetches and cleans air quality readings.</p>
+          <dl class="flow__io">
+            <div><dt>Receives</dt><dd>A city, plus live data from Open-Meteo (or a demo scenario).</dd></div>
+            <div><dt>Produces</dt><dd>The last 6 hourly readings: PM2.5, PM10, the time, and whether they are live or simulated.</dd></div>
+          </dl>
+        </li>
+        <li class="flow__node">
+          <p class="flow__num" aria-hidden="true">2</p>
+          <h3>Analysis</h3>
+          <p class="flow__does">Computes the AQI, the trend and sudden spikes.</p>
+          <dl class="flow__io">
+            <div><dt>Receives</dt><dd>The recent readings.</dd></div>
+            <div><dt>Produces</dt><dd>An AQI number, a category (Good to Hazardous), the trend per hour, a spike flag and a one-line reason.</dd></div>
+          </dl>
+        </li>
+        <li class="flow__node">
+          <p class="flow__num" aria-hidden="true">3</p>
+          <h3>Advisory</h3>
+          <p class="flow__does">Turns the assessment into guidance for each audience, in English and <span lang="ur" class="urdu-inline">اردو</span>.</p>
+          <dl class="flow__io">
+            <div><dt>Receives</dt><dd>The assessment: category, trend and spike flag.</dd></div>
+            <div><dt>Produces</dt><dd>A headline and advice for the public, children and schools, the elderly, and people with heart or lung conditions.</dd></div>
+          </dl>
+        </li>
+        <li class="flow__node">
+          <p class="flow__num" aria-hidden="true">4</p>
+          <h3>Alert</h3>
+          <p class="flow__does">Decides when and how to notify people, without spamming them.</p>
+          <dl class="flow__io">
+            <div><dt>Receives</dt><dd>The assessment, the advice and the location.</dd></div>
+            <div><dt>Produces</dt><dd>An info, warning or critical alert in the dashboard feed (and Telegram, if set up), or nothing when nothing changed.</dd></div>
+          </dl>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
+    (Copernicus Atmosphere Monitoring Service).
+  </footer>
+</body>
+</html>

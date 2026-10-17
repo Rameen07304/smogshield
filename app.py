@@ -31,6 +31,12 @@ def dashboard():
     return FileResponse(INDEX)
 
 
+@app.get("/how")
+def how_it_works():
+    """Screen 2: explains the agent pipeline, with a live example."""
+    return FileResponse(WEB / "how.html")
+
+
 @app.get("/api/status")
 def status():
     """One full pass through all agents. The dashboard polls this."""

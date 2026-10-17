@@ -60,6 +60,11 @@ class ControlEndpointTest(unittest.TestCase):
         os.environ["MONITOR_CITY"] = "Atlantis"
         self.assertEqual(app.get_city()["current"], "Lahore")
 
+    def test_both_pages_are_served(self):
+        for page in (app.dashboard(), app.how_it_works()):
+            with self.subTest(path=page.path):
+                self.assertTrue(Path(page.path).is_file())
+
     def test_scenario_round_trip(self):
         self.assertEqual(app.set_scenario("hazardous")["current"], "hazardous")
         self.assertEqual(app.set_scenario("live")["current"], "live")

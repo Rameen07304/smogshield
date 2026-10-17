@@ -1,20 +1,9 @@
-// SmogShield dashboard: polls /api/status and renders each panel.
+// SmogShield dashboard (Screen 1): polls /api/status and renders each panel.
 // Rules: textContent only (never inject API data as HTML), keep the last good data on screen
 // when a poll fails, and never leave a panel blank.
+// Needs common.js first (POLL_MS, LEVELS, TREND_WORDS, TREND_ARROWS, $, getJSON, localTime, levelOf).
 "use strict";
 
-const POLL_MS = 5000;          // backend caches live data for 10 min, so this is cheap
-const REQUEST_TIMEOUT_MS = 15000;
-
-const LEVELS = {
-  good:                { label: "Good" },
-  moderate:            { label: "Moderate" },
-  unhealthy_sensitive: { label: "Unhealthy for sensitive groups" },
-  unhealthy:           { label: "Unhealthy" },
-  very_unhealthy:      { label: "Very unhealthy" },
-  hazardous:           { label: "Hazardous" },
-  unknown:             { label: "Data unavailable" },
-};
 const SCENARIO_LABELS = {
   live: "Live data",
   good: "Good",
@@ -25,29 +14,8 @@ const SCENARIO_LABELS = {
   hazardous: "Hazardous",
   spike: "Spike: smog builds, then clears",
 };
-const TREND_WORDS = { rising: "rising", falling: "falling", stable: "steady" };
-const TREND_ARROWS = { rising: "↑", falling: "↓", stable: "→" };
 
-const $ = (id) => document.getElementById(id);
 let lastGood = null;  // the last /api/status that rendered fine
-
-// ---------- helpers ----------
-
-/** fetch JSON with a timeout; throws on network errors and non-2xx responses */
-async function getJSON(url, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-    return await res.json();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-const localTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-const levelOf = (analysis) => (analysis && analysis.level in LEVELS ? analysis.level : "unknown");
 
 // ---------- panels ----------
 
