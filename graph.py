@@ -1,23 +1,25 @@
 """Orchestrator: wires the agents into a LangGraph pipeline.
 
-monitor -> analysis -> advisory -> alert
+monitor -> forecast -> analysis -> advisory -> alert
 To add an agent: write agents/<name>.py with a run(state) function, add a node and an edge here.
 
 Run `python graph.py` for a quick self-check on mock data.
 """
 from langgraph.graph import END, START, StateGraph
 
-from agents import advisory, alert, analysis, monitor
+from agents import advisory, alert, analysis, forecast, monitor
 from schemas import SmogState
 
 builder = StateGraph(SmogState)
 builder.add_node("monitor", monitor.run)
+builder.add_node("forecast", forecast.run)
 builder.add_node("analysis", analysis.run)
 builder.add_node("advisory", advisory.run)
 builder.add_node("alert", alert.run)
 
 builder.add_edge(START, "monitor")
-builder.add_edge("monitor", "analysis")
+builder.add_edge("monitor", "forecast")
+builder.add_edge("forecast", "analysis")
 builder.add_edge("analysis", "advisory")
 builder.add_edge("advisory", "alert")
 builder.add_edge("alert", END)
@@ -53,7 +55,7 @@ if __name__ == "__main__":
 
         # full pipeline produces every key
         result = run_once()
-        for key in ("readings", "analysis", "advisory", "alerts"):
+        for key in ("readings", "forecast", "analysis", "advisory", "alerts"):
             assert key in result, f"missing {key}"
         print(result["analysis"], result["advisory"]["headline"], result["alerts"], sep="\n")
         print("OK")

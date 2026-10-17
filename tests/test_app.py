@@ -65,6 +65,20 @@ class ControlEndpointTest(unittest.TestCase):
             with self.subTest(path=page.path):
                 self.assertTrue(Path(page.path).is_file())
 
+    def test_status_includes_the_forecast_for_every_scenario(self):
+        from schemas import Forecast
+        for scenario in app._mock_scenarios():
+            with self.subTest(scenario=scenario):
+                app.set_scenario(scenario)
+                result = app.status()
+                forecast = result["forecast"]
+                self.assertEqual(set(forecast), set(Forecast.__annotations__))
+                self.assertEqual(forecast["source"], "mock")
+                self.assertEqual(forecast["location"], result["readings"][-1]["location"])
+                self.assertEqual(forecast["hourly"][0]["pm25"], result["readings"][-1]["pm25"])  # anchored on now
+                self.assertEqual(len(forecast["hourly"]), 24)
+                self.assertIsNotNone(forecast["next_6h"])
+
     def test_scenario_round_trip(self):
         self.assertEqual(app.set_scenario("hazardous")["current"], "hazardous")
         self.assertEqual(app.set_scenario("live")["current"], "live")
