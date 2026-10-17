@@ -151,6 +151,7 @@ class ContractTest(unittest.TestCase):
         # Monitor (mock) -> Analysis -> Advisory -> Alert, for every scenario in data/mock_readings.json
         for scenario in LEVELS + ["spike"]:
             with self.subTest(scenario=scenario):
+                alert.reset_memory()  # each scenario starts fresh, or an earlier alert hides this one
                 state = {"readings": monitor.mock_readings("Lahore", scenario)}
                 state.update(analysis.run(state))
                 state.update(advisory.run(state))
