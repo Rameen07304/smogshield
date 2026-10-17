@@ -15,6 +15,16 @@ const LEVELS = {
   hazardous:           { label: "Hazardous" },
   unknown:             { label: "Data unavailable" },
 };
+const SCENARIO_LABELS = {
+  live: "Live data",
+  good: "Good",
+  moderate: "Moderate",
+  unhealthy_sensitive: "Unhealthy for sensitive groups",
+  unhealthy: "Unhealthy",
+  very_unhealthy: "Very unhealthy",
+  hazardous: "Hazardous",
+  spike: "Spike: smog builds, then clears",
+};
 const TREND_WORDS = { rising: "rising", falling: "falling", stable: "steady" };
 const TREND_ARROWS = { rising: "↑", falling: "↓", stable: "→" };
 
@@ -87,7 +97,24 @@ function renderHero(s) {
   document.title = `${known ? `AQI ${a.aqi} ${LEVELS[level].label}` : "Data unavailable"} | SmogShield`;
 }
 
+/** LIVE badge or the SIMULATED banner, decided by the data's own source field */
+function renderMode(s) {
+  const latest = s.readings?.at(-1);
+  const badge = $("mode-badge");
+  if (!latest) {
+    badge.dataset.mode = "loading";
+    badge.textContent = "No data";
+    $("simulated").hidden = true;
+    return;
+  }
+  const simulated = latest.source !== "live";
+  badge.dataset.mode = simulated ? "simulated" : "live";
+  badge.textContent = simulated ? "Simulated" : "Live";
+  $("simulated").hidden = !simulated;
+}
+
 function render(s) {
+  renderMode(s);
   renderHero(s);
 }
 
@@ -100,19 +127,107 @@ function showOffline(error) {
     : "Can't reach the SmogShield server yet. Retrying…";
 }
 
+// ---------- demo controls (city, scenario, emergency button) ----------
+
+let controlsLoaded = false;
+
+function fillSelect(select, options, current, labelFor) {
+  select.replaceChildren(...options.map((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = labelFor(value);
+    option.selected = value === current;
+    return option;
+  }));
+}
+
+/** Puts the selects back in sync with what the server really has */
+async function loadControls() {
+  const [city, scenario] = await Promise.all([getJSON("/api/city"), getJSON("/api/scenario")]);
+  fillSelect($("city"), city.options, city.current, (name) => name);
+  fillSelect($("scenario"), scenario.options, scenario.current,
+             (name) => SCENARIO_LABELS[name] ?? name.replaceAll("_", " "));
+  controlsLoaded = true;
+  setControlsBusy(false);
+}
+
+function setControlsBusy(busy) {
+  for (const id of ["city", "scenario", "emergency"]) $(id).disabled = busy || !controlsLoaded;
+}
+
+function setControlStatus(text, tone = "") {
+  $("control-status").textContent = text;
+  $("control-status").dataset.tone = tone;
+}
+
+/** POSTs a control change, then refreshes everything right away */
+async function changeControl(url, busyText, doneText) {
+  setControlsBusy(true);
+  setControlStatus(busyText);
+  try {
+    await getJSON(url, { method: "POST" });
+    setControlStatus(doneText);
+    poll();
+  } catch (error) {
+    console.error(error);
+    setControlStatus("Couldn't change that setting. Is the server running?", "error");
+  } finally {
+    try { await loadControls(); } catch { setControlsBusy(false); }
+  }
+}
+
+$("city").addEventListener("change", (event) => {
+  const city = event.target.value;
+  changeControl(`/api/city/${encodeURIComponent(city)}`, `Switching to ${city}…`, `Now showing ${city}.`);
+});
+
+$("scenario").addEventListener("change", (event) => {
+  const name = event.target.value;
+  const label = SCENARIO_LABELS[name] ?? name;
+  changeControl(`/api/scenario/${encodeURIComponent(name)}`, `Switching to “${label}”…`,
+                name === "live" ? "Back to live data." : `Demo scenario: ${label} (simulated).`);
+});
+
+$("emergency").addEventListener("click", () => {
+  changeControl("/api/scenario/hazardous", "Triggering a simulated smog emergency…",
+                "Smog emergency triggered (simulated data).");
+});
+
 // ---------- polling ----------
 
+let pollTimer = null;
+let polling = false;
+let pollAgain = false;
+
+/** One refresh. Safe to call any time: overlapping calls are merged, never stacked */
 async function poll() {
+  if (polling) {
+    pollAgain = true;
+    return;
+  }
+  polling = true;
+  clearTimeout(pollTimer);
   try {
     const s = await getJSON("/api/status");
     render(s);
     lastGood = s;
     $("offline").hidden = true;
+    if (!controlsLoaded) loadControls().catch(console.error);
   } catch (error) {
     showOffline(error);  // keep whatever is on screen
   } finally {
-    setTimeout(poll, POLL_MS);  // a chain, not setInterval: slow polls never pile up
+    polling = false;
+    if (pollAgain) {
+      pollAgain = false;
+      poll();
+    } else {
+      pollTimer = setTimeout(poll, POLL_MS);  // a chain, not setInterval: slow polls never pile up
+    }
   }
 }
 
+loadControls().catch((error) => {
+  console.error(error);
+  setControlStatus("Demo controls unavailable until the server responds.", "error");
+});
 poll();

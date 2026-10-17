@@ -62,5 +62,27 @@ def set_scenario(name: str):
     return get_scenario()
 
 
+@app.get("/api/city")
+def get_city():
+    """The monitored city and the known cities, for the dashboard's city selector."""
+    current = _known_city(os.getenv("MONITOR_CITY", monitor.DEFAULT_CITY)) or monitor.DEFAULT_CITY
+    return {"current": current, "options": list(monitor.CITIES)}
+
+
+@app.post("/api/city/{name}")
+def set_city(name: str):
+    """Switch the monitored city (one of monitor.CITIES, any case). Lasts until the server restarts."""
+    city = _known_city(name)
+    if city is None:
+        raise HTTPException(404, f"Unknown city {name!r}")
+    os.environ["MONITOR_CITY"] = city
+    return get_city()
+
+
+def _known_city(name: str) -> str | None:
+    """The canonical spelling of a known city, or None."""
+    return next((city for city in monitor.CITIES if city.lower() == name.strip().lower()), None)
+
+
 def _mock_scenarios() -> list[str]:
     return monitor.mock_scenarios()  # never raises: falls back to a built-in scenario

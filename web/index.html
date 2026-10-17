@@ -9,6 +9,35 @@
   <script src="/static/app.js" defer></script>
 </head>
 <body>
+  <!-- 1. Header strip -->
+  <header class="topbar">
+    <div class="topbar__brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z" fill="currentColor"/>
+        <path d="M9 14c2-2 4-2 6 0s4 2 6 0M9 19c2-2 4-2 6 0s4 2 6 0" stroke="var(--surface)" stroke-width="2.2"
+              fill="none" stroke-linecap="round"/>
+      </svg>
+      <span>SmogShield</span>
+      <span id="mode-badge" class="mode-badge" data-mode="loading">Connecting…</span>
+    </div>
+    <div class="topbar__controls">
+      <div class="field">
+        <label for="city">City</label>
+        <select id="city" disabled><option>Lahore</option></select>
+      </div>
+      <div class="field">
+        <label for="scenario">Demo scenario</label>
+        <select id="scenario" disabled><option value="live">Live data</option></select>
+      </div>
+      <button id="emergency" class="btn btn--danger" type="button" disabled>Trigger smog emergency</button>
+    </div>
+    <p id="control-status" class="topbar__status" role="status"></p>
+  </header>
+
+  <div id="simulated" class="banner banner--simulated" role="status" hidden>
+    SIMULATED DATA
+    <small>Demo scenario: these are not real air quality readings.</small>
+  </div>
   <div id="offline" class="banner banner--offline" role="status" hidden></div>
 
   <main id="content" class="page">
