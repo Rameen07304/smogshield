@@ -153,6 +153,12 @@ class BadInputTest(unittest.TestCase):
                 result = analysis.run(state)["analysis"]
                 self.assertEqual(set(result), set(Analysis.__annotations__))
                 self.assertIn("No valid readings", result["reason"])
+                self.assertEqual((result["level"], result["aqi"]), ("unknown", None))  # never "good"
+                self.assertFalse(result["is_hazardous"])
+
+    def test_only_invalid_readings_is_unknown(self):
+        result = analysis.run({"readings": [{"pm25": None}, {"pm25": "abc"}, {"pm25": -1}]})["analysis"]
+        self.assertEqual(result["level"], "unknown")
 
     def test_invalid_readings_are_skipped(self):
         readings = window([30, 40, 50])

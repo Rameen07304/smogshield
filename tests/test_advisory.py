@@ -119,6 +119,24 @@ class BadInputTest(unittest.TestCase):
                 self.assertEqual(result["audiences"]["general"], cautious["general"])
                 self.assertIn("mask", all_text(result))
 
+    def test_unknown_level_says_data_unavailable_not_good(self):
+        result = advisory.build_advisory({**make_analysis("good"), "level": "unknown", "aqi": None})
+        self.assertIn("unavailable", result["headline"].lower())
+        self.assertNotIn("good", result["headline"].lower())
+        self.assertEqual(result["time_note"], advisory.UNAVAILABLE_NOTE[0])
+        self.assertEqual(result["actions"][0], advisory.UNAVAILABLE_NOTE[0])
+        self.assertIn("mask", all_text(result))  # cautious advice
+        self.assertEqual(result["urdu"]["headline"], advisory.FALLBACK_HEADLINE_UR)
+
+    def test_no_readings_end_to_end_is_cautious(self):
+        state = analysis.run({"readings": []})
+        result = advisory.run(state)["advisory"]
+        self.assertEqual(result["headline"], advisory.FALLBACK_HEADLINE)
+
+    def test_unknown_level_ignores_trend_and_spike(self):
+        result = advisory.build_advisory({"level": "unknown", "trend": "rising", "is_spike": True})
+        self.assertEqual(result["time_note"], advisory.UNAVAILABLE_NOTE[0])
+
     def test_run_without_analysis(self):
         self.assertEqual(advisory.run({})["advisory"]["headline"], advisory.FALLBACK_HEADLINE)
 

@@ -29,6 +29,7 @@ LEVEL_LABELS: dict[str, str] = {
     "unhealthy": "Unhealthy",
     "very_unhealthy": "Very unhealthy",
     "hazardous": "Hazardous",
+    "unknown": "Data unavailable",
 }
 
 # Trend = least-squares slope of PM2.5 over the window. It counts as rising/falling only if
@@ -55,7 +56,7 @@ def run(state: SmogState) -> dict:
     readings = _valid_readings(state.get("readings") or [])
     if not readings:
         # Should not happen (monitor always falls back to mock), but never crash the pipeline
-        log.warning("No valid readings to analyse, returning a placeholder analysis")
+        log.warning("No valid readings to analyse, returning level 'unknown'")
         return {"analysis": _no_data_analysis()}
     return {"analysis": assess(readings)}
 
@@ -153,10 +154,10 @@ def _mean(values: list[float]) -> float:
 
 
 def _no_data_analysis() -> Analysis:
-    # Schema has no "unknown" level; "good" + a clear reason is the least alarming placeholder
+    # "unknown", never "good": no data must not be reported as clean air
     return {
-        "aqi": 0,
-        "level": "good",
+        "aqi": None,
+        "level": "unknown",
         "trend": "stable",
         "trend_per_hour": 0.0,
         "is_hazardous": False,

@@ -194,8 +194,11 @@ def _process(state: SmogState) -> list[Alert]:
     analysis = state.get("analysis") or {}
     advisory = state.get("advisory") or {}
     level = analysis.get("level")
+    if level == "unknown":
+        log.info("No air quality data, so no alert this run")
+        return []
     if level not in LEVEL_ORDER:
-        log.warning("Unknown or missing level %r, no alert", level)
+        log.warning("Unrecognised or missing level %r, no alert", level)
         return []
     location = _location(state.get("readings"))
     simulated = _is_simulated(state.get("readings"))

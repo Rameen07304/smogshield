@@ -172,6 +172,14 @@ class RunTest(AlertTestCase):
             os.environ["ALERT_MEMORY_HOURS"] = bad
             self.assertEqual(alert._memory_max_age(), timedelta(hours=alert.DEFAULT_MEMORY_HOURS), bad)
 
+    def test_unknown_level_never_alerts(self):
+        state = {"readings": []}
+        state.update(analysis.run(state))
+        state.update(advisory.run(state))
+        self.assertEqual(state["analysis"]["level"], "unknown")
+        self.assertEqual(alert.run(state)["alerts"], [])
+        self.assertEqual(alert.read_feed(), [])
+
     def test_bad_input_never_raises(self):
         for state in ({}, {"analysis": {"level": "nope"}}, {"analysis": {"level": "hazardous"}, "readings": None}):
             with self.subTest(state=state):

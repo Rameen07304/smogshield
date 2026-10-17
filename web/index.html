@@ -24,6 +24,7 @@
       --unhealthy: #ff0000; --unhealthy-text: #000;
       --very_unhealthy: #8f3f97; --very_unhealthy-text: #fff;
       --hazardous: #7e0023; --hazardous-text: #fff;
+      --unknown: #5b6270; --unknown-text: #fff;   /* no data: neutral grey, never green */
     }
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }   /* "hidden" must win over display rules like .pill's */
@@ -174,6 +175,7 @@
     const LABELS = {
       good: "Good", moderate: "Moderate", unhealthy_sensitive: "Unhealthy for sensitive groups",
       unhealthy: "Unhealthy", very_unhealthy: "Very unhealthy", hazardous: "Hazardous",
+      unknown: "Data unavailable",
     };
     // US EPA PM2.5 band tops (µg/m³), used to shade the chart
     const BANDS = [[9, "good"], [35.4, "moderate"], [55.4, "unhealthy_sensitive"],
@@ -200,18 +202,26 @@
     const localTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     function renderTile(s) {
-      const latest = s.readings.at(-1), a = s.analysis;
-      $("where").textContent = `${latest.location} · ${latest.source === "live" ? "live data" : "mock data"} · updated ${localTime(latest.timestamp)}`;
-      $("simulated").hidden = latest.source === "live";  // anything not live is shown as simulated
-      $("tile").style.setProperty("--level-bg", `var(--${a.level})`);
-      $("tile").style.setProperty("--level-text", `var(--${a.level}-text)`);
-      $("aqi").textContent = a.aqi;
-      $("category").textContent = LABELS[a.level] ?? a.level;
-      const pm10 = latest.pm10 == null ? "" : ` · PM10 ${latest.pm10}`;
-      const rate = a.trend_per_hour > 0 ? `+${a.trend_per_hour}` : a.trend_per_hour;
-      $("facts").textContent = `PM2.5 ${latest.pm25} µg/m³${pm10} · ${ARROWS[a.trend] ?? ""} ${a.trend} (${rate}/h)`;
+      const latest = s.readings?.at(-1), a = s.analysis;
+      const known = a.level in LABELS && a.level !== "unknown";
+      $("where").textContent = latest
+        ? `${latest.location} · ${latest.source === "live" ? "live data" : "mock data"} · updated ${localTime(latest.timestamp)}`
+        : "No current readings";
+      $("simulated").hidden = !latest || latest.source === "live";  // anything not live is shown as simulated
+      const level = known ? a.level : "unknown";
+      $("tile").style.setProperty("--level-bg", `var(--${level})`);
+      $("tile").style.setProperty("--level-text", `var(--${level}-text)`);
+      $("aqi").textContent = a.aqi ?? "--";
+      $("category").textContent = LABELS[level];
+      if (known) {
+        const pm10 = latest.pm10 == null ? "" : ` · PM10 ${latest.pm10}`;
+        const rate = a.trend_per_hour > 0 ? `+${a.trend_per_hour}` : a.trend_per_hour;
+        $("facts").textContent = `PM2.5 ${latest.pm25} µg/m³${pm10} · ${ARROWS[a.trend] ?? ""} ${a.trend} (${rate}/h)`;
+      } else {
+        $("facts").textContent = a.reason || "No valid readings received.";
+      }
       $("spike").hidden = !a.is_spike;
-      document.title = `AQI ${a.aqi} ${LABELS[a.level] ?? ""} | SmogShield`;
+      document.title = `${known ? `AQI ${a.aqi} ${LABELS[level]}` : "Data unavailable"} | SmogShield`;
     }
 
     function renderChart(readings, analysis) {
@@ -295,9 +305,12 @@
       try {
         const s = await getJSON("/api/status");   // runs the pipeline (may add an alert)
         const feed = await getJSON("/api/alerts");
-        if (s.readings?.length) {
-          renderTile(s);
+        renderTile(s);   // always, so an "unknown" result replaces stale numbers
+        if (s.analysis.level !== "unknown" && s.readings?.length) {
           renderChart(s.readings, s.analysis);
+        } else {
+          $("chart").replaceChildren();
+          $("chart-summary").textContent = "No valid readings to chart.";
         }
         renderAdvisory(s.advisory);
         renderFeed(feed);

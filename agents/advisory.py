@@ -123,9 +123,10 @@ GUIDANCE: dict[str, dict] = {
     },
 }
 
-# Unknown or missing level: be cautious, use "unhealthy" advice with an honest headline
+# "unknown" (no valid readings) or any missing/unrecognised level: be cautious and say so.
+# Use the "unhealthy" advice with an honest headline, never "Air quality is good."
 FALLBACK_LEVEL = "unhealthy"
-FALLBACK_HEADLINE = "Air quality information is incomplete. Take precautions."
+FALLBACK_HEADLINE = "Air quality data is unavailable right now. Take precautions."
 
 # Urdu headline + public advice per level. Ask a native speaker to review before the demo.
 URDU: dict[str, dict] = {
@@ -170,7 +171,7 @@ URDU: dict[str, dict] = {
         ],
     },
 }
-FALLBACK_HEADLINE_UR = "ہوا کے معیار کی معلومات نامکمل ہیں۔ احتیاط کریں۔"
+FALLBACK_HEADLINE_UR = "ہوا کے معیار کا ڈیٹا اس وقت دستیاب نہیں۔ احتیاط کریں۔"
 
 # Time context from trend and spike: (English, Urdu)
 SPIKE_NOTE = (
@@ -180,6 +181,10 @@ SPIKE_NOTE = (
 RISING_NOTE = (
     "Conditions are worsening: postpone outdoor plans if you can and check again soon.",
     "حالات بگڑ رہے ہیں: اگر ممکن ہو تو بیرونی منصوبے ملتوی کریں اور جلد دوبارہ چیک کریں۔",
+)
+UNAVAILABLE_NOTE = (
+    "No current air quality readings. Follow these precautions until data is back, and check again soon.",
+    "ہوا کے معیار کی تازہ ریڈنگ دستیاب نہیں۔ ڈیٹا واپس آنے تک ان احتیاطی تدابیر پر عمل کریں اور جلد دوبارہ چیک کریں۔",
 )
 FALLING_NOTE = (
     "Conditions are improving, but keep following this advice until the level drops.",
@@ -198,11 +203,12 @@ def build_advisory(analysis: dict | None) -> Advisory:
     level = analysis.get("level")
     known = level in GUIDANCE
     if not known:
-        log.warning("Unknown or missing level %r, giving cautious %r advice", level, FALLBACK_LEVEL)
+        if level != "unknown":  # "unknown" is expected (analysis already logged it); anything else is a bug
+            log.warning("Unrecognised or missing level %r, giving cautious advice", level)
         level = FALLBACK_LEVEL
 
     template, urdu = GUIDANCE[level], URDU[level]
-    note, note_ur = _time_note(analysis, level)
+    note, note_ur = _time_note(analysis, level) if known else UNAVAILABLE_NOTE
     lead = [note] if note else []          # time context goes first so it's seen
     lead_ur = [note_ur] if note_ur else []
 
