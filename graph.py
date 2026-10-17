@@ -40,17 +40,20 @@ if __name__ == "__main__":
     # its alerts out of the real dashboard feed and alert memory (var/alerts.json).
     for key in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"):
         os.environ.pop(key, None)
-    alert.STORE_FILE = Path(tempfile.mkdtemp(prefix="smogshield-selfcheck-")) / "alerts.json"
 
-    # AQI math against known EPA values
-    assert analysis.pm25_to_aqi(9.0) == (50, "good")
-    assert analysis.pm25_to_aqi(35.5) == (101, "unhealthy_sensitive")
-    assert analysis.pm25_to_aqi(260)[1] == "hazardous"
-    assert analysis.pm25_to_aqi(999) == (500, "hazardous")
+    # The temp folder (and the self-check's alerts.json in it) is deleted when this block ends
+    with tempfile.TemporaryDirectory(prefix="smogshield-selfcheck-") as tmp:
+        alert.STORE_FILE = Path(tmp) / "alerts.json"
 
-    # full pipeline produces every key
-    result = run_once()
-    for key in ("readings", "analysis", "advisory", "alerts"):
-        assert key in result, f"missing {key}"
-    print(result["analysis"], result["advisory"]["headline"], result["alerts"], sep="\n")
-    print("OK")
+        # AQI math against known EPA values
+        assert analysis.pm25_to_aqi(9.0) == (50, "good")
+        assert analysis.pm25_to_aqi(35.5) == (101, "unhealthy_sensitive")
+        assert analysis.pm25_to_aqi(260)[1] == "hazardous"
+        assert analysis.pm25_to_aqi(999) == (500, "hazardous")
+
+        # full pipeline produces every key
+        result = run_once()
+        for key in ("readings", "analysis", "advisory", "alerts"):
+            assert key in result, f"missing {key}"
+        print(result["analysis"], result["advisory"]["headline"], result["alerts"], sep="\n")
+        print("OK")
