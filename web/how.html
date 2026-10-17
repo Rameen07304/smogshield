@@ -7,6 +7,8 @@
   <title>How it works | SmogShield</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%23b00020'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/common.js" defer></script>
+  <script src="/static/how.js" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -68,6 +70,40 @@
             <div><dt>Receives</dt><dd>The assessment, the advice and the location.</dd></div>
             <div><dt>Produces</dt><dd>An info, warning or critical alert in the dashboard feed (and Telegram, if set up), or nothing when nothing changed.</dd></div>
           </dl>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 3. Live example: what each agent produced on the latest run -->
+    <section class="card panel" aria-labelledby="live-title">
+      <div class="panel__head">
+        <h2 id="live-title" class="how__h2 how__h2--inline">Live example: what each agent produced just now</h2>
+        <div class="chips">
+          <span id="mode-badge" class="mode-badge" data-mode="loading">Connecting…</span>
+          <span id="live-updated" class="live__updated"></span>
+        </div>
+      </div>
+      <p id="live-offline" class="live__offline" role="status" hidden></p>
+      <ol class="flow flow--live" role="list">
+        <li class="live-cell">
+          <p class="live-cell__agent">Monitor read</p>
+          <p id="live-monitor" class="live-cell__main">Loading…</p>
+          <p id="live-monitor-sub" class="live-cell__sub"></p>
+        </li>
+        <li class="live-cell">
+          <p class="live-cell__agent">Analysis scored</p>
+          <p class="live-cell__main"><span id="live-aqi" class="level-pill" data-level="loading">—</span></p>
+          <p id="live-analysis-sub" class="live-cell__sub">Loading…</p>
+        </li>
+        <li class="live-cell">
+          <p class="live-cell__agent">Advisory said</p>
+          <p id="live-advice" class="live-cell__main live-cell__quote">Loading…</p>
+          <p id="live-advice-sub" class="live-cell__sub"></p>
+        </li>
+        <li class="live-cell">
+          <p class="live-cell__agent">Alert's latest</p>
+          <div id="live-alert" class="live-cell__main">Loading…</div>
+          <p id="live-alert-sub" class="live-cell__sub"></p>
         </li>
       </ol>
     </section>

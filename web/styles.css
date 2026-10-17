@@ -517,7 +517,71 @@ select {
 .flow__io dd { margin: 2px 0 0; font-size: .95rem; line-height: 1.35; }
 .urdu-inline { font-family: "Noto Nastaliq Urdu", serif; font-weight: 400; line-height: 1; }
 
+/* Live example strip: same 4-column grid as the diagram, so each cell sits under its agent */
+.how__h2--inline { margin: 0; }
+.live__updated { align-self: center; color: var(--muted); font-size: .9rem; }
+.live__offline { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; background: #ffe1e4; color: #4a000a; font-weight: 700; }
+@media (prefers-color-scheme: dark) { .live__offline { background: #3d1218; color: #ffe3e6; } }
+.live-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.flow--live .live-cell:not(:last-child)::after {
+  content: "➜";
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  width: 56px;
+  translate: 0 -50%;
+  text-align: center;
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--muted);
+}
+.live-cell__agent { margin: 0; font-size: .8rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.live-cell__main { margin: 0; font-size: clamp(1.15rem, 1.6vw, 1.45rem); font-weight: 800; line-height: 1.25; }
+.live-cell__quote::before { content: "“"; }
+.live-cell__quote::after { content: "”"; }
+.live-cell__sub { margin: 0; color: var(--muted); font-size: .95rem; line-height: 1.35; }
+.live-cell .alert-item { padding: 10px 12px; font-size: .95rem; }
+.live-cell .alert-item__message {   /* keep the four cells a similar height: long alerts get "…" */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+/* AQI number on its level color, with the category name always written next to it */
+.level-pill {
+  --pill-bg: var(--surface);
+  --pill-fg: var(--text);
+  display: inline-block;
+  padding: .1em .45em;
+  border-radius: 10px;
+  background: var(--pill-bg);
+  color: var(--pill-fg);
+  font-size: 1.6em;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--border);
+}
+.level-pill[data-level="good"]                { --pill-bg: var(--good);                --pill-fg: var(--good-text); }
+.level-pill[data-level="moderate"]            { --pill-bg: var(--moderate);            --pill-fg: var(--moderate-text); }
+.level-pill[data-level="unhealthy_sensitive"] { --pill-bg: var(--unhealthy_sensitive); --pill-fg: var(--unhealthy_sensitive-text); }
+.level-pill[data-level="unhealthy"]           { --pill-bg: var(--unhealthy);           --pill-fg: var(--unhealthy-text); }
+.level-pill[data-level="very_unhealthy"]      { --pill-bg: var(--very_unhealthy);      --pill-fg: var(--very_unhealthy-text); }
+.level-pill[data-level="hazardous"]           { --pill-bg: var(--hazardous);           --pill-fg: var(--hazardous-text); }
+.level-pill[data-level="unknown"]             { --pill-bg: var(--unknown);             --pill-fg: var(--unknown-text); }
+
 @media (max-width: 1100px) {
+  .flow--live .live-cell:not(:last-child)::after { content: "⬇"; top: 100%; left: 50%; width: auto; height: 48px; translate: -50% 0; display: grid; place-items: center; }
   .flow { grid-template-columns: minmax(0, 1fr); gap: 48px; }
   .flow__node:not(:last-child)::after { content: "⬇"; top: 100%; left: 50%; width: auto; height: 48px; translate: -50% 0; display: grid; place-items: center; }
 }
