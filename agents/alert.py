@@ -9,9 +9,13 @@ When to alert (per location, so we never spam):
   - the spike flag is set -> alert, at most once per cooldown
   - same or lower level -> no alert. After a full cooldown without alerts the remembered
     level drops to the current one, so a later rise alerts again but flapping doesn't.
+  - memory older than ALERT_MEMORY_HOURS (default 3) is forgotten, so a level that stays
+    high gets a fresh alert every few hours instead of never again.
 
 Memory + feed live in var/alerts.json (gitignored). A file, not the graph state, because
 the app calls graph.invoke({}) with an empty state on every poll, and a file survives restarts.
+When mock data is forced (USE_MOCK / MOCK_SCENARIO), the first run in a new process clears the
+memory, so a rehearsal never swallows the demo's alert.
 
 Delivery: every alert goes into the feed (the dashboard reads it). If TELEGRAM_BOT_TOKEN and
 TELEGRAM_CHAT_ID are set it is also sent to Telegram; a Telegram failure is logged, never raised.
@@ -33,6 +37,7 @@ log = logging.getLogger(__name__)
 STORE_FILE = Path(__file__).parent.parent / "var" / "alerts.json"
 FEED_SIZE = 100                 # keep the newest N alerts in the feed
 DEFAULT_COOLDOWN_MINUTES = 30   # override with ALERT_COOLDOWN_MINUTES
+DEFAULT_MEMORY_HOURS = 3        # override with ALERT_MEMORY_HOURS
 TELEGRAM_TIMEOUT_SECONDS = 5
 
 # Levels from best to worst; the list index is the severity rank
@@ -52,6 +57,7 @@ LEVEL_LABELS = {
 }
 
 _lock = threading.Lock()  # several dashboard tabs can poll at the same time
+_startup_done = False     # the first run in each process may clear memory (see module docstring)
 
 
 # ---------- graph entry point ----------
@@ -68,12 +74,18 @@ def run(state: SmogState) -> dict:
 # ---------- decision (pure, easy to test) ----------
 
 def should_alert(
-    level: str, is_spike: bool, memory: dict | None, now: datetime, cooldown: timedelta
+    level: str, is_spike: bool, memory: dict | None, now: datetime, cooldown: timedelta,
+    max_age: timedelta | None = None,
 ) -> tuple[bool, dict]:
-    """Anti-spam rule for one location. Returns (alert now?, updated memory)."""
+    """Anti-spam rule for one location. Returns (alert now?, updated memory).
+
+    max_age: forget the memory if the last alert is at least this old (None = never).
+    """
     memory = dict(memory or {})
-    last_level = memory.get("level") if memory.get("level") in LEVEL_ORDER else "good"
     last_alert = _parse_time(memory.get("alerted_at"))
+    if max_age is not None and last_alert is not None and now - last_alert >= max_age:
+        memory, last_alert = {}, None  # expired: start fresh, as if never alerted
+    last_level = memory.get("level") if memory.get("level") in LEVEL_ORDER else "good"
     last_spike = _parse_time(memory.get("spike_at"))
     rank = LEVEL_ORDER.index(level)
 
@@ -177,8 +189,10 @@ def _process(state: SmogState) -> list[Alert]:
 
     with _lock:
         store = _load()
+        _clear_memory_on_startup(store)
         alert_now, store["memory"][location] = should_alert(
-            level, analysis.get("is_spike") is True, store["memory"].get(location), now, _cooldown()
+            level, analysis.get("is_spike") is True, store["memory"].get(location), now,
+            _cooldown(), _memory_max_age(),
         )
         alerts: list[Alert] = []
         if alert_now:
@@ -216,16 +230,44 @@ def _location(readings) -> str:
         return "Unknown location"
 
 
+def _clear_memory_on_startup(store: dict) -> None:
+    """First run in this process: forget past alerts if mock data is forced (demo mode)."""
+    global _startup_done
+    if _startup_done:
+        return
+    _startup_done = True
+    if _mock_forced() and store["memory"]:
+        log.info("Mock data is forced, clearing alert memory so the demo scenario alerts")
+        store["memory"] = {}
+
+
+def _mock_forced() -> bool:
+    """Same rule as the monitor: USE_MOCK=true or any MOCK_SCENARIO forces mock data."""
+    use_mock = os.getenv("USE_MOCK", "").strip().lower() in {"1", "true", "yes"}
+    return use_mock or bool(os.getenv("MOCK_SCENARIO", "").strip())
+
+
 def _cooldown() -> timedelta:
-    raw = os.getenv("ALERT_COOLDOWN_MINUTES", "").strip()
+    return timedelta(minutes=_env_number("ALERT_COOLDOWN_MINUTES", DEFAULT_COOLDOWN_MINUTES, allow_zero=True))
+
+
+def _memory_max_age() -> timedelta:
+    return timedelta(hours=_env_number("ALERT_MEMORY_HOURS", DEFAULT_MEMORY_HOURS, allow_zero=False))
+
+
+def _env_number(name: str, default: float, allow_zero: bool) -> float:
+    """A non-negative number from the environment, or the default (with a warning) if it's bad."""
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
     try:
-        minutes = float(raw) if raw else DEFAULT_COOLDOWN_MINUTES
-        if minutes < 0:
+        value = float(raw)
+        if value < 0 or (value == 0 and not allow_zero):
             raise ValueError
+        return value
     except ValueError:
-        log.warning("Bad ALERT_COOLDOWN_MINUTES %r, using %d", raw, DEFAULT_COOLDOWN_MINUTES)
-        minutes = DEFAULT_COOLDOWN_MINUTES
-    return timedelta(minutes=minutes)
+        log.warning("Bad %s %r, using %s", name, raw, default)
+        return default
 
 
 def _parse_time(value) -> datetime | None:

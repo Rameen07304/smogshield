@@ -51,10 +51,15 @@ class AlertTestCase(unittest.TestCase):
         store_patch = mock.patch.object(alert, "STORE_FILE", Path(tmp.name) / "alerts.json")
         store_patch.start()
         self.addCleanup(store_patch.stop)
-        drop = {"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "ALERT_COOLDOWN_MINUTES"}
+        drop = {"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "ALERT_COOLDOWN_MINUTES", "ALERT_MEMORY_HOURS",
+                "USE_MOCK", "MOCK_SCENARIO"}
         env_patch = mock.patch.dict(os.environ, {k: v for k, v in os.environ.items() if k not in drop}, clear=True)
         env_patch.start()
         self.addCleanup(env_patch.stop)
+        # Act as if this process already started; startup tests flip it back
+        startup_patch = mock.patch.object(alert, "_startup_done", True)
+        startup_patch.start()
+        self.addCleanup(startup_patch.stop)
 
 
 class DecisionTest(unittest.TestCase):
@@ -94,6 +99,12 @@ class DecisionTest(unittest.TestCase):
         self.assertTrue(alerted)
         self.assertFalse(self.decide("moderate", memory, spike=True, at=NOW + timedelta(minutes=5))[0])
         self.assertTrue(self.decide("moderate", memory, spike=True, at=NOW + timedelta(minutes=31))[0])
+
+    def test_memory_expires_after_max_age(self):
+        _, memory = self.decide("hazardous")
+        max_age = timedelta(hours=3)
+        self.assertFalse(alert.should_alert("hazardous", False, memory, NOW + timedelta(hours=2), COOLDOWN, max_age)[0])
+        self.assertTrue(alert.should_alert("hazardous", False, memory, NOW + timedelta(hours=3), COOLDOWN, max_age)[0])
 
     def test_garbage_memory_is_treated_as_empty(self):
         self.assertTrue(self.decide("unhealthy", {"level": "???", "alerted_at": "yesterday"})[0])
@@ -137,6 +148,29 @@ class RunTest(AlertTestCase):
         alert.reset_memory()
         self.assertEqual(len(alert.run(state_for([80] * 6))["alerts"]), 1)
         self.assertEqual(len(alert.read_feed()), 2)
+
+    def test_startup_with_forced_mock_clears_memory(self):
+        # The rehearsal: hazardous alert, then the process stops
+        alert.run(state_for([300] * 6))
+        self.assertEqual(alert.run(state_for([300] * 6))["alerts"], [])
+        # Demo: a new process with MOCK_SCENARIO=hazardous must alert again
+        for forced in ({"MOCK_SCENARIO": "hazardous"}, {"USE_MOCK": "true"}):
+            with self.subTest(env=forced), mock.patch.dict(os.environ, forced), \
+                    mock.patch.object(alert, "_startup_done", False):
+                self.assertEqual(len(alert.run(state_for([300] * 6))["alerts"]), 1)
+                self.assertEqual(alert.run(state_for([300] * 6))["alerts"], [])  # only the first run clears
+
+    def test_startup_in_live_mode_keeps_memory(self):
+        alert.run(state_for([300] * 6))
+        with mock.patch.object(alert, "_startup_done", False):
+            self.assertEqual(alert.run(state_for([300] * 6))["alerts"], [])
+
+    def test_memory_hours_env_var(self):
+        os.environ["ALERT_MEMORY_HOURS"] = "6"
+        self.assertEqual(alert._memory_max_age(), timedelta(hours=6))
+        for bad in ("0", "-1", "soon"):
+            os.environ["ALERT_MEMORY_HOURS"] = bad
+            self.assertEqual(alert._memory_max_age(), timedelta(hours=alert.DEFAULT_MEMORY_HOURS), bad)
 
     def test_bad_input_never_raises(self):
         for state in ({}, {"analysis": {"level": "nope"}}, {"analysis": {"level": "hazardous"}, "readings": None}):
