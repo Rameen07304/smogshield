@@ -24,12 +24,12 @@ COOLDOWN = timedelta(minutes=30)
 FAKE_TOKEN = "123456:SECRET-TOKEN"
 
 
-def state_for(values: list, location: str = "Lahore") -> dict:
+def state_for(values: list, location: str = "Lahore", source: str = "live") -> dict:
     """Full pipeline state (readings -> analysis -> advisory) for a window of PM2.5 values."""
     start = datetime(2026, 10, 17, tzinfo=timezone.utc)
     state = {"readings": [
         {"location": location, "timestamp": (start + timedelta(hours=i)).isoformat(),
-         "pm25": v, "pm10": None, "source": "mock"}
+         "pm25": v, "pm10": None, "source": source}
         for i, v in enumerate(values)
     ]}
     state.update(analysis.run(state))
@@ -52,7 +52,7 @@ class AlertTestCase(unittest.TestCase):
         store_patch.start()
         self.addCleanup(store_patch.stop)
         drop = {"TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "ALERT_COOLDOWN_MINUTES", "ALERT_MEMORY_HOURS",
-                "USE_MOCK", "MOCK_SCENARIO"}
+                "USE_MOCK", "MOCK_SCENARIO", "ALERT_SIMULATIONS_TO_TELEGRAM"}
         env_patch = mock.patch.dict(os.environ, {k: v for k, v in os.environ.items() if k not in drop}, clear=True)
         env_patch.start()
         self.addCleanup(env_patch.stop)
@@ -226,6 +226,41 @@ class DeliveryTest(AlertTestCase):
         os.environ.update(TELEGRAM_BOT_TOKEN=FAKE_TOKEN, TELEGRAM_CHAT_ID="42")
         with mock.patch.object(alert.requests, "post", return_value=mock.Mock(ok=False, status_code=401)):
             self.assertEqual(self.raise_alert()["status"], "failed: telegram: HTTP 401")
+
+
+class SimulationTest(AlertTestCase):
+    def setUp(self):
+        super().setUp()
+        os.environ.update(TELEGRAM_BOT_TOKEN=FAKE_TOKEN, TELEGRAM_CHAT_ID="42")
+
+    def test_mock_alert_is_prefixed(self):
+        with mock.patch.object(alert.requests, "post", return_value=mock.Mock(ok=True)):
+            sent = alert.run(state_for([300] * 6, source="mock"))["alerts"][0]
+        self.assertTrue(sent["message"].startswith("[SIMULATION] Lahore: AQI"))
+
+    def test_live_alert_is_not_prefixed(self):
+        with mock.patch.object(alert.requests, "post", return_value=mock.Mock(ok=True)):
+            sent = alert.run(state_for([300] * 6, source="live"))["alerts"][0]
+        self.assertFalse(sent["message"].startswith("[SIMULATION]"))
+
+    def test_mock_alert_skips_telegram_by_default(self):
+        with mock.patch.object(alert.requests, "post", side_effect=AssertionError("Telegram called")):
+            sent = alert.run(state_for([300] * 6, source="mock"))["alerts"][0]
+        self.assertEqual((sent["channel"], sent["status"]), ("feed", "sent"))
+        self.assertEqual(alert.read_feed()[0], sent)
+
+    def test_mock_alert_goes_to_telegram_when_allowed(self):
+        os.environ["ALERT_SIMULATIONS_TO_TELEGRAM"] = "true"
+        with mock.patch.object(alert.requests, "post", return_value=mock.Mock(ok=True)) as post:
+            sent = alert.run(state_for([300] * 6, source="mock"))["alerts"][0]
+        self.assertEqual(sent["channel"], "telegram")
+        self.assertTrue(post.call_args.kwargs["json"]["text"].startswith("[CRITICAL] [SIMULATION]"))
+
+    def test_unknown_source_counts_as_simulated(self):
+        state = state_for([300] * 6)
+        del state["readings"][-1]["source"]
+        with mock.patch.object(alert.requests, "post", side_effect=AssertionError("Telegram called")):
+            self.assertTrue(alert.run(state)["alerts"][0]["message"].startswith("[SIMULATION]"))
 
 
 class ContractTest(AlertTestCase):

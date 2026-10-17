@@ -19,6 +19,8 @@ memory, so a rehearsal never swallows the demo's alert.
 
 Delivery: every alert goes into the feed (the dashboard reads it). If TELEGRAM_BOT_TOKEN and
 TELEGRAM_CHAT_ID are set it is also sent to Telegram; a Telegram failure is logged, never raised.
+Alerts based on mock data start with "[SIMULATION]" and are NOT sent to Telegram unless
+ALERT_SIMULATIONS_TO_TELEGRAM=true, so a demo can never look like a real emergency.
 """
 import json
 import logging
@@ -43,6 +45,7 @@ TELEGRAM_TIMEOUT_SECONDS = 5
 # Levels from best to worst; the list index is the severity rank
 LEVEL_ORDER = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
 THRESHOLD = "unhealthy_sensitive"   # lowest level that raises an alert on its own
+SIMULATION_PREFIX = "[SIMULATION] "  # on every alert built from mock data
 URGENCY = {
     "good": "info",                 # only reachable through a spike
     "moderate": "info",             # only reachable through a spike
@@ -112,9 +115,15 @@ def urgency_for(level: str) -> str:
 
 # ---------- delivery ----------
 
-def deliver(alert: Alert) -> Alert:
-    """Tries the external channel if configured. The caller always writes the feed copy."""
+def deliver(alert: Alert, simulated: bool = False) -> Alert:
+    """Tries the external channel if configured. The caller always writes the feed copy.
+
+    Simulated (mock-data) alerts stay in the feed unless ALERT_SIMULATIONS_TO_TELEGRAM=true.
+    """
     channel = _external_channel()
+    if channel is not None and simulated and not _simulations_allowed_out():
+        log.info("Simulated alert kept in the feed only (set ALERT_SIMULATIONS_TO_TELEGRAM=true to send it)")
+        channel = None
     if channel is None:
         return {**alert, "channel": "feed", "status": "sent"}
     name, send = channel
@@ -134,6 +143,10 @@ def _external_channel() -> tuple[str, Callable[[Alert], None]] | None:
     if token and chat_id:
         return "telegram", _send_telegram
     return None
+
+
+def _simulations_allowed_out() -> bool:
+    return os.getenv("ALERT_SIMULATIONS_TO_TELEGRAM", "").strip().lower() in {"1", "true", "yes"}
 
 
 def _telegram_credentials() -> tuple[str, str]:
@@ -185,6 +198,7 @@ def _process(state: SmogState) -> list[Alert]:
         log.warning("Unknown or missing level %r, no alert", level)
         return []
     location = _location(state.get("readings"))
+    simulated = _is_simulated(state.get("readings"))
     now = datetime.now(timezone.utc)
 
     with _lock:
@@ -196,15 +210,16 @@ def _process(state: SmogState) -> list[Alert]:
         )
         alerts: list[Alert] = []
         if alert_now:
+            message = _message(location, level, analysis, advisory)
             alert = deliver({
                 "severity": urgency_for(level),
-                "message": _message(location, level, analysis, advisory),
+                "message": SIMULATION_PREFIX + message if simulated else message,
                 "created_at": now.isoformat(timespec="seconds"),
                 "location": location,
                 "level": level,
                 "channel": "feed",
                 "status": "sent",
-            })
+            }, simulated)
             log.info("ALERT %s", json.dumps(alert, ensure_ascii=False))
             store["feed"] = [alert, *store["feed"]][:FEED_SIZE]
             alerts.append(alert)
@@ -221,6 +236,14 @@ def _message(location: str, level: str, analysis: dict, advisory: dict) -> str:
     elif analysis.get("is_spike") is True:
         parts.append("Sudden spike in pollution.")
     return " ".join(parts)
+
+
+def _is_simulated(readings) -> bool:
+    """True when the latest reading is mock data (or unknown, to be safe)."""
+    try:
+        return readings[-1]["source"] != "live"
+    except (TypeError, IndexError, KeyError):
+        return True
 
 
 def _location(readings) -> str:
