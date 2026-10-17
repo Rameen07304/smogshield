@@ -61,7 +61,7 @@ class ControlEndpointTest(unittest.TestCase):
         self.assertEqual(app.get_city()["current"], "Lahore")
 
     def test_both_pages_are_served(self):
-        for page in (app.dashboard(), app.how_it_works()):
+        for page in (app.dashboard(), app.how_it_works(), app.alert_history()):
             with self.subTest(path=page.path):
                 self.assertTrue(Path(page.path).is_file())
 

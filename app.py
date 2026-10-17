@@ -37,6 +37,12 @@ def how_it_works():
     return FileResponse(WEB / "how.html")
 
 
+@app.get("/history")
+def alert_history():
+    """Screen 3: table of past alerts (reads /api/alerts; the store keeps the newest 100)."""
+    return FileResponse(WEB / "history.html")
+
+
 @app.get("/api/status")
 def status():
     """One full pass through all agents. The dashboard polls this."""

@@ -623,6 +623,85 @@ select {
   .flow__node:not(:last-child)::after { content: "⬇"; top: 100%; left: 50%; width: auto; height: 48px; translate: -50% 0; display: grid; place-items: center; }
 }
 
+/* ---------- Screen 3: Alert history ---------- */
+.table-wrap { overflow-x: auto; }
+.history { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 1rem; }
+.history th {
+  padding: 4px 12px;
+  text-align: start;
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.history td { padding: 12px; vertical-align: top; background: var(--surface-2); border-block: 1px solid var(--border); }
+.history td:first-child { border-inline-start: 1px solid var(--border); border-radius: 10px 0 0 10px; }
+.history td:last-child { border-inline-end: 1px solid var(--border); border-radius: 0 10px 10px 0; }
+/* Simulated rows: hatched background (plus the SIMULATION tag in the message) */
+.history tr[data-simulated] td {
+  background: repeating-linear-gradient(-45deg, var(--surface-2) 0 10px, color-mix(in srgb, #ffd400 16%, var(--surface-2)) 10px 20px);
+  border-block-style: dashed;   /* only the sides that have a border; inner cell edges stay borderless */
+}
+.history tr[data-simulated] td:first-child { border-inline-start-style: dashed; }
+.history tr[data-simulated] td:last-child { border-inline-end-style: dashed; }
+.history .sev-badge { white-space: nowrap; }
+.history__time time { display: grid; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.history__date { font-weight: 800; }
+.history__clock { color: var(--muted); font-size: .9rem; }
+.history__message { min-width: 22ch; line-height: 1.4; }
+.history .alert-item.history__sev { display: inline-block; padding: 0; border: 0; background: none; }
+.history__note { margin: 12px 0 0; color: var(--muted); font-size: .85rem; }
+
+.level-tag {
+  --tag-bg: var(--unknown);
+  --tag-fg: var(--unknown-text);
+  display: inline-block;
+  padding: .15em .55em;
+  border-radius: 6px;
+  background: var(--tag-bg);
+  color: var(--tag-fg);
+  font-weight: 800;
+  font-size: .9rem;
+  white-space: nowrap;
+}
+.level-tag[data-level="good"]                { --tag-bg: var(--good);                --tag-fg: var(--good-text); }
+.level-tag[data-level="moderate"]            { --tag-bg: var(--moderate);            --tag-fg: var(--moderate-text); }
+.level-tag[data-level="unhealthy_sensitive"] { --tag-bg: var(--unhealthy_sensitive); --tag-fg: var(--unhealthy_sensitive-text); }
+.level-tag[data-level="unhealthy"]           { --tag-bg: var(--unhealthy);           --tag-fg: var(--unhealthy-text); }
+.level-tag[data-level="very_unhealthy"]      { --tag-bg: var(--very_unhealthy);      --tag-fg: var(--very_unhealthy-text); }
+.level-tag[data-level="hazardous"]           { --tag-bg: var(--hazardous);           --tag-fg: var(--hazardous-text); }
+
+.delivery { font-weight: 800; white-space: nowrap; }
+.delivery[data-kind="sent"] { color: #0b6b2e; }
+.delivery[data-kind="queued"] { color: var(--muted); }
+.delivery[data-kind="failed"] { color: #c4001d; }
+@media (prefers-color-scheme: dark) {
+  .delivery[data-kind="sent"] { color: #7ddc9a; }
+  .delivery[data-kind="failed"] { color: #ff8a8a; }
+}
+.delivery__detail { display: block; margin-top: 2px; color: var(--muted); font-size: .82rem; }
+
+/* Phones: each row becomes a labelled card */
+@media (max-width: 860px) {
+  .history thead { display: none; }
+  .history, .history tbody, .history tr, .history td { display: block; width: 100%; }
+  .history tr { margin-bottom: 12px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .history tr[data-simulated] { border-style: dashed; }
+  .history td, .history td:first-child, .history td:last-child { border: 0; border-radius: 0; padding: 8px 14px; }
+  .history td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: .72rem;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .history__time time { display: flex; gap: .5em; }
+}
+
 /* ---------- footer ---------- */
 .footer { max-width: 1600px; margin: 0 auto; padding: 0 var(--gap) var(--gap); color: var(--muted); font-size: .85rem; }
 
