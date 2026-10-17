@@ -1,6 +1,6 @@
 """Alert agent: decides whether to raise an alert, how urgent it is, and delivers it.
 
-Reads: state["analysis"], state["advisory"], state["readings"]
+Reads: state["analysis"], state["advisory"], state["readings"], state["forecast"]
 Owns:  state["alerts"]  (alerts raised by THIS run; [] = nothing new)
 
 When to alert (per location, so we never spam):
@@ -23,6 +23,13 @@ never waits for it: the feed entry starts as status "queued" and is updated to "
 "failed: ..." (channel "feed") with a logged warning. A Telegram failure is never raised.
 Alerts based on mock data start with "[SIMULATION]" and are NOT sent to Telegram unless
 ALERT_SIMULATIONS_TO_TELEGRAM=true, so a demo can never look like a real emergency.
+
+Predictive (forecast) alerts, kind "forecast": when the air is still below Unhealthy now but the
+forecast reaches Unhealthy or worse within the next 6 hours. Always "warning", message starts with
+"[FORECAST]" (after "[SIMULATION]" for mock data), same cooldown, memory expiry and Telegram rules,
+with their own memory slot per location ("forecast:<location>"). They repeat only when the forecast
+peak gets worse, and stay quiet when a current-conditions alert already covered that level.
+Every alert carries kind "current" or "forecast"; older stored alerts without it read as "current".
 """
 import json
 import logging
@@ -56,6 +63,11 @@ TELEGRAM_TIMEOUT_SECONDS = 3
 LEVEL_ORDER = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
 THRESHOLD = "unhealthy_sensitive"   # lowest level that raises an alert on its own
 SIMULATION_PREFIX = "[SIMULATION] "  # on every alert built from mock data
+FORECAST_PREFIX = "[FORECAST] "      # on every predictive alert
+FORECAST_HORIZON_HOURS = 6           # predictive alerts look this far ahead
+FORECAST_TRIGGER = "unhealthy"       # predict only when the forecast reaches this level or worse
+FORECAST_SEVERITY = "warning"        # a prediction is never critical
+LOCAL_UTC_OFFSET = timedelta(hours=5)   # message times in Pakistan Standard Time, like the advisory
 URGENCY = {
     "good": "info",                 # only reachable through a spike
     "moderate": "info",             # only reachable through a spike
@@ -119,6 +131,44 @@ def should_alert(
     if new_spike:
         memory["spike_at"] = now.isoformat(timespec="seconds")
     return escalated or new_spike, memory
+
+
+def should_forecast_alert(
+    current_level: str, peak_level: str | None, memory: dict | None, current_memory: dict | None,
+    now: datetime, cooldown: timedelta, max_age: timedelta | None = None,
+) -> tuple[bool, dict]:
+    """Anti-spam rule for predictive alerts at one location. Returns (alert now?, updated memory).
+
+    Fires only when the air is below Unhealthy now and the forecast peak is Unhealthy or worse.
+    """
+    memory = dict(memory or {})
+    last_alert = _parse_time(memory.get("alerted_at"))
+    if max_age is not None and last_alert is not None and now - last_alert >= max_age:
+        memory, last_alert = {}, None                      # expired: as if never alerted
+    trigger = LEVEL_ORDER.index(FORECAST_TRIGGER)
+    if current_level not in LEVEL_ORDER or peak_level not in LEVEL_ORDER:
+        return False, memory
+    current, peak = LEVEL_ORDER.index(current_level), LEVEL_ORDER.index(peak_level)
+
+    if not (current < trigger <= peak):
+        # Nothing to predict. Once it has been quiet for a full cooldown, forget the old warning,
+        # so a new threat later alerts again (and a brief flap in the forecast does not).
+        if last_alert is None or now - last_alert >= cooldown:
+            memory.pop("level", None)
+        return False, memory
+
+    # A current-conditions alert still in memory already warned at this level or worse
+    covered = dict(current_memory or {})
+    covered_at = _parse_time(covered.get("alerted_at"))
+    if (covered.get("level") in LEVEL_ORDER and LEVEL_ORDER.index(covered["level"]) >= peak
+            and covered_at is not None and (max_age is None or now - covered_at < max_age)):
+        return False, memory
+
+    last = memory.get("level")
+    if last in LEVEL_ORDER and peak <= LEVEL_ORDER.index(last):
+        return False, memory                                # already predicted this (or worse)
+    memory.update(level=peak_level, alerted_at=now.isoformat(timespec="seconds"))
+    return True, memory
 
 
 def urgency_for(level: str) -> str:
@@ -219,9 +269,10 @@ def _redact(text: str) -> str:
 # ---------- feed + memory store (var/alerts.json) ----------
 
 def read_feed(limit: int = 50) -> list[Alert]:
-    """Newest alerts first, for the dashboard."""
+    """Newest alerts first, for the dashboard. Alerts stored before `kind` existed read as "current"
+    (the file itself is never rewritten for this)."""
     with _lock:
-        return _load()["feed"][: max(limit, 0)]
+        return [{**a, "kind": a.get("kind", "current")} for a in _load()["feed"][: max(limit, 0)]]
 
 
 def reset_memory() -> None:
@@ -256,20 +307,67 @@ def _process(state: SmogState) -> list[Alert]:
         alerts: list[Alert] = []
         if alert_now:
             message = _message(location, level, analysis, advisory)
-            alert = deliver({
+            alerts.append(_record(store, {
                 "severity": urgency_for(level),
                 "message": SIMULATION_PREFIX + message if simulated else message,
                 "created_at": now.isoformat(timespec="seconds"),
                 "location": location,
                 "level": level,
+                "kind": "current",
                 "channel": "feed",
                 "status": "sent",
-            }, simulated)
-            log.info("ALERT %s", json.dumps(alert, ensure_ascii=False))
-            store["feed"] = [alert, *store["feed"]][:FEED_SIZE]
-            alerts.append(alert)
+            }, simulated))
+
+        # Predictive alert from the forecast (after the current one, so its memory is up to date)
+        forecast = state.get("forecast") if isinstance(state.get("forecast"), dict) else {}
+        six = forecast.get("next_6h") if isinstance(forecast.get("next_6h"), dict) else {}
+        key = f"forecast:{location}"
+        predict, store["memory"][key] = should_forecast_alert(
+            level, six.get("peak_level"), store["memory"].get(key), store["memory"].get(location),
+            now, _cooldown(), _memory_max_age(),
+        )
+        if predict:
+            f_simulated = simulated or forecast.get("source") != "live"
+            message = FORECAST_PREFIX + _forecast_message(location, analysis, forecast)
+            alerts.append(_record(store, {
+                "severity": FORECAST_SEVERITY,
+                "message": SIMULATION_PREFIX + message if f_simulated else message,
+                "created_at": now.isoformat(timespec="seconds"),
+                "location": location,
+                "level": six["peak_level"],
+                "kind": "forecast",
+                "channel": "feed",
+                "status": "sent",
+            }, f_simulated))
         _save(store)
     return alerts
+
+
+def _record(store: dict, alert: Alert, simulated: bool) -> Alert:
+    """Deliver an alert, log it, and put it at the top of the feed."""
+    alert = deliver(alert, simulated)
+    log.info("ALERT %s", json.dumps(alert, ensure_ascii=False))
+    store["feed"] = [alert, *store["feed"]][:FEED_SIZE]
+    return alert
+
+
+def _forecast_message(location: str, analysis: dict, forecast: dict) -> str:
+    """'Lahore: forecast to reach Unhealthy (AQI 172) around 19:00, within 6 hours (now AQI 142). ...'"""
+    six = forecast["next_6h"]
+    peak = six["peak_level"]
+    rank = LEVEL_ORDER.index(peak)
+    # when that level is first reached (the time to plan around), not when it peaks
+    onset = next((p["time"] for p in forecast.get("hourly") or []
+                  if p.get("hours_ahead", 99) < FORECAST_HORIZON_HOURS and p.get("level") in LEVEL_ORDER
+                  and LEVEL_ORDER.index(p["level"]) >= rank), six.get("peak_time"))
+    try:
+        at = (datetime.fromisoformat(onset).astimezone(timezone.utc) + LOCAL_UTC_OFFSET).strftime("%H:%M")
+        when = f"around {at}, "
+    except (TypeError, ValueError):
+        when = ""
+    return (f"{location}: forecast to reach {LEVEL_LABELS[peak]} (AQI {six.get('peak_aqi', '?')}) {when}"
+            f"within {FORECAST_HORIZON_HOURS} hours (now AQI {analysis.get('aqi', '?')}, "
+            f"{LEVEL_LABELS.get(analysis.get('level'), '?')}). Plan indoor activities.")
 
 
 def _message(location: str, level: str, analysis: dict, advisory: dict) -> str:
