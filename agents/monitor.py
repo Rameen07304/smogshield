@@ -5,6 +5,7 @@ Owns: state["readings"]
 Live data: Open-Meteo Air Quality API (free, no API key, non-commercial use).
     Air quality data from Open-Meteo (https://open-meteo.com), based on
     CAMS ENSEMBLE data from the Copernicus Atmosphere Monitoring Service.
+    One call returns the past hours too, so the trend window is full from the first poll.
 Mock data: data/mock_readings.json. Used when
     - USE_MOCK=true, or MOCK_SCENARIO is set (picking a scenario means "give me mock"), or
     - the live call fails or times out, so the demo never dies on stage.
@@ -25,7 +26,6 @@ import math
 import os
 import sys
 import time
-from collections import deque
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -61,10 +61,8 @@ CITIES: dict[str, tuple[float, float]] = {
     "Sialkot": (32.49, 74.52),
 }
 
-# ponytail: in-memory history per city, lost on restart. Use a DB if you need real history.
-_history: dict[str, deque[Reading]] = {}
-# (city, lat, lon) -> (time.monotonic() when fetched, reading). Only successes are cached.
-_live_cache: dict[tuple[str, float, float], tuple[float, Reading]] = {}
+# (city, lat, lon) -> (time.monotonic() when fetched, window of readings). Only successes are cached.
+_live_cache: dict[tuple[str, float, float], tuple[float, list[Reading]]] = {}
 
 
 # ---------- graph entry point ----------
@@ -75,18 +73,10 @@ def run(state: SmogState) -> dict:
     if _mock_requested():
         return {"readings": mock_readings(city)}
     try:
-        reading = _fetch_live_cached(city)
+        return {"readings": _fetch_live_cached(city)}
     except Exception as e:  # network/API/data errors -> keep the demo alive
         log.warning("Live data failed for %s, using mock: %s", city, e)
         return {"readings": mock_readings(city)}
-
-    history = _history.setdefault(city, deque(maxlen=WINDOW))
-    # Open-Meteo updates hourly, so repeated polls return the same hour: replace, don't duplicate
-    if history and history[-1]["timestamp"] == reading["timestamp"]:
-        history[-1] = reading
-    else:
-        history.append(reading)
-    return {"readings": list(history)}
 
 
 # ---------- public helpers ----------
@@ -102,7 +92,7 @@ def fetch_air_quality(
     if scenario or _mock_requested():
         return mock_readings(city, scenario)[-1]
     try:
-        return _fetch_live_cached(city, lat, lon)
+        return _fetch_live_cached(city, lat, lon)[-1]
     except Exception as e:
         log.warning("Live data failed for %s, using mock: %s", city, e)
         return mock_readings(city, scenario)[-1]
@@ -139,7 +129,7 @@ def mock_readings(city: str = DEFAULT_CITY, scenario: str | None = None, window:
 
 # ---------- internals ----------
 
-def _fetch_live_cached(city: str, lat: float | None = None, lon: float | None = None) -> Reading:
+def _fetch_live_cached(city: str, lat: float | None = None, lon: float | None = None) -> list[Reading]:
     """_fetch_live, but reuses a recent success for LIVE_CACHE_MINUTES. Failures are not cached."""
     if lat is None or lon is None:
         lat, lon = city_coordinates(city)
@@ -147,11 +137,10 @@ def _fetch_live_cached(city: str, lat: float | None = None, lon: float | None = 
     ttl = _cache_seconds()
     now = time.monotonic()
     cached = _live_cache.get(key)
-    if cached and ttl > 0 and now - cached[0] < ttl:
-        return dict(cached[1])  # a copy, so callers can't change the cached one
-    reading = _fetch_live(city, lat, lon)
-    _live_cache[key] = (now, reading)
-    return dict(reading)
+    if not (cached and ttl > 0 and now - cached[0] < ttl):
+        cached = (now, _fetch_live(city, lat, lon))
+        _live_cache[key] = cached
+    return [dict(r) for r in cached[1]]  # copies, so callers can't change the cached window
 
 
 def _cache_seconds() -> float:
@@ -166,13 +155,19 @@ def _cache_seconds() -> float:
     return minutes * 60
 
 
-def _fetch_live(city: str, lat: float | None = None, lon: float | None = None) -> Reading:
-    """Calls Open-Meteo and returns a cleaned Reading. Raises on any problem."""
+def _fetch_live(city: str, lat: float | None = None, lon: float | None = None) -> list[Reading]:
+    """Calls Open-Meteo and returns the recent window of clean Readings, oldest first. Raises on any problem."""
     if lat is None or lon is None:
         lat, lon = city_coordinates(city)
     resp = requests.get(
         API_URL,
-        params={"latitude": lat, "longitude": lon, "current": "pm2_5,pm10", "timezone": "auto"},
+        params={
+            "latitude": lat, "longitude": lon,
+            "hourly": "pm2_5,pm10",
+            "past_hours": WINDOW,   # the past 6 hours...
+            "forecast_hours": 1,    # ...plus the current hour, and nothing in the future
+            "timezone": "auto",
+        },
         timeout=TIMEOUT_SECONDS,
     )
     try:
@@ -185,24 +180,39 @@ def _fetch_live(city: str, lat: float | None = None, lon: float | None = None) -
     return _clean_live(city, data)
 
 
-def _clean_live(city: str, data: dict) -> Reading:
-    """Turns an Open-Meteo response into a Reading with consistent units and no surprises."""
-    current = data.get("current") or {}
-    units = data.get("current_units") or {}
+def _clean_live(city: str, data: dict) -> list[Reading]:
+    """Turns Open-Meteo's hourly arrays into clean Readings: UTC, oldest first, at most WINDOW."""
+    hourly = data.get("hourly") or {}
+    units = data.get("hourly_units") or {}
     for var in ("pm2_5", "pm10"):
         if var in units and units[var] not in MICROGRAMS:
             raise ValueError(f"unexpected unit for {var}: {units[var]!r}")
 
-    pm25 = _clean_value(current.get("pm2_5"))
-    if pm25 is None:  # PM2.5 is required: no value means no usable reading
-        raise ValueError("Open-Meteo returned no valid PM2.5 value")
-    return {
-        "location": city,
-        "timestamp": _to_utc_iso(current.get("time"), data.get("utc_offset_seconds") or 0),
-        "pm25": pm25,
-        "pm10": _clean_value(current.get("pm10")),  # optional in the schema
-        "source": "live",
-    }
+    times = hourly.get("time") or []
+    pm25s, pm10s = hourly.get("pm2_5") or [], hourly.get("pm10") or []
+    offset = data.get("utc_offset_seconds") or 0
+    readings: list[Reading] = []
+    for i, local_time in enumerate(times):
+        pm25 = _clean_value(pm25s[i] if i < len(pm25s) else None)
+        if pm25 is None or not local_time:  # PM2.5 is required: skip hours without it
+            continue
+        try:
+            timestamp = _to_utc_iso(local_time, offset)
+        except ValueError:
+            continue
+        readings.append({
+            "location": city,
+            "timestamp": timestamp,
+            "pm25": pm25,
+            "pm10": _clean_value(pm10s[i] if i < len(pm10s) else None),  # optional in the schema
+            "source": "live",
+        })
+    if not readings:
+        raise ValueError("Open-Meteo returned no valid hourly PM2.5 values")
+    if len(readings) < len(times):
+        log.info("Skipped %d hour(s) without valid PM2.5 for %s", len(times) - len(readings), city)
+    readings.sort(key=lambda r: r["timestamp"])  # same UTC format, so text order = time order
+    return readings[-WINDOW:]
 
 
 def _clean_value(value) -> float | None:
