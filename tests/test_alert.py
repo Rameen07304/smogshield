@@ -2,10 +2,13 @@
 
 Run from the smogshield folder:  python -m unittest discover tests -v
 """
+import http.server
 import json
+import logging
 import os
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -299,6 +302,60 @@ class SimulationTest(AlertTestCase):
         del state["readings"][-1]["source"]
         with mock.patch.object(alert.requests, "post", side_effect=AssertionError("Telegram called")):
             self.assertTrue(alert.run(state)["alerts"][0]["message"].startswith("[SIMULATION]"))
+
+
+class _NotFound(http.server.BaseHTTPRequestHandler):
+    """Tiny local server: answers 404 to everything, silently."""
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("Content-Length", 0)))  # read the body, or Windows aborts
+        self.send_response(404)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, *args):
+        pass
+
+
+class TokenLoggingTest(AlertTestCase):
+    def setUp(self):
+        super().setUp()
+        self.server = http.server.HTTPServer(("127.0.0.1", 0), _NotFound)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+        self.url = f"http://127.0.0.1:{self.server.server_port}/bot{FAKE_TOKEN}/sendMessage"
+
+    def captured_logs(self) -> str:
+        """Everything logged at any level while a real request with the token in its URL is made."""
+        urllib3_child = logging.getLogger("urllib3.connectionpool")
+        old_level = urllib3_child.level
+        urllib3_child.setLevel(logging.DEBUG)  # as if someone turned on debug logging for urllib3
+        try:
+            with self.assertLogs(level=logging.DEBUG) as logs:  # root logger, DEBUG and up
+                logging.getLogger("test").debug("marker")  # assertLogs needs at least one record
+                requests.Session().post(self.url, json={}, timeout=3)
+                logging.getLogger("urllib3.connectionpool").debug("direct %s", self.url)
+        finally:
+            urllib3_child.setLevel(old_level)
+        return "\n".join(logs.output)
+
+    def test_token_never_reaches_logs(self):
+        self.assertNotIn(FAKE_TOKEN, self.captured_logs())
+
+    def test_control_without_silencing_the_token_would_leak(self):
+        # Proves the test above can catch a leak: undo the silencing and the token shows up
+        urllib3_log = logging.getLogger("urllib3")
+        with mock.patch.object(urllib3_log, "level", logging.NOTSET), mock.patch.object(urllib3_log, "propagate", True):
+            self.assertIn(FAKE_TOKEN, self.captured_logs())
+
+    def test_telegram_failure_log_hides_token(self):
+        os.environ.update(TELEGRAM_BOT_TOKEN=FAKE_TOKEN, TELEGRAM_CHAT_ID="42")
+        error = requests.ConnectionError(f"failed for {self.url}")
+        with mock.patch.object(alert.requests, "post", side_effect=error), self.assertLogs(level=logging.DEBUG) as logs:
+            alert.run(state_for([150] * 6))
+            alert.flush()
+        self.assertTrue(any("delivery failed" in line for line in logs.output))
+        self.assertNotIn(FAKE_TOKEN, "\n".join(logs.output))
 
 
 class ContractTest(AlertTestCase):

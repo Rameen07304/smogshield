@@ -39,6 +39,13 @@ from schemas import Alert, SmogState
 
 log = logging.getLogger(__name__)
 
+# urllib3 (used by requests) logs request URLs, and the Telegram URL contains the bot token.
+# Silence it completely: above CRITICAL, and never passed up to the root logger, so the token
+# can't reach any log at any level, even if someone turns on DEBUG logging.
+_urllib3_log = logging.getLogger("urllib3")
+_urllib3_log.setLevel(logging.CRITICAL + 1)
+_urllib3_log.propagate = False
+
 STORE_FILE = Path(__file__).parent.parent / "var" / "alerts.json"
 FEED_SIZE = 100                 # keep the newest N alerts in the feed
 DEFAULT_COOLDOWN_MINUTES = 30   # override with ALERT_COOLDOWN_MINUTES
