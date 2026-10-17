@@ -59,7 +59,8 @@ class Alert(TypedDict):
     location: str
     level: Level            # analysis level that triggered the alert
     channel: Literal["feed", "telegram"]  # where it was delivered (the feed always gets a copy)
-    status: str             # "sent", or "failed: <why>" if Telegram failed and only the feed has it
+    status: str             # "sent"; "queued" while Telegram sends in the background;
+                            # "failed: <why>" if Telegram failed and only the feed has it
 
 
 class SmogState(TypedDict, total=False):

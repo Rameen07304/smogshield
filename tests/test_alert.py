@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -60,6 +61,11 @@ class AlertTestCase(unittest.TestCase):
         startup_patch = mock.patch.object(alert, "_startup_done", True)
         startup_patch.start()
         self.addCleanup(startup_patch.stop)
+        # Safety net: a background send that outlives a test's own mock must never hit the network
+        post_patch = mock.patch.object(alert.requests, "post", side_effect=AssertionError("unexpected Telegram call"))
+        post_patch.start()
+        self.addCleanup(post_patch.stop)
+        self.addCleanup(alert.flush)  # runs first: let background sends finish before the temp store goes
 
 
 class DecisionTest(unittest.TestCase):
@@ -200,7 +206,28 @@ class RunTest(AlertTestCase):
 
 class DeliveryTest(AlertTestCase):
     def raise_alert(self) -> Alert:
-        return alert.run(state_for([150] * 6))["alerts"][0]
+        """Raises one alert, waits for any background send, returns the final feed entry."""
+        alert.run(state_for([150] * 6))
+        alert.flush()
+        return alert.read_feed()[0]
+
+    def test_telegram_never_blocks_the_pipeline(self):
+        os.environ.update(TELEGRAM_BOT_TOKEN=FAKE_TOKEN, TELEGRAM_CHAT_ID="42")
+
+        def slow_post(*args, **kwargs):
+            time.sleep(1.0)
+            return mock.Mock(ok=True)
+
+        with mock.patch.object(alert.requests, "post", side_effect=slow_post) as post:
+            started = time.monotonic()
+            returned = alert.run(state_for([150] * 6))["alerts"][0]
+            elapsed = time.monotonic() - started
+            self.assertLess(elapsed, 0.5)
+            self.assertEqual((returned["channel"], returned["status"]), ("telegram", "queued"))
+            self.assertEqual(alert.read_feed()[0]["status"], "queued")  # in the feed right away
+            alert.flush()
+        self.assertEqual(alert.read_feed()[0]["status"], "sent")
+        self.assertEqual(post.call_args.kwargs["timeout"], 3)
 
     def test_no_credentials_uses_feed(self):
         with mock.patch.object(alert.requests, "post", side_effect=AssertionError("network called")):
@@ -228,7 +255,8 @@ class DeliveryTest(AlertTestCase):
         self.assertEqual(sent["channel"], "feed")
         self.assertTrue(sent["status"].startswith("failed: telegram"))
         self.assertNotIn(FAKE_TOKEN, sent["status"] + " ".join(logs.output))
-        self.assertEqual(alert.read_feed()[0], sent)
+        self.assertTrue(any("delivery failed" in line for line in logs.output))
+        self.assertEqual(len(alert.read_feed()), 1)  # updated in place, not duplicated
 
     def test_telegram_http_error_falls_back(self):
         os.environ.update(TELEGRAM_BOT_TOKEN=FAKE_TOKEN, TELEGRAM_CHAT_ID="42")
@@ -249,6 +277,7 @@ class SimulationTest(AlertTestCase):
     def test_live_alert_is_not_prefixed(self):
         with mock.patch.object(alert.requests, "post", return_value=mock.Mock(ok=True)):
             sent = alert.run(state_for([300] * 6, source="live"))["alerts"][0]
+            alert.flush()
         self.assertFalse(sent["message"].startswith("[SIMULATION]"))
 
     def test_mock_alert_skips_telegram_by_default(self):
@@ -261,6 +290,7 @@ class SimulationTest(AlertTestCase):
         os.environ["ALERT_SIMULATIONS_TO_TELEGRAM"] = "true"
         with mock.patch.object(alert.requests, "post", return_value=mock.Mock(ok=True)) as post:
             sent = alert.run(state_for([300] * 6, source="mock"))["alerts"][0]
+            alert.flush()
         self.assertEqual(sent["channel"], "telegram")
         self.assertTrue(post.call_args.kwargs["json"]["text"].startswith("[CRITICAL] [SIMULATION]"))
 

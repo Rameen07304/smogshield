@@ -284,7 +284,9 @@
         $("feed").replaceChildren(...feed.map((a) => {
           const item = el("li", null, a.severity);
           item.append(el("span", `${a.severity.toUpperCase()} `, "sev"), a.message);
-          const via = a.status === "sent" ? a.channel : `feed only (${a.status})`;
+          const via = a.status === "sent" ? a.channel
+            : a.status === "queued" ? `${a.channel} (sending…)`
+            : `feed only (${a.status})`;
           item.append(el("span", `${localTime(a.created_at)} · via ${via}`, "when"));
           return item;
         }));

@@ -18,7 +18,9 @@ When mock data is forced (USE_MOCK / MOCK_SCENARIO), the first run in a new proc
 memory, so a rehearsal never swallows the demo's alert.
 
 Delivery: every alert goes into the feed (the dashboard reads it). If TELEGRAM_BOT_TOKEN and
-TELEGRAM_CHAT_ID are set it is also sent to Telegram; a Telegram failure is logged, never raised.
+TELEGRAM_CHAT_ID are set it is also sent to Telegram, in a background thread so the pipeline
+never waits for it: the feed entry starts as status "queued" and is updated to "sent", or to
+"failed: ..." (channel "feed") with a logged warning. A Telegram failure is never raised.
 Alerts based on mock data start with "[SIMULATION]" and are NOT sent to Telegram unless
 ALERT_SIMULATIONS_TO_TELEGRAM=true, so a demo can never look like a real emergency.
 """
@@ -27,6 +29,7 @@ import logging
 import os
 import threading
 from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -40,7 +43,7 @@ STORE_FILE = Path(__file__).parent.parent / "var" / "alerts.json"
 FEED_SIZE = 100                 # keep the newest N alerts in the feed
 DEFAULT_COOLDOWN_MINUTES = 30   # override with ALERT_COOLDOWN_MINUTES
 DEFAULT_MEMORY_HOURS = 3        # override with ALERT_MEMORY_HOURS
-TELEGRAM_TIMEOUT_SECONDS = 5
+TELEGRAM_TIMEOUT_SECONDS = 3
 
 # Levels from best to worst; the list index is the severity rank
 LEVEL_ORDER = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
@@ -61,6 +64,9 @@ LEVEL_LABELS = {
 
 _lock = threading.Lock()  # several dashboard tabs can poll at the same time
 _startup_done = False     # the first run in each process may clear memory (see module docstring)
+# One background worker sends to Telegram in order; Python waits for it at exit, so queued sends finish
+_sender = ThreadPoolExecutor(max_workers=1, thread_name_prefix="alert-send")
+_pending: list[Future] = []
 
 
 # ---------- graph entry point ----------
@@ -116,8 +122,9 @@ def urgency_for(level: str) -> str:
 # ---------- delivery ----------
 
 def deliver(alert: Alert, simulated: bool = False) -> Alert:
-    """Tries the external channel if configured. The caller always writes the feed copy.
+    """Queues the alert on the external channel if configured, and returns at once.
 
+    The caller writes the returned alert to the feed; the background send updates it later.
     Simulated (mock-data) alerts stay in the feed unless ALERT_SIMULATIONS_TO_TELEGRAM=true.
     """
     channel = _external_channel()
@@ -127,13 +134,41 @@ def deliver(alert: Alert, simulated: bool = False) -> Alert:
     if channel is None:
         return {**alert, "channel": "feed", "status": "sent"}
     name, send = channel
+    queued: Alert = {**alert, "channel": name, "status": "queued"}
     try:
-        send(alert)
-        return {**alert, "channel": name, "status": "sent"}
+        _pending.append(_sender.submit(_send_and_record, name, send, queued))
+        _pending[:] = [f for f in _pending if not f.done()]
+    except RuntimeError as e:  # executor already shut down (interpreter exiting)
+        log.warning("%s delivery not started, alert is in the feed only: %s", name, e)
+        return {**alert, "channel": "feed", "status": f"failed: {name}: not started"}
+    return queued
+
+
+def flush(timeout: float | None = None) -> None:
+    """Waits for queued sends to finish (tests use this; the app never needs to)."""
+    wait(list(_pending), timeout=timeout)
+
+
+def _send_and_record(name: str, send: Callable[[Alert], None], queued: Alert) -> None:
+    """Background job: send, then record the outcome on the feed entry. Never raises."""
+    try:
+        send(queued)
+        outcome = {"channel": name, "status": "sent"}
     except Exception as e:
         reason = _redact(str(e))
         log.warning("%s delivery failed, alert is in the feed only: %s", name, reason)
-        return {**alert, "channel": "feed", "status": f"failed: {name}: {reason}"[:200]}
+        outcome = {"channel": "feed", "status": f"failed: {name}: {reason}"[:200]}
+    try:
+        with _lock:  # also waits until the run that queued us has saved the feed
+            store = _load()
+            for item in store["feed"]:
+                if all(item.get(k) == queued[k] for k in ("created_at", "location", "level", "message")):
+                    item.update(outcome)
+                    break
+            _save(store)
+        log.info("ALERT delivery %s", json.dumps({**queued, **outcome}, ensure_ascii=False))
+    except Exception:
+        log.exception("Could not record %s delivery result", name)
 
 
 def _external_channel() -> tuple[str, Callable[[Alert], None]] | None:
