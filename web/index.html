@@ -5,351 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>SmogShield | Live air quality</title>
-  <style>
-    /* Theme tokens. Dark mode by media query (works in every browser). */
-    :root {
-      color-scheme: light dark;
-      --bg: #eef1f5; --surface: #ffffff; --text: #141a26; --muted: #4d5666; --border: #d5dae2;
-      --grid: #c9ced8; --line: #141a26;
-      --info: #dbe8ff; --warning: #ffefc7; --critical: #ffd6d6; --badge-text: #141a26;
-      @media (prefers-color-scheme: dark) {
-        --bg: #0f131a; --surface: #1a2029; --text: #eef1f5; --muted: #a7b0bf; --border: #2c3442;
-        --grid: #3a4352; --line: #eef1f5;
-        --info: #1d3256; --warning: #4a3b12; --critical: #5a1d1d; --badge-text: #eef1f5;
-      }
-      /* Official US AQI colors, with a text color that stays readable on each */
-      --good: #00e400; --good-text: #000;
-      --moderate: #ffff00; --moderate-text: #000;
-      --unhealthy_sensitive: #ff7e00; --unhealthy_sensitive-text: #000;
-      --unhealthy: #ff0000; --unhealthy-text: #000;
-      --very_unhealthy: #8f3f97; --very_unhealthy-text: #fff;
-      --hazardous: #7e0023; --hazardous-text: #fff;
-      --unknown: #5b6270; --unknown-text: #fff;   /* no data: neutral grey, never green */
-    }
-    * { box-sizing: border-box; }
-    [hidden] { display: none !important; }   /* "hidden" must win over display rules like .pill's */
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font: 20px/1.45 system-ui, "Segoe UI", sans-serif;   /* big base size: readable on a projector */
-    }
-    header, main, footer { max-width: 1280px; margin-inline: auto; padding-inline: 24px; }
-    header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding-block: 20px 8px; }
-    h1 { margin: 0; font-size: 1.6rem; }
-    h2 { margin: 0 0 12px; font-size: 1.15rem; }
-    h3 { margin: 0 0 6px; font-size: 1rem; }
-    #where { color: var(--muted); flex: 1; }
-    .control { display: flex; align-items: center; gap: 8px; }
-    select { font: inherit; padding: 6px 10px; min-block-size: 44px; border-radius: 8px; }
-    :where(select, a):focus-visible { outline: 3px solid #2f6fed; outline-offset: 3px; }
-
-    main { display: grid; gap: 20px; grid-template-columns: repeat(12, 1fr); padding-block: 12px 20px; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px;
-      min-width: 0; overflow-wrap: anywhere; }   /* min-width: 0 stops the chart from widening its column */
-    .span-4 { grid-column: span 4; } .span-8 { grid-column: span 8; } .span-12 { grid-column: span 12; }
-    @media (max-width: 900px) {
-      main { grid-template-columns: 1fr; }
-      .span-4, .span-8 { grid-column: auto; }
-      body { font-size: 18px; }
-      header, main, footer { padding-inline: 16px; }
-      #aqi { font-size: 4.5rem; }
-    }
-
-    /* AQI tile: background = level color */
-    #tile { --level-bg: var(--surface); --level-text: var(--text);
-      background: var(--level-bg); color: var(--level-text); border-color: transparent; }
-    @media (prefers-reduced-motion: no-preference) { #tile { transition: background-color .6s, color .6s; } }
-    #aqi { font-size: 6rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
-    #category { font-size: 1.6rem; font-weight: 700; margin-top: 4px; }
-    #tile .facts { margin-top: 12px; font-size: 1.05rem; }
-    .pill { display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px;
-      font-weight: 700; background: #000; color: #fff; }
-
-    /* Chart */
-    figure { margin: 0; }
-    #chart { width: 100%; height: auto; display: block; }
-    #chart text { fill: var(--muted); font-size: 14px; }
-    #chart .value { fill: var(--text); font-weight: 700; font-size: 15px; }
-    figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
-
-    /* Advisory */
-    #headline { font-size: 1.5rem; margin-bottom: 8px; }
-    #time-note:not(:empty) { background: var(--warning); color: var(--badge-text); padding: 8px 12px;
-      border-radius: 8px; font-weight: 600; margin: 0 0 12px; }
-    ul { margin: 0; padding-inline-start: 1.2em; }
-    li + li { margin-top: 4px; }
-    .audiences { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
-    .audiences > div { border-top: 3px solid var(--border); padding-top: 10px; font-size: 0.95rem; }
-    #urdu { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);
-      font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Segoe UI", sans-serif;
-      font-size: 0.9rem; line-height: 1.9; }
-    #disclaimer { color: var(--muted); font-size: 0.85rem; margin: 16px 0 0; }
-
-    /* Alert feed */
-    #feed { list-style: none; padding: 0; display: grid; gap: 10px; max-height: 560px; overflow-y: auto; }
-    #feed li { margin: 0; padding: 10px 14px; border-radius: 10px; color: var(--badge-text); font-size: 0.95rem; }
-    #feed .info { background: var(--info); } #feed .warning { background: var(--warning); } #feed .critical { background: var(--critical); }
-    #feed .when { display: block; font-size: 0.8rem; opacity: 0.85; margin-top: 2px; }
-    #feed .sev { font-weight: 800; }
-    .empty { color: var(--muted); }
-
-    #offline { background: #b00020; color: #fff; padding: 8px 24px; text-align: center; font-weight: 600; }
-    /* Impossible to miss: mock data must never look like a real emergency */
-    #simulated { background: repeating-linear-gradient(-45deg, #ffd400 0 24px, #ffbf00 24px 48px); color: #000;
-      padding: 12px 24px; text-align: center; font-size: 1.4rem; font-weight: 800; letter-spacing: 0.04em;
-      border-bottom: 4px solid #000; }
-    #simulated small { display: block; font-size: 0.95rem; font-weight: 600; letter-spacing: 0; }
-    footer { color: var(--muted); font-size: 0.85rem; padding-block: 8px 24px; }
-    .visually-hidden:where(:not(:focus-within, :active)) {
-      position: absolute !important; clip-path: inset(50%) !important; overflow: hidden !important;
-      width: 1px !important; height: 1px !important; margin: -1px !important; padding: 0 !important;
-      border: 0 !important; white-space: nowrap !important;
-    }
-  </style>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <div id="offline" hidden>Can't reach the server. Showing the last data received.</div>
-  <div id="simulated" role="status" hidden>
-    SIMULATED DATA
-    <small>Demo scenario: these are not real air quality readings.</small>
-  </div>
+  <div id="offline" class="banner banner--offline" role="status" hidden></div>
 
-  <header>
-    <h1>SmogShield</h1>
-    <div id="where">Loading…</div>
-    <div class="control">
-      <label for="scenario">Demo scenario</label>
-      <select id="scenario"><option value="live">live</option></select>
-    </div>
-  </header>
-
-  <main>
-    <section class="card span-4" id="tile" aria-labelledby="tile-title">
-      <h2 id="tile-title" class="visually-hidden">Current air quality</h2>
-      <div>AQI (hourly PM2.5 estimate)</div>
-      <div id="aqi">--</div>
-      <div id="category">&nbsp;</div>
-      <div class="facts" id="facts"></div>
-      <div class="pill" id="spike" hidden>Sudden spike</div>
-    </section>
-
-    <section class="card span-8" aria-labelledby="chart-title">
-      <h2 id="chart-title">PM2.5 over the recent window</h2>
-      <figure>
-        <svg id="chart" viewBox="0 0 720 260" role="img" aria-labelledby="chart-title chart-summary"></svg>
-        <figcaption id="chart-summary"></figcaption>
-      </figure>
-    </section>
-
-    <section class="card span-8" aria-labelledby="headline">
-      <h2 id="headline">&nbsp;</h2>
-      <p id="time-note"></p>
-      <ul id="actions"></ul>
-      <div class="audiences">
-        <div><h3>Children &amp; schools</h3><ul id="aud-children"></ul></div>
-        <div><h3>Elderly</h3><ul id="aud-elderly"></ul></div>
-        <div><h3>Heart &amp; lung conditions</h3><ul id="aud-respiratory_heart"></ul></div>
+  <main id="content" class="page">
+    <!-- 2. Hero: current air quality -->
+    <section id="hero" class="card hero" data-level="loading" aria-labelledby="hero-label">
+      <div class="hero__level">
+        <p id="hero-label" class="hero__label">AQI (hourly PM2.5 estimate)</p>
+        <p id="hero-aqi" class="hero__aqi">--</p>
+        <p id="hero-category" class="hero__category">Loading…</p>
       </div>
-      <div id="urdu" lang="ur" dir="rtl">
-        <h3 id="urdu-headline"></h3>
-        <ul id="urdu-actions"></ul>
+      <div class="hero__body">
+        <p id="hero-place" class="hero__place">Loading live air quality…</p>
+        <p id="hero-summary" class="hero__summary">Fetching the latest readings.</p>
+        <div class="scale" aria-hidden="true">
+          <div class="scale__bar">
+            <span style="--w: 50" data-level="good"></span>
+            <span style="--w: 50" data-level="moderate"></span>
+            <span style="--w: 50" data-level="unhealthy_sensitive"></span>
+            <span style="--w: 50" data-level="unhealthy"></span>
+            <span style="--w: 100" data-level="very_unhealthy"></span>
+            <span style="--w: 200" data-level="hazardous"></span>
+            <i id="scale-marker" class="scale__marker" hidden></i>
+          </div>
+          <div class="scale__labels">
+            <span style="--w: 50">Good</span><span style="--w: 50">Mod.</span><span style="--w: 50">Sens.</span>
+            <span style="--w: 50">Unh.</span><span style="--w: 100">Very unh.</span><span style="--w: 200">Hazardous</span>
+          </div>
+        </div>
+        <p id="hero-facts" class="hero__facts"></p>
       </div>
-      <p id="disclaimer"></p>
-    </section>
-
-    <section class="card span-4" aria-labelledby="feed-title">
-      <h2 id="feed-title">Alert feed</h2>
-      <ul id="feed"><li class="empty">No alerts yet.</li></ul>
     </section>
   </main>
 
-  <footer>
+  <footer class="footer">
     Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
-    (Copernicus Atmosphere Monitoring Service). General guidance, not medical advice.
+    (Copernicus Atmosphere Monitoring Service).
   </footer>
-
-  <!-- One polite announcer for new alerts only, so screen readers aren't spammed every poll -->
-  <div id="announcer" class="visually-hidden" aria-live="polite"></div>
-
-  <script>
-    const POLL_MS = 5000;
-    const LABELS = {
-      good: "Good", moderate: "Moderate", unhealthy_sensitive: "Unhealthy for sensitive groups",
-      unhealthy: "Unhealthy", very_unhealthy: "Very unhealthy", hazardous: "Hazardous",
-      unknown: "Data unavailable",
-    };
-    // US EPA PM2.5 band tops (µg/m³), used to shade the chart
-    const BANDS = [[9, "good"], [35.4, "moderate"], [55.4, "unhealthy_sensitive"],
-                   [125.4, "unhealthy"], [225.4, "very_unhealthy"], [Infinity, "hazardous"]];
-    const ARROWS = { rising: "↑", falling: "↓", stable: "→" };
-    const $ = (id) => document.getElementById(id);
-    const SVG = "http://www.w3.org/2000/svg";
-    let seenAlerts = null;  // keys of alerts already shown; null until the first load
-
-    // textContent everywhere: never inject API data as HTML
-    function el(tag, text, className) {
-      const node = document.createElement(tag);
-      if (text != null) node.textContent = text;
-      if (className) node.className = className;
-      return node;
-    }
-    function fillList(id, items) { $(id).replaceChildren(...(items || []).map((t) => el("li", t))); }
-    function svg(tag, attrs, text) {
-      const node = document.createElementNS(SVG, tag);
-      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
-      if (text != null) node.textContent = text;
-      return node;
-    }
-    const localTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-    function renderTile(s) {
-      const latest = s.readings?.at(-1), a = s.analysis;
-      const known = a.level in LABELS && a.level !== "unknown";
-      $("where").textContent = latest
-        ? `${latest.location} · ${latest.source === "live" ? "live data" : "mock data"} · updated ${localTime(latest.timestamp)}`
-        : "No current readings";
-      $("simulated").hidden = !latest || latest.source === "live";  // anything not live is shown as simulated
-      const level = known ? a.level : "unknown";
-      $("tile").style.setProperty("--level-bg", `var(--${level})`);
-      $("tile").style.setProperty("--level-text", `var(--${level}-text)`);
-      $("aqi").textContent = a.aqi ?? "--";
-      $("category").textContent = LABELS[level];
-      if (known) {
-        const pm10 = latest.pm10 == null ? "" : ` · PM10 ${latest.pm10}`;
-        const rate = a.trend_per_hour > 0 ? `+${a.trend_per_hour}` : a.trend_per_hour;
-        $("facts").textContent = `PM2.5 ${latest.pm25} µg/m³${pm10} · ${ARROWS[a.trend] ?? ""} ${a.trend} (${rate}/h)`;
-      } else {
-        $("facts").textContent = a.reason || "No valid readings received.";
-      }
-      $("spike").hidden = !a.is_spike;
-      document.title = `${known ? `AQI ${a.aqi} ${LABELS[level]}` : "Data unavailable"} | SmogShield`;
-    }
-
-    function renderChart(readings, analysis) {
-      const W = 720, H = 260, L = 48, R = 56, T = 12, B = 32;
-      const values = readings.map((r) => r.pm25);
-      const top = Math.max(...values) * 1.15 || 10;
-      const x = (i) => L + (values.length < 2 ? (W - L - R) / 2 : (i * (W - L - R)) / (values.length - 1));
-      const y = (v) => T + (H - T - B) * (1 - Math.min(v, top) / top);
-      const nodes = [];
-
-      // Faint level bands behind the line
-      let floor = 0;
-      for (const [ceiling, level] of BANDS) {
-        if (floor >= top) break;
-        const hi = Math.min(ceiling, top);
-        nodes.push(svg("rect", { x: L, width: W - L - R, y: y(hi), height: y(floor) - y(hi),
-                                 fill: `var(--${level})`, opacity: 0.18 }));
-        floor = ceiling;
-      }
-      // Axis labels: 0 and top, first and last time
-      nodes.push(svg("text", { x: L - 8, y: y(0), "text-anchor": "end", "dominant-baseline": "middle" }, "0"));
-      nodes.push(svg("text", { x: L - 8, y: y(top), "text-anchor": "end", "dominant-baseline": "hanging" }, Math.round(top)));
-      nodes.push(svg("text", { x: x(0), y: H - 8, "text-anchor": "middle" }, localTime(readings[0].timestamp)));
-      if (readings.length > 1) {
-        nodes.push(svg("text", { x: x(values.length - 1), y: H - 8, "text-anchor": "middle" }, localTime(readings.at(-1).timestamp)));
-      }
-      // Line + points; label the latest value
-      const points = values.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-      nodes.push(svg("polyline", { points, fill: "none", stroke: "var(--line)", "stroke-width": 4,
-                                   "stroke-linejoin": "round", "stroke-linecap": "round" }));
-      values.forEach((v, i) => nodes.push(svg("circle", { cx: x(i), cy: y(v), r: i === values.length - 1 ? 8 : 5,
-                                                          fill: "var(--line)" })));
-      nodes.push(svg("text", { x: x(values.length - 1) + 12, y: y(values.at(-1)), class: "value",
-                               "dominant-baseline": "middle" }, values.at(-1)));
-      $("chart").replaceChildren(...nodes);
-
-      const span = values.length > 1 ? ` over ${values.length} readings` : "";
-      $("chart-summary").textContent =
-        `PM2.5 (µg/m³) went from ${values[0]} to ${values.at(-1)}${span}; trend ${analysis.trend}.`;
-    }
-
-    function renderAdvisory(adv) {
-      $("headline").textContent = adv.headline;
-      $("time-note").textContent = adv.time_note || "";
-      fillList("actions", adv.audiences?.general ?? adv.actions);
-      for (const who of ["children", "elderly", "respiratory_heart"]) fillList(`aud-${who}`, adv.audiences?.[who]);
-      $("urdu").hidden = !adv.urdu;
-      if (adv.urdu) {
-        $("urdu-headline").textContent = adv.urdu.headline;
-        fillList("urdu-actions", adv.urdu.actions);
-      }
-      $("disclaimer").textContent = adv.disclaimer || "";
-    }
-
-    function renderFeed(feed) {
-      const key = (a) => `${a.created_at}|${a.location}|${a.level}`;
-      if (!feed.length) {
-        $("feed").replaceChildren(el("li", "No alerts yet.", "empty"));
-      } else {
-        $("feed").replaceChildren(...feed.map((a) => {
-          const item = el("li", null, a.severity);
-          item.append(el("span", `${a.severity.toUpperCase()} `, "sev"), a.message);
-          const via = a.status === "sent" ? a.channel
-            : a.status === "queued" ? `${a.channel} (sending…)`
-            : `feed only (${a.status})`;
-          item.append(el("span", `${localTime(a.created_at)} · via ${via}`, "when"));
-          return item;
-        }));
-      }
-      // Announce only alerts we haven't seen before (none on first load)
-      const fresh = seenAlerts ? feed.filter((a) => !seenAlerts.has(key(a))) : [];
-      if (fresh.length) $("announcer").textContent = fresh.map((a) => `${a.severity} alert: ${a.message}`).join(" ");
-      seenAlerts = new Set(feed.map(key));
-    }
-
-    async function getJSON(url, options) {
-      const res = await fetch(url, options);
-      if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-      return res.json();
-    }
-
-    async function refresh() {
-      try {
-        const s = await getJSON("/api/status");   // runs the pipeline (may add an alert)
-        const feed = await getJSON("/api/alerts");
-        renderTile(s);   // always, so an "unknown" result replaces stale numbers
-        if (s.analysis.level !== "unknown" && s.readings?.length) {
-          renderChart(s.readings, s.analysis);
-        } else {
-          $("chart").replaceChildren();
-          $("chart-summary").textContent = "No valid readings to chart.";
-        }
-        renderAdvisory(s.advisory);
-        renderFeed(feed);
-        $("offline").hidden = true;
-      } catch (e) {
-        console.error(e);
-        $("offline").hidden = false;
-      }
-    }
-
-    async function loadScenarios() {
-      try {
-        const { current, options } = await getJSON("/api/scenario");
-        $("scenario").replaceChildren(...options.map((name) => {
-          const option = el("option", name === "live" ? "Live data" : name.replaceAll("_", " "));
-          option.value = name;
-          option.selected = name === current;
-          return option;
-        }));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    $("scenario").addEventListener("change", async (event) => {
-      try {
-        await getJSON(`/api/scenario/${encodeURIComponent(event.target.value)}`, { method: "POST" });
-      } catch (e) {
-        console.error(e);
-        await loadScenarios();  // put the select back to what the server really has
-      }
-      refresh();
-    });
-
-    loadScenarios();
-    refresh();
-    setInterval(refresh, POLL_MS);
-  </script>
 </body>
 </html>
