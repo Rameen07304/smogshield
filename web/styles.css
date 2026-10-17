@@ -624,6 +624,39 @@ select {
 }
 
 /* ---------- Screen 3: Alert history ---------- */
+/* Filters: native radio buttons styled as segmented pills (arrow keys work out of the box) */
+.filters { display: flex; flex-wrap: wrap; gap: 14px 28px; margin-bottom: 8px; }
+.filters[hidden] { display: none; }
+.segmented { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; border: 0; }
+.segmented legend {
+  float: left;                 /* keeps the legend on the same line as the pills */
+  margin-inline-end: 10px;
+  padding: 0;
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.segmented label { position: relative; cursor: pointer; }
+.segmented input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.segmented span {
+  display: inline-flex;
+  align-items: center;
+  gap: .45em;
+  min-block-size: 44px;
+  padding: 4px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 800;
+}
+.segmented i { font-style: normal; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.segmented input:checked + span { background: var(--text); color: var(--surface); border-color: var(--text); }
+.segmented input:checked + span i { color: inherit; opacity: .8; }
+.segmented input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 2px; }
+.btn--plain { margin-inline-start: .6em; padding: 6px 14px; min-block-size: 40px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+
 .table-wrap { overflow-x: auto; }
 .history { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 1rem; }
 .history th {

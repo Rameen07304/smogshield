@@ -89,14 +89,73 @@ function buildRow(a) {
   return tr;
 }
 
+// ---------- filters (kept in the URL, e.g. ?urgency=critical&source=simulated) ----------
+
+const FILTER_VALUES = { urgency: ["all", "info", "warning", "critical"], source: ["all", "real", "simulated"] };
+const filters = { urgency: "all", source: "all" };
+
+const matchesUrgency = (a, urgency) => urgency === "all" || a.severity === urgency;
+const matchesSource = (a, source) => source === "all" || (source === "simulated") === isSimulated(a);
+const matches = (a) => matchesUrgency(a, filters.urgency) && matchesSource(a, filters.source);
+
+function readFiltersFromUrl() {
+  const params = new URLSearchParams(location.search);
+  for (const [name, allowed] of Object.entries(FILTER_VALUES)) {
+    const value = params.get(name);
+    filters[name] = allowed.includes(value) ? value : "all";
+    const radio = document.querySelector(`input[name="${name}"][value="${filters[name]}"]`);
+    if (radio) radio.checked = true;
+  }
+}
+
+function writeFiltersToUrl() {
+  const params = new URLSearchParams();
+  for (const [name, value] of Object.entries(filters)) if (value !== "all") params.set(name, value);
+  const query = params.toString();
+  history.replaceState(null, "", query ? `?${query}` : location.pathname);
+}
+
+/** How many alerts each option would show, given the other filter (so the numbers always add up) */
+function updateCounts() {
+  for (const urgency of FILTER_VALUES.urgency) {
+    const n = alerts.filter((a) => matchesUrgency(a, urgency) && matchesSource(a, filters.source)).length;
+    document.querySelector(`[data-count="urgency-${urgency}"]`).textContent = n;
+  }
+  for (const source of FILTER_VALUES.source) {
+    const n = alerts.filter((a) => matchesSource(a, source) && matchesUrgency(a, filters.urgency)).length;
+    document.querySelector(`[data-count="source-${source}"]`).textContent = n;
+  }
+}
+
+$("filters").addEventListener("change", (event) => {
+  if (!(event.target.name in filters)) return;
+  filters[event.target.name] = event.target.value;
+  writeFiltersToUrl();
+  renderHistory();
+});
+
+$("clear-filters").addEventListener("click", () => {
+  filters.urgency = "all";
+  filters.source = "all";
+  for (const radio of document.querySelectorAll('#filters input[value="all"]')) radio.checked = true;
+  writeFiltersToUrl();
+  renderHistory();
+});
+
 function renderHistory() {
-  const rows = alerts.map(buildRow);
-  $("history-rows").replaceChildren(...rows);
-  $("history-table").hidden = alerts.length === 0;
-  $("history-empty").hidden = alerts.length > 0;
+  const shown = alerts.filter(matches);
+  $("history-rows").replaceChildren(...shown.map(buildRow));
+  const none = alerts.length === 0;
+  $("filters").hidden = none;
+  $("history-table").hidden = shown.length === 0;
+  $("history-empty").hidden = !none;
   $("history-empty").textContent = "No alerts yet. Trigger a scenario on the dashboard.";
-  $("history-count").hidden = alerts.length === 0;
-  $("history-count").textContent = `${alerts.length} ${alerts.length === 1 ? "alert" : "alerts"}`;
+  $("history-nomatch").hidden = none || shown.length > 0;
+  $("history-count").hidden = none;
+  $("history-count").textContent = shown.length === alerts.length
+    ? `${alerts.length} ${alerts.length === 1 ? "alert" : "alerts"}`
+    : `Showing ${shown.length} of ${alerts.length}`;
+  updateCounts();
 }
 
 function historyOffline(error) {
@@ -126,4 +185,5 @@ async function pollHistory() {
   }
 }
 
+readFiltersFromUrl();
 pollHistory();
