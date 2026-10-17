@@ -353,7 +353,7 @@ select {
   margin: 0 0 14px;
   padding: 10px 14px;
   border-radius: 10px;
-  border-inline-start: 6px solid #e0a800;
+  border: 1.5px solid #e0a800;
   background: #fff4cc;
   color: #2b2100;
   font-weight: 700;
@@ -366,12 +366,8 @@ select {
   padding: 14px 16px;
   border-radius: 12px;
   background: var(--surface-2);
-  border-top: 5px solid var(--border);
+  border: 1px solid var(--border);
 }
-.audience[data-audience="general"] { border-top-color: #1f5fd6; }
-.audience[data-audience="children"] { border-top-color: #0b8a5f; }
-.audience[data-audience="elderly"] { border-top-color: #8a5a00; }
-.audience[data-audience="respiratory_heart"] { border-top-color: #b00020; }
 .audience h3 { margin: 0 0 8px; font-size: 1.05rem; }
 .audience ul, .urdu__list { margin: 0; padding-inline-start: 1.2em; }
 .audience li + li { margin-top: 6px; }
@@ -391,12 +387,11 @@ select {
   --sev-bg: #e6eeff;
   --sev-fg: #0b2a66;
   position: relative;
-  padding: 12px 14px 12px 18px;
+  padding: 12px 14px;
   border-radius: 12px;
   background: var(--sev-bg);
   color: var(--sev-fg);
-  border: 2px solid transparent;
-  border-inline-start: 8px solid var(--sev);
+  border: 2px solid var(--sev);   /* severity is also in the badge text, so color is never the only cue */
 }
 .alert-item[data-severity="warning"] { --sev: #c77700; --sev-bg: #fff1d6; --sev-fg: #3d2600; }
 .alert-item[data-severity="critical"] { --sev: #c4001d; --sev-bg: #ffe1e4; --sev-fg: #4a000a; }
@@ -406,7 +401,7 @@ select {
   .alert-item[data-severity="critical"] { --sev: #ff6b7d; --sev-bg: #3d1218; --sev-fg: #ffe3e6; }
 }
 /* Simulated alerts look different: dashed border and a hatched tag */
-.alert-item[data-simulated] { border: 2px dashed var(--sev); border-inline-start: 8px solid var(--sev); }
+.alert-item[data-simulated] { border-style: dashed; }
 
 .alert-item__top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 4px; }
 .sev-badge {
