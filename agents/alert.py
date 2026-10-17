@@ -1,30 +1,261 @@
-"""Alert agent: decides whether to raise an alert, and how loud.
+"""Alert agent: decides whether to raise an alert, how urgent it is, and delivers it.
 
 Reads: state["analysis"], state["advisory"], state["readings"]
-Owns:  state["alerts"]
-Alerts are shown in the dashboard. Add Telegram/SMS/email sending here later.
+Owns:  state["alerts"]  (alerts raised by THIS run; [] = nothing new)
+
+When to alert (per location, so we never spam):
+  - the level reaches "unhealthy_sensitive" or rises above the last alerted level
+    -> alert right away (escalations are never held back by the cooldown)
+  - the spike flag is set -> alert, at most once per cooldown
+  - same or lower level -> no alert. After a full cooldown without alerts the remembered
+    level drops to the current one, so a later rise alerts again but flapping doesn't.
+
+Memory + feed live in var/alerts.json (gitignored). A file, not the graph state, because
+the app calls graph.invoke({}) with an empty state on every poll, and a file survives restarts.
+
+Delivery: every alert goes into the feed (the dashboard reads it). If TELEGRAM_BOT_TOKEN and
+TELEGRAM_CHAT_ID are set it is also sent to Telegram; a Telegram failure is logged, never raised.
 """
-from datetime import datetime, timezone
+import json
+import logging
+import os
+import threading
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import requests
 
 from schemas import Alert, SmogState
 
+log = logging.getLogger(__name__)
+
+STORE_FILE = Path(__file__).parent.parent / "var" / "alerts.json"
+FEED_SIZE = 100                 # keep the newest N alerts in the feed
+DEFAULT_COOLDOWN_MINUTES = 30   # override with ALERT_COOLDOWN_MINUTES
+TELEGRAM_TIMEOUT_SECONDS = 5
+
+# Levels from best to worst; the list index is the severity rank
+LEVEL_ORDER = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
+THRESHOLD = "unhealthy_sensitive"   # lowest level that raises an alert on its own
+URGENCY = {
+    "good": "info",                 # only reachable through a spike
+    "moderate": "info",             # only reachable through a spike
+    "unhealthy_sensitive": "info",
+    "unhealthy": "warning",
+    "very_unhealthy": "critical",
+    "hazardous": "critical",
+}
+LEVEL_LABELS = {
+    "good": "Good", "moderate": "Moderate", "unhealthy_sensitive": "Unhealthy for sensitive groups",
+    "unhealthy": "Unhealthy", "very_unhealthy": "Very unhealthy", "hazardous": "Hazardous",
+}
+
+_lock = threading.Lock()  # several dashboard tabs can poll at the same time
+
+
+# ---------- graph entry point ----------
 
 def run(state: SmogState) -> dict:
-    analysis, advisory = state["analysis"], state["advisory"]
-    location = state["readings"][-1]["location"]
-
-    if analysis["level"] in ("very_unhealthy", "hazardous"):
-        severity = "critical"
-    elif analysis["is_hazardous"]:
-        severity = "warning"
-    elif analysis["level"] == "unhealthy_sensitive" and analysis["trend"] == "rising":
-        severity = "info"  # early heads-up before it gets bad
-    else:
+    """Graph node: new alerts for this reading (usually none)."""
+    try:
+        return {"alerts": _process(state)}
+    except Exception:  # last safety net: alerts must never take the pipeline down
+        log.exception("Alert agent failed, no alert this run")
         return {"alerts": []}
 
-    alert: Alert = {
-        "severity": severity,
-        "message": f"{location}: AQI {analysis['aqi']}. {advisory['headline']}",
-        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-    }
-    return {"alerts": [alert]}
+
+# ---------- decision (pure, easy to test) ----------
+
+def should_alert(
+    level: str, is_spike: bool, memory: dict | None, now: datetime, cooldown: timedelta
+) -> tuple[bool, dict]:
+    """Anti-spam rule for one location. Returns (alert now?, updated memory)."""
+    memory = dict(memory or {})
+    last_level = memory.get("level") if memory.get("level") in LEVEL_ORDER else "good"
+    last_alert = _parse_time(memory.get("alerted_at"))
+    last_spike = _parse_time(memory.get("spike_at"))
+    rank = LEVEL_ORDER.index(level)
+
+    # After a quiet cooldown, forget the old peak so a later rise alerts again
+    quiet = last_alert is None or now - last_alert >= cooldown
+    if quiet and rank < LEVEL_ORDER.index(last_level):
+        last_level = level
+
+    escalated = rank >= LEVEL_ORDER.index(THRESHOLD) and rank > LEVEL_ORDER.index(last_level)
+    new_spike = is_spike and (last_spike is None or now - last_spike >= cooldown)
+
+    memory["level"] = level if escalated else last_level
+    if escalated or new_spike:
+        memory["alerted_at"] = now.isoformat(timespec="seconds")
+    if new_spike:
+        memory["spike_at"] = now.isoformat(timespec="seconds")
+    return escalated or new_spike, memory
+
+
+def urgency_for(level: str) -> str:
+    """info / warning / critical for an analysis level (unknown -> warning, to be safe)."""
+    return URGENCY.get(level, "warning")
+
+
+# ---------- delivery ----------
+
+def deliver(alert: Alert) -> Alert:
+    """Tries the external channel if configured. The caller always writes the feed copy."""
+    channel = _external_channel()
+    if channel is None:
+        return {**alert, "channel": "feed", "status": "sent"}
+    name, send = channel
+    try:
+        send(alert)
+        return {**alert, "channel": name, "status": "sent"}
+    except Exception as e:
+        reason = _redact(str(e))
+        log.warning("%s delivery failed, alert is in the feed only: %s", name, reason)
+        return {**alert, "channel": "feed", "status": f"failed: {name}: {reason}"[:200]}
+
+
+def _external_channel() -> tuple[str, Callable[[Alert], None]] | None:
+    """The real channel to try, or None. A channel is a function send(alert) that raises on failure.
+    Add SMS/email here the same way."""
+    token, chat_id = _telegram_credentials()
+    if token and chat_id:
+        return "telegram", _send_telegram
+    return None
+
+
+def _telegram_credentials() -> tuple[str, str]:
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    if token.startswith("your_") or chat_id.startswith("your_"):  # .env.example placeholders
+        return "", ""
+    return token, chat_id
+
+
+def _send_telegram(alert: Alert) -> None:
+    token, chat_id = _telegram_credentials()
+    resp = requests.post(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        json={"chat_id": chat_id, "text": f"[{alert['severity'].upper()}] {alert['message']}"},
+        timeout=TELEGRAM_TIMEOUT_SECONDS,
+    )
+    if not resp.ok:
+        raise RuntimeError(f"HTTP {resp.status_code}")  # don't echo the body: keep it short
+
+
+def _redact(text: str) -> str:
+    """Error messages can contain the request URL, which includes the bot token."""
+    token, _ = _telegram_credentials()
+    return text.replace(token, "***") if token else text
+
+
+# ---------- feed + memory store (var/alerts.json) ----------
+
+def read_feed(limit: int = 50) -> list[Alert]:
+    """Newest alerts first, for the dashboard."""
+    with _lock:
+        return _load()["feed"][: max(limit, 0)]
+
+
+def reset_memory() -> None:
+    """Forget what was alerted (keeps the feed). Used when switching demo scenarios."""
+    with _lock:
+        store = _load()
+        store["memory"] = {}
+        _save(store)
+
+
+def _process(state: SmogState) -> list[Alert]:
+    analysis = state.get("analysis") or {}
+    advisory = state.get("advisory") or {}
+    level = analysis.get("level")
+    if level not in LEVEL_ORDER:
+        log.warning("Unknown or missing level %r, no alert", level)
+        return []
+    location = _location(state.get("readings"))
+    now = datetime.now(timezone.utc)
+
+    with _lock:
+        store = _load()
+        alert_now, store["memory"][location] = should_alert(
+            level, analysis.get("is_spike") is True, store["memory"].get(location), now, _cooldown()
+        )
+        alerts: list[Alert] = []
+        if alert_now:
+            alert = deliver({
+                "severity": urgency_for(level),
+                "message": _message(location, level, analysis, advisory),
+                "created_at": now.isoformat(timespec="seconds"),
+                "location": location,
+                "level": level,
+                "channel": "feed",
+                "status": "sent",
+            })
+            log.info("ALERT %s", json.dumps(alert, ensure_ascii=False))
+            store["feed"] = [alert, *store["feed"]][:FEED_SIZE]
+            alerts.append(alert)
+        _save(store)
+    return alerts
+
+
+def _message(location: str, level: str, analysis: dict, advisory: dict) -> str:
+    parts = [f"{location}: AQI {analysis.get('aqi', '?')} ({LEVEL_LABELS[level]})."]
+    if advisory.get("headline"):
+        parts.append(advisory["headline"])
+    if advisory.get("time_note"):
+        parts.append(advisory["time_note"])
+    elif analysis.get("is_spike") is True:
+        parts.append("Sudden spike in pollution.")
+    return " ".join(parts)
+
+
+def _location(readings) -> str:
+    try:
+        return str(readings[-1]["location"]).strip() or "Unknown location"
+    except (TypeError, IndexError, KeyError):
+        return "Unknown location"
+
+
+def _cooldown() -> timedelta:
+    raw = os.getenv("ALERT_COOLDOWN_MINUTES", "").strip()
+    try:
+        minutes = float(raw) if raw else DEFAULT_COOLDOWN_MINUTES
+        if minutes < 0:
+            raise ValueError
+    except ValueError:
+        log.warning("Bad ALERT_COOLDOWN_MINUTES %r, using %d", raw, DEFAULT_COOLDOWN_MINUTES)
+        minutes = DEFAULT_COOLDOWN_MINUTES
+    return timedelta(minutes=minutes)
+
+
+def _parse_time(value) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _load() -> dict:
+    """{"memory": {location: {...}}, "feed": [Alert, ...]}; a fresh store if missing or broken."""
+    try:
+        store = json.loads(STORE_FILE.read_text(encoding="utf-8"))
+        if isinstance(store.get("memory"), dict) and isinstance(store.get("feed"), list):
+            return store
+        log.warning("%s has an unexpected shape, starting fresh", STORE_FILE)
+    except FileNotFoundError:
+        pass
+    except (OSError, ValueError, AttributeError) as e:
+        log.warning("Could not read %s, starting fresh: %s", STORE_FILE, e)
+    return {"memory": {}, "feed": []}
+
+
+def _save(store: dict) -> None:
+    """Write to a temp file, then swap it in, so a crash never leaves half a file."""
+    try:
+        STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = STORE_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(store, ensure_ascii=False, indent=1), encoding="utf-8")
+        os.replace(tmp, STORE_FILE)
+    except OSError as e:
+        log.warning("Could not save %s: %s", STORE_FILE, e)

@@ -30,6 +30,8 @@ def run_once() -> SmogState:
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv; load_dotenv()  # same .env as app.py
+
     # AQI math against known EPA values
     assert analysis.pm25_to_aqi(9.0) == (50, "good")
     assert analysis.pm25_to_aqi(35.5) == (101, "unhealthy_sensitive")

@@ -11,6 +11,8 @@ Repo: https://github.com/Rameen07304/smogshield. Read the [README](README.md) fi
 - **Branch per task:** `git checkout -b <yourname>/<task>`, then open a PR to `main`. Keep PRs small.
 - **Before every PR:** run `python graph.py` and make sure it prints `OK`.
 - **Never commit `.env` or API keys.** This repo is public. Put keys in `.env` only; it's gitignored.
+- **Config:** copy `.env.example` to `.env` (see the README's Configuration section for what each variable does). No keys are needed today. If your agent needs a new setting, add it to `.env.example` with a placeholder value like `your_key_here`, never the real one, and tell the Lead.
+- **Demo tip:** `MOCK_SCENARIO=hazardous` in `.env` forces a smog emergency on stage; `spike` plays the full build-up and recovery.
 - **The demo must always work on mock data.** A real API is a bonus, not a dependency.
 
 ## Who does what
@@ -31,8 +33,9 @@ Repo: https://github.com/Rameen07304/smogshield. Read the [README](README.md) fi
 - Prepare the pitch slides with the team.
 
 ### 2. Monitor agent (data) (Halima)
-- Get an OpenAQ API key and find a working PM2.5 location for our city.
-- Make sure the OpenAQ → mock fallback works when the network is off.
+- Live data from Open-Meteo (no API key needed), based on CAMS ENSEMBLE data from the Copernicus Atmosphere Monitoring Service.
+- Config: `MONITOR_CITY` picks the city, `USE_MOCK=true` skips the network, `MOCK_SCENARIO=<name>` forces a mock scenario.
+- Make sure the Open-Meteo → mock fallback works when the network is off.
 - Stretch: multiple cities/stations, or a "demo mode" toggle that forces the smog spike on stage.
 - Contract: returns `{"readings": [Reading, ...]}`, oldest first.
 

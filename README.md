@@ -4,7 +4,7 @@ A modular multi-agent system that monitors air quality and coordinates smog resp
 
 ```
 monitor ──► analysis ──► advisory ──► alert ──► dashboard
-(OpenAQ /   (AQI, level,  (public      (warning /
+(Open-Meteo (AQI, level,  (public      (warning /
  mock data)  trend)        guidance)    critical)
 ```
 
@@ -19,19 +19,19 @@ Requires Python 3.11+.
 python -m venv .venv
 # Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # optional: leave empty to use mock data
+cp .env.example .env          # optional, see Configuration below (Windows: copy .env.example .env)
 python graph.py               # self-check, should print OK
 uvicorn app:app --reload      # open http://localhost:8000
 ```
 
-With no API key, the app replays `data/mock_readings.json`, a scripted smog spike that advances every 5 seconds.
+By default the app uses live data for Lahore. If the network is down, it replays `data/mock_readings.json`, a scripted smog spike that advances every 5 seconds.
 
 ## Project layout
 
 | Path | What it is |
 |------|-----------|
 | `schemas.py` | Contracts between agents. Change these as a team. |
-| `agents/monitor.py` | Fetches readings from OpenAQ, falls back to mock data |
+| `agents/monitor.py` | Fetches readings from Open-Meteo, falls back to mock data |
 | `agents/analysis.py` | PM2.5 → US EPA AQI, level, trend |
 | `agents/advisory.py` | Level → public guidance |
 | `agents/alert.py` | Decides whether to alert and how loudly |
@@ -40,11 +40,19 @@ With no API key, the app replays `data/mock_readings.json`, a scripted smog spik
 | `web/index.html` | Dashboard (plain HTML/JS, no build step) |
 | `data/mock_readings.json` | Demo data |
 
-## Using real data (OpenAQ)
+## Configuration
 
-1. Get a free API key at https://explore.openaq.org (sign in → API key).
-2. Find a location id with a PM2.5 sensor on the OpenAQ explorer.
-3. Put both in `.env`. **Never commit `.env`**; it is gitignored.
+Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.env.example` to `.env` and edit it. **Never commit `.env`**; it is gitignored. All settings are optional, and no API keys are needed.
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `USE_MOCK` | `false` | `true` skips the network and always uses `data/mock_readings.json`. |
+| `MONITOR_CITY` | `Lahore` | City to watch: Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Gujranwala, Sialkot. |
+| `MOCK_SCENARIO` | unset | Forces mock data for one scenario: `good`, `moderate`, `unhealthy_sensitive`, `unhealthy`, `very_unhealthy`, `hazardous`, `spike`. |
+
+**Demo tip:** set `MOCK_SCENARIO=hazardous` to force a smog emergency on stage. Use `spike` to show air building from clean to hazardous and back. Restart the server after editing `.env`.
+
+Live data: air quality data from [Open-Meteo](https://open-meteo.com) (free, no key, non-commercial use), based on CAMS ENSEMBLE data from the Copernicus Atmosphere Monitoring Service. If a live call fails or takes more than 10 s, the monitor falls back to mock data.
 
 ## Adding an agent
 

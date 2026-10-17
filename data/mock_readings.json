@@ -1,5 +1,45 @@
 {
-  "location": "Lahore (mock)",
-  "_note": "Hourly PM2.5 in µg/m³. Builds into a smog spike, then clears. Cycled by the monitor agent.",
-  "pm25": [22, 28, 35, 41, 55, 68, 90, 120, 160, 210, 260, 310, 280, 230, 170, 120, 80, 55, 38, 25]
+  "_note": "Hourly mock readings in µg/m³, cycled by the monitor agent (one step every few seconds). Each scenario's PM2.5 stays inside one US EPA (2024) band; PM10 is roughly 1.6-2x PM2.5, typical for Punjab winter smog. 'spike' builds into a smog emergency and then clears. Pick a scenario with MOCK_SCENARIO=<name>.",
+  "default_scenario": "spike",
+  "city_defaults": {
+    "Lahore": "spike",
+    "Faisalabad": "very_unhealthy",
+    "Gujranwala": "very_unhealthy",
+    "Multan": "unhealthy",
+    "Peshawar": "unhealthy_sensitive",
+    "Rawalpindi": "unhealthy_sensitive",
+    "Karachi": "moderate",
+    "Islamabad": "moderate",
+    "Quetta": "good"
+  },
+  "scenarios": {
+    "good": {
+      "pm25": [4.2, 5.1, 6.0, 5.4, 4.8, 6.6, 7.3, 5.9],
+      "pm10": [12, 15, 18, 16, 14, 19, 21, 17]
+    },
+    "moderate": {
+      "pm25": [18, 21, 24, 27, 25, 29, 31, 28],
+      "pm10": [38, 44, 50, 55, 52, 60, 64, 58]
+    },
+    "unhealthy_sensitive": {
+      "pm25": [38, 41, 45, 48, 52, 50, 47, 44],
+      "pm10": [75, 82, 90, 96, 104, 100, 94, 88]
+    },
+    "unhealthy": {
+      "pm25": [68, 75, 84, 92, 101, 110, 98, 88],
+      "pm10": [130, 142, 160, 175, 190, 205, 185, 168]
+    },
+    "very_unhealthy": {
+      "pm25": [140, 152, 168, 181, 195, 210, 198, 176],
+      "pm10": [250, 270, 295, 320, 340, 365, 345, 310]
+    },
+    "hazardous": {
+      "pm25": [240, 262, 285, 310, 335, 360, 342, 318],
+      "pm10": [400, 430, 470, 505, 540, 580, 555, 520]
+    },
+    "spike": {
+      "pm25": [22, 28, 35, 41, 55, 68, 90, 120, 160, 210, 260, 310, 280, 230, 170, 120, 80, 55, 38, 25],
+      "pm10": [45, 55, 68, 78, 102, 125, 162, 210, 275, 355, 430, 505, 460, 385, 290, 210, 142, 100, 72, 50]
+    }
+  }
 }
