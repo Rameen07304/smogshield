@@ -95,6 +95,7 @@ class UrduAdvisory(TypedDict):
     """Urdu version of the public advice. Owned by: advisory agent."""
     headline: str
     actions: list[str]
+    forecast_note: str                      # Urdu forecast note, "" when there is none
 
 
 class Advisory(TypedDict):
@@ -103,6 +104,8 @@ class Advisory(TypedDict):
     actions: list[str]                      # general public, time_note first if any (the dashboard shows this)
     audiences: dict[Audience, list[str]]    # advice per audience; children includes schools
     time_note: str                          # trend/spike context, "" if none
+    forecast_note: str                      # forecast context (worse soon / better by / best time), "" if none;
+                                            # also listed in actions right after the time note
     disclaimer: str                         # "general guidance, not medical advice"
     urdu: UrduAdvisory
 

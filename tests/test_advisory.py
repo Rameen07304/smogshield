@@ -203,5 +203,134 @@ class ContractTest(unittest.TestCase):
                     self.assertIn(state["advisory"]["headline"], state["alerts"][0]["message"])
 
 
+# ---------- forecast wording ----------
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+from agents import forecast as forecast_agent  # noqa: E402
+
+NOW = datetime(2026, 10, 17, 10, 30, tzinfo=timezone.utc)   # 15:30 local (UTC+5)
+HOUR0 = NOW.replace(minute=0)
+
+
+def make_forecast(values: list[float]) -> dict:
+    """A forecast whose hour N (from the current hour, 10:00 UTC = 15:00 local) has PM2.5 values[N]."""
+    points = [{"time": (HOUR0 + timedelta(hours=h)).isoformat(), "pm25": float(v)} for h, v in enumerate(values)]
+    return forecast_agent._forecast_from_series("Lahore", {"offset": 5 * 3600, "points": points}, "live", NOW)
+
+
+def note_for(level: str, values: list[float]) -> dict:
+    return advisory.build_advisory(make_analysis(level), make_forecast(values))
+
+
+class ForecastWordingTest(unittest.TestCase):
+    def test_worsening_within_6_hours(self):
+        result = note_for("moderate", [30, 40, 60, 70, 70, 70] + [30] * 18)   # Unhealthy from hour 2 = 17:00 local
+        self.assertEqual(result["forecast_note"].split(" Best time")[0],
+                         "Air quality is forecast to worsen over the next 6 hours, reaching Unhealthy around 17:00; "
+                         "plan indoor activities.")
+        self.assertTrue(result["urdu"]["forecast_note"].startswith(
+            "اگلے 6 گھنٹوں میں ہوا کا معیار خراب ہونے کی پیش گوئی ہے، تقریباً 17:00 تک غیر صحت بخش"))
+
+    def test_slightly_worse_in_good_air(self):
+        result = note_for("good", [5, 6, 8, 12, 15, 15] + [5] * 18)            # good -> moderate only
+        self.assertEqual(result["forecast_note"], advisory.SLIGHTLY_WORSE_NOTE[0])  # no "best time" in good air
+        self.assertEqual(result["urdu"]["forecast_note"], advisory.SLIGHTLY_WORSE_NOTE[1])
+
+    def test_improves_by_tomorrow_morning(self):
+        values = [80] * 16 + [20] * 8                                          # better from hour 16 = 07:00 local tomorrow
+        result = note_for("unhealthy", values)
+        self.assertTrue(result["forecast_note"].startswith("Expected to improve by tomorrow morning."))
+        self.assertTrue(result["urdu"]["forecast_note"].startswith("کل صبح تک بہتری کی توقع ہے۔"))
+
+    def test_improves_this_evening(self):
+        result = note_for("unhealthy", [80, 80, 80, 20] + [20] * 20)           # hour 3 = 18:00 local today
+        self.assertTrue(result["forecast_note"].startswith("Expected to improve by this evening."))
+        self.assertTrue(result["urdu"]["forecast_note"].startswith("آج شام تک بہتری کی توقع ہے۔"))
+
+    def test_not_improving_and_no_clean_window(self):
+        result = note_for("unhealthy", [80] * 24)
+        self.assertEqual(result["forecast_note"],
+                         "Not expected to improve in the next 24 hours. "
+                         "Even the cleanest hours in the next 24 hours stay Unhealthy; limit time outdoors.")
+        self.assertEqual(result["urdu"]["forecast_note"],
+                         "اگلے 24 گھنٹوں میں بہتری کی توقع نہیں۔ "
+                         "اگلے 24 گھنٹوں کے صاف ترین اوقات بھی غیر صحت بخش رہیں گے؛ باہر کم وقت گزاریں۔")
+
+    def test_best_time_to_go_outside(self):
+        values = [30] * 15 + [12, 12] + [30] * 7                              # hours 15-16 = 06:00-08:00 local tomorrow
+        result = note_for("moderate", values)
+        self.assertEqual(result["forecast_note"], "Best time to go outside: tomorrow 06:00–08:00.")
+        self.assertEqual(result["urdu"]["forecast_note"], "باہر جانے کا بہترین وقت: کل 06:00–08:00۔")
+
+    def test_best_time_later_today_has_no_day(self):
+        values = [30, 30, 30, 12, 12] + [30] * 19                             # hours 3-4 = 18:00-20:00 local today
+        result = note_for("moderate", values)
+        self.assertEqual(result["forecast_note"], "Best time to go outside: 18:00–20:00.")
+        self.assertEqual(result["urdu"]["forecast_note"], "باہر جانے کا بہترین وقت: 18:00–20:00۔")
+
+    def test_wording_at_every_level_in_english_and_urdu(self):
+        # Each level gets a forecast that worsens (or, at the top, improves) so the note has to speak
+        cases = {
+            "good": ([5] + [15] * 23, advisory.SLIGHTLY_WORSE_NOTE),
+            "moderate": ([30] + [80] * 23, advisory.WORSEN_NOTE),
+            "unhealthy_sensitive": ([45] + [80] * 23, advisory.WORSEN_NOTE),
+            "unhealthy": ([80] + [150] * 23, advisory.WORSEN_NOTE),
+            "very_unhealthy": ([150] + [260] * 23, advisory.WORSEN_NOTE),
+            "hazardous": ([300] * 3 + [100] * 21, advisory.IMPROVE_NOTE),
+        }
+        self.assertEqual(list(cases), LEVELS)
+        for level, (values, template) in cases.items():
+            with self.subTest(level=level):
+                result = note_for(level, values)
+                english, urdu = result["forecast_note"], result["urdu"]["forecast_note"]
+                self.assertTrue(english.startswith(template[0].split("{")[0]), english)
+                self.assertTrue(urdu.startswith(template[1].split("{")[0]), urdu)
+                self.assertIn(english, result["actions"])                     # also listed for the dashboard
+                self.assertIn(urdu, result["urdu"]["actions"])
+                self.assertIn(advisory.DISCLAIMER_UR, result["urdu"]["actions"])
+                self.assertIn("not medical advice", result["disclaimer"])
+
+    def test_forecast_never_changes_the_advice_or_its_severity(self):
+        for level in LEVELS:
+            with self.subTest(level=level):
+                plain = advisory.build_advisory(make_analysis(level))
+                with_forecast = note_for(level, [300] * 24)
+                self.assertEqual(plain["headline"], with_forecast["headline"])
+                self.assertEqual(plain["audiences"], with_forecast["audiences"])
+                self.assertEqual(plain["disclaimer"], with_forecast["disclaimer"])
+
+    def test_note_comes_after_the_time_note(self):
+        result = advisory.build_advisory(make_analysis("unhealthy", trend="rising"), make_forecast([80] * 24))
+        self.assertEqual(result["actions"][:2], [result["time_note"], result["forecast_note"]])
+
+    def test_no_forecast_no_note(self):
+        for missing in (None, {}, {"next_6h": None}):
+            with self.subTest(forecast=missing):
+                result = advisory.build_advisory(make_analysis("unhealthy"), missing)
+                self.assertEqual((result["forecast_note"], result["urdu"]["forecast_note"]), ("", ""))
+
+    def test_unknown_level_gets_no_forecast_note(self):
+        result = advisory.build_advisory({"level": "unknown"}, make_forecast([300] * 24))
+        self.assertEqual(result["forecast_note"], "")
+
+    def test_malformed_forecast_never_raises(self):
+        for bad in ({"next_6h": {"peak_level": "moderate"}, "generated_at": "x"}, {"next_6h": "nonsense"},
+                    {"next_6h": {"peak_level": "unhealthy", "peak_time": "not a time"}}):
+            with self.subTest(forecast=bad):
+                result = advisory.build_advisory(make_analysis("moderate"), bad)
+                self.assertEqual(set(result), set(Advisory.__annotations__))
+
+    def test_pipeline_passes_the_forecast_through(self):
+        readings = monitor.mock_readings("Lahore", "unhealthy_sensitive")
+        state = {
+            "readings": readings,
+            "forecast": forecast_agent.mock_forecast("Lahore", readings[-1]["pm25"], scenario="unhealthy_sensitive"),
+        }
+        state.update(analysis.run(state))
+        result = advisory.run(state)["advisory"]
+        self.assertTrue(result["forecast_note"].startswith("Air quality is forecast to worsen over the next 6 hours"))
+
+
 if __name__ == "__main__":
     unittest.main()

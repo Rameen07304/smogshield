@@ -1,12 +1,14 @@
 """Advisory agent: turns the analysis into public guidance for each audience.
 
-Reads: state["analysis"]
+Reads: state["analysis"], state["forecast"]
 Owns:  state["advisory"]
 A fixed template table (level x audience) in the style of US EPA AQI messaging, so the
-advice is always correct and demo-safe. Trend and spike add a short time note. Never raises.
+advice is always correct and demo-safe. Trend and spike add a short time note; the forecast
+adds a forecast note (worse soon / better by when / best time to go out). Never raises.
 Wording rules: conservative, no specific medical claims, doses or treatments.
 """
 import logging
+from datetime import datetime, timedelta, timezone
 
 from schemas import Advisory, SmogState
 
@@ -197,13 +199,55 @@ FALLING_NOTE = (
 )
 
 
+# ---------- forecast wording (deterministic templates; times in the cities' local time) ----------
+
+LOCAL_UTC_OFFSET = timedelta(hours=5)   # every monitored city is in Pakistan Standard Time (no DST)
+LEVEL_ORDER = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
+LEVEL_NAMES = {   # (English, Urdu) for use inside a sentence
+    "good": ("Good", "اچھا"),
+    "moderate": ("Moderate", "درمیانہ"),
+    "unhealthy_sensitive": ("Unhealthy for sensitive groups", "حساس افراد کے لیے غیر صحت بخش"),
+    "unhealthy": ("Unhealthy", "غیر صحت بخش"),
+    "very_unhealthy": ("Very unhealthy", "انتہائی غیر صحت بخش"),
+    "hazardous": ("Hazardous", "خطرناک"),
+}
+WORSEN_NOTE = (
+    "Air quality is forecast to worsen over the next 6 hours, reaching {level} around {time}; plan indoor activities.",
+    "اگلے 6 گھنٹوں میں ہوا کا معیار خراب ہونے کی پیش گوئی ہے، تقریباً {time} تک {level}؛ گھر کے اندر سرگرمیوں کی منصوبہ بندی کریں۔",
+)
+SLIGHTLY_WORSE_NOTE = (
+    "Air quality is forecast to get a little worse over the next 6 hours; keep an eye on updates.",
+    "اگلے 6 گھنٹوں میں ہوا کا معیار تھوڑا خراب ہونے کی پیش گوئی ہے؛ تازہ معلومات پر نظر رکھیں۔",
+)
+IMPROVE_NOTE = ("Expected to improve by {when}.", "{when} تک بہتری کی توقع ہے۔")
+NO_IMPROVEMENT_NOTE = ("Not expected to improve in the next 24 hours.", "اگلے 24 گھنٹوں میں بہتری کی توقع نہیں۔")
+BEST_TIME_NOTE = ("Best time to go outside: {day}{start}–{end}.", "باہر جانے کا بہترین وقت: {day}{start}–{end}۔")
+TOMORROW = ("tomorrow ", "کل ")   # prefix when the best window is on the next local day
+NO_CLEAN_WINDOW_NOTE = (
+    "Even the cleanest hours in the next 24 hours stay {level}; limit time outdoors.",
+    "اگلے 24 گھنٹوں کے صاف ترین اوقات بھی {level} رہیں گے؛ باہر کم وقت گزاریں۔",
+)
+# (English, Urdu) for "by <when>", by local hour, for today and for tomorrow
+PARTS_OF_DAY = [  # (first hour, today, tomorrow)
+    (0, ("tonight", "آج رات"), ("overnight", "رات گئے")),
+    (5, ("this morning", "آج صبح"), ("tomorrow morning", "کل صبح")),
+    (12, ("this afternoon", "آج دوپہر"), ("tomorrow afternoon", "کل دوپہر")),
+    (17, ("this evening", "آج شام"), ("tomorrow evening", "کل شام")),
+    (21, ("tonight", "آج رات"), ("tomorrow night", "کل رات")),
+]
+
+
 def run(state: SmogState) -> dict:
-    """Graph node: advice for the current analysis."""
-    return {"advisory": build_advisory(state.get("analysis"))}
+    """Graph node: advice for the current analysis, with forecast context when there is one."""
+    return {"advisory": build_advisory(state.get("analysis"), state.get("forecast"))}
 
 
-def build_advisory(analysis: dict | None) -> Advisory:
-    """Advice for an analysis dict. Unknown or missing input gives cautious advice."""
+def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advisory:
+    """Advice for an analysis dict. Unknown or missing input gives cautious advice.
+
+    The forecast only adds a note (forecast_note, also listed after the time note); it never
+    changes the headline, the per-audience advice or their severity.
+    """
     analysis = analysis if isinstance(analysis, dict) else {}
     level = analysis.get("level")
     known = level in GUIDANCE
@@ -214,20 +258,102 @@ def build_advisory(analysis: dict | None) -> Advisory:
 
     template, urdu = GUIDANCE[level], URDU[level]
     note, note_ur = _time_note(analysis, level) if known else UNAVAILABLE_NOTE
-    lead = [note] if note else []          # time context goes first so it's seen
-    lead_ur = [note_ur] if note_ur else []
+    try:
+        f_note, f_note_ur = forecast_note(level if known else "unknown", forecast)
+    except Exception:  # a malformed forecast must never cost the advice
+        log.exception("Could not word the forecast; leaving the forecast note out")
+        f_note, f_note_ur = "", ""
+    lead = [n for n in (note, f_note) if n]       # time context first, then the forecast, so both are seen
+    lead_ur = [n for n in (note_ur, f_note_ur) if n]
 
     return {
         "headline": template["headline"] if known else FALLBACK_HEADLINE,
         "actions": lead + template["general"],
         "audiences": {a: list(template[a]) for a in ("general", "children", "elderly", "respiratory_heart")},
         "time_note": note,
+        "forecast_note": f_note,
         "disclaimer": DISCLAIMER,
         "urdu": {
             "headline": urdu["headline"] if known else FALLBACK_HEADLINE_UR,
             "actions": lead_ur + urdu["actions"] + [DISCLAIMER_UR],
+            "forecast_note": f_note_ur,
         },
     }
+
+
+def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:
+    """(English, Urdu) forecast sentence(s) for the current level; ("", "") when there is nothing to say."""
+    if level not in LEVEL_ORDER or not isinstance(forecast, dict) or not forecast.get("next_6h"):
+        return "", ""
+    rank = LEVEL_ORDER.index(level)
+    now = _parse_utc(forecast.get("generated_at")) or datetime.now(timezone.utc)
+    sentences: list[tuple[str, str]] = []
+
+    # 1. Getting worse within 6 hours, or (already poor air) when it gets better
+    six = forecast["next_6h"]
+    peak_rank = LEVEL_ORDER.index(six["peak_level"]) if six["peak_level"] in LEVEL_ORDER else rank
+    if peak_rank > rank:
+        if peak_rank >= LEVEL_ORDER.index("unhealthy_sensitive"):
+            name, name_ur = LEVEL_NAMES[six["peak_level"]]
+            # when that level is first reached (the time to plan around), not when it peaks
+            onset = next((p["time"] for p in forecast.get("hourly") or []
+                          if p.get("hours_ahead", 99) < six.get("hours", 6) and p.get("level") in LEVEL_ORDER
+                          and LEVEL_ORDER.index(p["level"]) >= peak_rank), six["peak_time"])
+            at = _local_clock(onset)
+            sentences.append((WORSEN_NOTE[0].format(level=name, time=at), WORSEN_NOTE[1].format(level=name_ur, time=at)))
+        else:
+            sentences.append(SLIGHTLY_WORSE_NOTE)
+    elif rank >= LEVEL_ORDER.index("unhealthy_sensitive"):
+        better = next((p for p in forecast.get("hourly") or []
+                       if p.get("hours_ahead", 0) >= 1 and p.get("level") in LEVEL_ORDER
+                       and LEVEL_ORDER.index(p["level"]) < rank), None)
+        if better:
+            when, when_ur = _when(better["time"], now)
+            sentences.append((IMPROVE_NOTE[0].format(when=when), IMPROVE_NOTE[1].format(when=when_ur)))
+        else:
+            sentences.append(NO_IMPROVEMENT_NOTE)
+
+    # 2. The best time to go out, once the air is not simply good
+    best = forecast.get("best_time")
+    if best and rank >= LEVEL_ORDER.index("moderate") and best.get("level") in LEVEL_ORDER:
+        if LEVEL_ORDER.index(best["level"]) >= LEVEL_ORDER.index("unhealthy"):
+            name, name_ur = LEVEL_NAMES[best["level"]]
+            sentences.append((NO_CLEAN_WINDOW_NOTE[0].format(level=name), NO_CLEAN_WINDOW_NOTE[1].format(level=name_ur)))
+        else:
+            start, end = _local_clock(best["start"]), _local_clock(best["end"])
+            local_now = now.astimezone(timezone.utc) + LOCAL_UTC_OFFSET
+            day, day_ur = TOMORROW if _local(best["start"]).date() > local_now.date() else ("", "")
+            sentences.append((BEST_TIME_NOTE[0].format(day=day, start=start, end=end),
+                              BEST_TIME_NOTE[1].format(day=day_ur, start=start, end=end)))
+
+    return " ".join(s[0] for s in sentences), " ".join(s[1] for s in sentences)
+
+
+def _parse_utc(value) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _local(value: str) -> datetime:
+    return datetime.fromisoformat(value).astimezone(timezone.utc) + LOCAL_UTC_OFFSET
+
+
+def _local_clock(value: str) -> str:
+    """ISO UTC time -> "HH:MM" in local time."""
+    return _local(value).strftime("%H:%M")
+
+
+def _when(value: str, now: datetime) -> tuple[str, str]:
+    """(English, Urdu) part of the day for a future time: "this evening", "tomorrow morning", or a date."""
+    local, local_now = _local(value), now.astimezone(timezone.utc) + LOCAL_UTC_OFFSET
+    days_ahead = (local.date() - local_now.date()).days
+    if days_ahead > 1:
+        return local.strftime("%d %b, %H:%M"), local.strftime("%d/%m، %H:%M")
+    part = [p for p in PARTS_OF_DAY if local.hour >= p[0]][-1]
+    return part[1] if days_ahead == 0 else part[2]
 
 
 def _time_note(analysis: dict, level: str) -> tuple[str, str]:
