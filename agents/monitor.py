@@ -47,6 +47,14 @@ DEFAULT_CITY = "Lahore"
 DEFAULT_CACHE_MINUTES = 10
 MICROGRAMS = {"μg/m³", "µg/m³"}  # Open-Meteo uses Greek mu, our docs use the micro sign
 
+# Last resort if data/mock_readings.json is missing or broken: one small, unremarkable series,
+# so the pipeline still runs (the dashboard labels it as simulated like any mock data).
+BUILTIN_MOCK: dict = {
+    "default_scenario": "builtin",
+    "city_defaults": {},
+    "scenarios": {"builtin": {"pm25": [20, 22, 24, 23, 21, 22], "pm10": [40, 44, 48, 46, 42, 44]}},
+}
+
 # City -> (latitude, longitude) of the city centre
 CITIES: dict[str, tuple[float, float]] = {
     "Lahore": (31.55, 74.34),
@@ -106,9 +114,14 @@ def city_coordinates(city: str) -> tuple[float, float]:
     return CITIES[name]
 
 
+def mock_scenarios() -> list[str]:
+    """Names of the available mock scenarios (for the dashboard's demo control)."""
+    return list(_load_mock_data()["scenarios"])
+
+
 def mock_readings(city: str = DEFAULT_CITY, scenario: str | None = None, window: int = WINDOW) -> list[Reading]:
     """The last `window` mock readings for a scenario, oldest first, sliding forward with the clock."""
-    data = json.loads(MOCK_FILE.read_text(encoding="utf-8"))
+    data = _load_mock_data()
     name = _pick_scenario(data, city, scenario)
     series = data["scenarios"][name]
     now_index = int(time.time() // MOCK_STEP_SECONDS)
@@ -128,6 +141,33 @@ def mock_readings(city: str = DEFAULT_CITY, scenario: str | None = None, window:
 
 
 # ---------- internals ----------
+
+def _load_mock_data() -> dict:
+    """data/mock_readings.json, checked. Missing, corrupt or malformed -> BUILTIN_MOCK (never raises)."""
+    try:
+        data = json.loads(MOCK_FILE.read_text(encoding="utf-8"))
+        _check_mock_data(data)
+        return data
+    except (OSError, ValueError, TypeError, AttributeError) as e:
+        log.warning("Mock data file %s is unusable (%s), using a built-in reading", MOCK_FILE, e)
+        return BUILTIN_MOCK
+
+
+def _check_mock_data(data: dict) -> None:
+    """Raises ValueError unless the mock file has the shape mock_readings() relies on."""
+    scenarios = data["scenarios"] if isinstance(data, dict) and isinstance(data.get("scenarios"), dict) else None
+    if not scenarios:
+        raise ValueError("no scenarios")
+    for name, series in scenarios.items():
+        pm25, pm10 = series.get("pm25"), series.get("pm10")
+        if not isinstance(pm25, list) or not pm25 or not isinstance(pm10, list) or len(pm10) != len(pm25):
+            raise ValueError(f"scenario {name!r} needs equal, non-empty pm25 and pm10 lists")
+    if data.get("default_scenario") not in scenarios:
+        raise ValueError("default_scenario is not one of the scenarios")
+    if not isinstance(data.get("city_defaults", {}), dict):
+        raise ValueError("city_defaults must be an object")
+    data.setdefault("city_defaults", {})
+
 
 def _fetch_live_cached(city: str, lat: float | None = None, lon: float | None = None) -> list[Reading]:
     """_fetch_live, but reuses a recent success for LIVE_CACHE_MINUTES. Failures are not cached."""

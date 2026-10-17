@@ -2,8 +2,10 @@
 
 Run from the smogshield folder:  python -m unittest discover tests -v
 """
+import json
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -89,6 +91,52 @@ class MockPathTest(MonitorTestCase):
         self.assertEqual(stamps, sorted(stamps))
         for r in readings:
             assert_valid_reading(self, r)
+
+
+class BrokenMockFileTest(MonitorTestCase):
+    """data/mock_readings.json missing or corrupt -> a built-in reading, never an exception."""
+
+    def readings_with_file(self, content: str | None) -> list[dict]:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "mock_readings.json"
+            if content is not None:
+                path.write_text(content, encoding="utf-8")
+            with mock.patch.object(monitor, "MOCK_FILE", path), self.assertLogs(monitor.log, "WARNING") as logs:
+                readings = monitor.mock_readings("Lahore", "hazardous")
+                scenarios = monitor.mock_scenarios()
+        self.assertTrue(any("built-in" in line for line in logs.output))
+        self.assertEqual(scenarios, ["builtin"])
+        return readings
+
+    def test_missing_corrupt_or_malformed_file(self):
+        cases = {
+            "missing": None,
+            "not json": "{oops",
+            "empty object": "{}",
+            "wrong type": "[1, 2, 3]",
+            "uneven lists": '{"default_scenario": "a", "scenarios": {"a": {"pm25": [1, 2], "pm10": [1]}}}',
+            "bad default": '{"default_scenario": "zzz", "scenarios": {"a": {"pm25": [1], "pm10": [1]}}}',
+        }
+        for name, content in cases.items():
+            with self.subTest(case=name):
+                readings = self.readings_with_file(content)
+                self.assertEqual(len(readings), monitor.WINDOW)
+                for r in readings:
+                    assert_valid_reading(self, r)
+                    self.assertEqual(r["source"], "mock")
+
+    def test_whole_pipeline_survives_offline_with_no_mock_file(self):
+        missing = Path(tempfile.gettempdir()) / "definitely-not-here" / "mock_readings.json"
+        with mock.patch.object(monitor, "MOCK_FILE", missing), \
+                mock.patch.object(monitor.requests, "get", side_effect=requests.ConnectionError("offline")):
+            state = monitor.run({})
+            reading = monitor.fetch_air_quality("Lahore")
+        self.assertEqual(len(state["readings"]), monitor.WINDOW)
+        self.assertEqual(analysis.run(state)["analysis"]["level"], "moderate")
+        self.assertEqual(reading["source"], "mock")
+
+    def test_real_file_is_valid(self):
+        monitor._check_mock_data(json.loads(monitor.MOCK_FILE.read_text(encoding="utf-8")))  # must not raise
 
 
 class LivePathTest(MonitorTestCase):

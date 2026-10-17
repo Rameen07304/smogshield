@@ -3,7 +3,6 @@
 Start: uvicorn app:app --reload
 Then open http://localhost:8000
 """
-import json
 import logging
 import os
 from pathlib import Path
@@ -61,4 +60,4 @@ def set_scenario(name: str):
 
 
 def _mock_scenarios() -> list[str]:
-    return list(json.loads(monitor.MOCK_FILE.read_text(encoding="utf-8"))["scenarios"])
+    return monitor.mock_scenarios()  # never raises: falls back to a built-in scenario
