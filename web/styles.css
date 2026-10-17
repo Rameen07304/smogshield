@@ -517,6 +517,27 @@ select {
 .flow__io dd { margin: 2px 0 0; font-size: .95rem; line-height: 1.35; }
 .urdu-inline { font-family: "Noto Nastaliq Urdu", serif; font-weight: 400; line-height: 1; }
 
+/* Info boxes: two side by side on a projector, stacked on narrow screens */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); gap: var(--gap); align-items: start; }
+.fact-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.fact-list li { position: relative; padding-inline-start: 2.1em; font-size: 1.05rem; line-height: 1.45; color: var(--muted); }
+.fact-list li::before {
+  content: "✓";
+  position: absolute;
+  inset-inline-start: 0;
+  top: .05em;
+  width: 1.5em;
+  height: 1.5em;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--surface);
+  font-size: .85em;
+  font-weight: 900;
+}
+.fact-list strong { display: block; color: var(--text); font-size: 1.12rem; }
+
 /* Live example strip: same 4-column grid as the diagram, so each cell sits under its agent */
 .how__h2--inline { margin: 0; }
 .live__updated { align-self: center; color: var(--muted); font-size: .9rem; }
