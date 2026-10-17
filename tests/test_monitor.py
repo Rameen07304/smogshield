@@ -42,11 +42,13 @@ def assert_valid_reading(test: unittest.TestCase, reading: dict) -> None:
 class MonitorTestCase(unittest.TestCase):
     def setUp(self):
         # Start every test with no mock env vars, whatever the developer's shell has
-        clean_env = {k: v for k, v in os.environ.items() if k not in {"USE_MOCK", "MOCK_SCENARIO", "MONITOR_CITY"}}
+        drop = {"USE_MOCK", "MOCK_SCENARIO", "MONITOR_CITY", "LIVE_CACHE_MINUTES"}
+        clean_env = {k: v for k, v in os.environ.items() if k not in drop}
         env_patch = mock.patch.dict(os.environ, clean_env, clear=True)
         env_patch.start()
         self.addCleanup(env_patch.stop)
         monitor._history.clear()
+        monitor._live_cache.clear()
 
 
 class MockPathTest(MonitorTestCase):
@@ -125,6 +127,56 @@ class FallbackTest(MonitorTestCase):
             reading = monitor.fetch_air_quality("Atlantis")
         self.assertEqual(reading["source"], "mock")
         self.assertEqual(reading["location"], "Atlantis")
+
+
+class CacheTest(MonitorTestCase):
+    def test_polling_reuses_the_live_reading(self):
+        with mock.patch.object(monitor.requests, "get", return_value=fake_response(LAHORE_RESPONSE)) as get:
+            first = monitor.fetch_air_quality("Lahore")
+            for _ in range(10):  # ten dashboard polls
+                monitor.run({})
+            again = monitor.fetch_air_quality("Lahore")
+        self.assertEqual(get.call_count, 1)
+        self.assertEqual(first, again)
+
+    def test_cache_expires(self):
+        with mock.patch.object(monitor.requests, "get", return_value=fake_response(LAHORE_RESPONSE)) as get, \
+                mock.patch.object(monitor.time, "monotonic", return_value=1000.0) as clock:
+            monitor.fetch_air_quality("Lahore")
+            clock.return_value = 1000.0 + 9 * 60
+            monitor.fetch_air_quality("Lahore")
+            self.assertEqual(get.call_count, 1)
+            clock.return_value = 1000.0 + 10 * 60
+            monitor.fetch_air_quality("Lahore")
+            self.assertEqual(get.call_count, 2)
+
+    def test_zero_turns_cache_off(self):
+        os.environ["LIVE_CACHE_MINUTES"] = "0"
+        with mock.patch.object(monitor.requests, "get", return_value=fake_response(LAHORE_RESPONSE)) as get:
+            monitor.fetch_air_quality("Lahore")
+            monitor.fetch_air_quality("Lahore")
+        self.assertEqual(get.call_count, 2)
+
+    def test_cities_are_cached_separately(self):
+        with mock.patch.object(monitor.requests, "get", return_value=fake_response(LAHORE_RESPONSE)) as get:
+            monitor.fetch_air_quality("Lahore")
+            monitor.fetch_air_quality("Karachi")
+        self.assertEqual(get.call_count, 2)
+
+    def test_failures_are_not_cached(self):
+        with mock.patch.object(monitor.requests, "get", side_effect=requests.ConnectionError("offline")):
+            self.assertEqual(monitor.fetch_air_quality("Lahore")["source"], "mock")
+        with mock.patch.object(monitor.requests, "get", return_value=fake_response(LAHORE_RESPONSE)):
+            self.assertEqual(monitor.fetch_air_quality("Lahore")["source"], "live")
+
+    def test_cached_reading_cannot_be_changed_by_callers(self):
+        with mock.patch.object(monitor.requests, "get", return_value=fake_response(LAHORE_RESPONSE)):
+            monitor.fetch_air_quality("Lahore")["pm25"] = -1
+            self.assertEqual(monitor.fetch_air_quality("Lahore")["pm25"], 23.5)
+
+    def test_bad_env_value_uses_default(self):
+        os.environ["LIVE_CACHE_MINUTES"] = "soon"
+        self.assertEqual(monitor._cache_seconds(), monitor.DEFAULT_CACHE_MINUTES * 60)
 
 
 class GraphNodeTest(MonitorTestCase):

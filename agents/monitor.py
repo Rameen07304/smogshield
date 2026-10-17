@@ -14,6 +14,8 @@ Env vars:
     USE_MOCK       true -> skip the network, use mock data
     MOCK_SCENARIO  good | moderate | unhealthy_sensitive | unhealthy |
                    very_unhealthy | hazardous | spike
+    LIVE_CACHE_MINUTES  reuse a city's live reading this long (default 10, 0 = off).
+                   Open-Meteo updates hourly, so the dashboard's 5 s polling doesn't need more.
 
 Try it: python agents/monitor.py [City]
 """
@@ -42,6 +44,7 @@ MOCK_FILE = Path(__file__).parent.parent / "data" / "mock_readings.json"
 MOCK_STEP_SECONDS = 5   # mock "hour" advances every N real seconds; lower = faster demo
 WINDOW = 6              # how many recent readings to hand to analysis
 DEFAULT_CITY = "Lahore"
+DEFAULT_CACHE_MINUTES = 10
 MICROGRAMS = {"μg/m³", "µg/m³"}  # Open-Meteo uses Greek mu, our docs use the micro sign
 
 # City -> (latitude, longitude) of the city centre
@@ -60,6 +63,8 @@ CITIES: dict[str, tuple[float, float]] = {
 
 # ponytail: in-memory history per city, lost on restart. Use a DB if you need real history.
 _history: dict[str, deque[Reading]] = {}
+# (city, lat, lon) -> (time.monotonic() when fetched, reading). Only successes are cached.
+_live_cache: dict[tuple[str, float, float], tuple[float, Reading]] = {}
 
 
 # ---------- graph entry point ----------
@@ -70,7 +75,7 @@ def run(state: SmogState) -> dict:
     if _mock_requested():
         return {"readings": mock_readings(city)}
     try:
-        reading = _fetch_live(city)
+        reading = _fetch_live_cached(city)
     except Exception as e:  # network/API/data errors -> keep the demo alive
         log.warning("Live data failed for %s, using mock: %s", city, e)
         return {"readings": mock_readings(city)}
@@ -97,7 +102,7 @@ def fetch_air_quality(
     if scenario or _mock_requested():
         return mock_readings(city, scenario)[-1]
     try:
-        return _fetch_live(city, lat, lon)
+        return _fetch_live_cached(city, lat, lon)
     except Exception as e:
         log.warning("Live data failed for %s, using mock: %s", city, e)
         return mock_readings(city, scenario)[-1]
@@ -133,6 +138,33 @@ def mock_readings(city: str = DEFAULT_CITY, scenario: str | None = None, window:
 
 
 # ---------- internals ----------
+
+def _fetch_live_cached(city: str, lat: float | None = None, lon: float | None = None) -> Reading:
+    """_fetch_live, but reuses a recent success for LIVE_CACHE_MINUTES. Failures are not cached."""
+    if lat is None or lon is None:
+        lat, lon = city_coordinates(city)
+    key = (city, round(lat, 2), round(lon, 2))
+    ttl = _cache_seconds()
+    now = time.monotonic()
+    cached = _live_cache.get(key)
+    if cached and ttl > 0 and now - cached[0] < ttl:
+        return dict(cached[1])  # a copy, so callers can't change the cached one
+    reading = _fetch_live(city, lat, lon)
+    _live_cache[key] = (now, reading)
+    return dict(reading)
+
+
+def _cache_seconds() -> float:
+    raw = os.getenv("LIVE_CACHE_MINUTES", "").strip()
+    try:
+        minutes = float(raw) if raw else DEFAULT_CACHE_MINUTES
+        if minutes < 0:
+            raise ValueError
+    except ValueError:
+        log.warning("Bad LIVE_CACHE_MINUTES %r, using %d", raw, DEFAULT_CACHE_MINUTES)
+        minutes = DEFAULT_CACHE_MINUTES
+    return minutes * 60
+
 
 def _fetch_live(city: str, lat: float | None = None, lon: float | None = None) -> Reading:
     """Calls Open-Meteo and returns a cleaned Reading. Raises on any problem."""
