@@ -234,10 +234,60 @@ select {
   .scale__marker { transition: left .6s; }
 }
 
+/* ---------- panels (chart, advisory, alert feed) ----------
+   Projector: chart + advisory on the left, alert feed down the right. Phones: one column. */
+.panels {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-areas:
+    "chart    feed"
+    "advisory feed";
+  align-items: start;
+}
+.panel--chart { grid-area: chart; }
+.panel--advisory { grid-area: advisory; }
+.panel--feed { grid-area: feed; }
+
+.panel { padding: clamp(16px, 2vw, 28px); }
+.panel__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 12px; }
+.panel h2 { margin: 0; font-size: 1.3rem; }
+.empty { margin: 0; padding: 1.5em 0; color: var(--muted); font-size: 1.1rem; text-align: center; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35em;
+  padding: .3em .8em;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 800;
+  font-size: .95rem;
+}
+.chip[data-trend="rising"] { border-color: #c4001d; }
+.chip[data-trend="falling"] { border-color: #0b6b2e; }
+.chip--spike { background: #ffd400; color: #000; border-color: #000; }
+
+/* ---------- chart ---------- */
+.chart { margin: 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 14px; font-family: inherit; }
+.chart .chart__value { fill: var(--text); font-size: 15px; font-weight: 800; }
+.chart .chart__band-label { font-size: 12px; font-weight: 700; opacity: .85; }
+.chart .chart__spike-label { fill: #000; font-size: 13px; font-weight: 900; }
+.chart__line { fill: none; stroke: var(--text); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+.chart__point { fill: var(--surface); stroke: var(--text); stroke-width: 3; }
+.chart__summary { margin-top: 8px; color: var(--muted); font-size: .95rem; }
+
 /* ---------- footer ---------- */
 .footer { max-width: 1600px; margin: 0 auto; padding: 0 var(--gap) var(--gap); color: var(--muted); font-size: .85rem; }
 
 /* ---------- small screens ---------- */
+@media (max-width: 1100px) {
+  .panels { grid-template-columns: minmax(0, 1fr); grid-template-areas: "chart" "advisory" "feed"; }
+}
 @media (max-width: 760px) {
   .topbar__controls, .field { width: 100%; }
   .topbar__controls .btn { width: 100%; }

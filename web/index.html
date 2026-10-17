@@ -69,6 +69,24 @@
         <p id="hero-facts" class="hero__facts"></p>
       </div>
     </section>
+
+    <div class="panels">
+      <!-- 4. PM2.5 trend -->
+      <section class="card panel panel--chart" aria-labelledby="chart-title">
+        <div class="panel__head">
+          <h2 id="chart-title">PM2.5 over the recent window</h2>
+          <div class="chips">
+            <span id="trend-chip" class="chip" hidden></span>
+            <span id="spike-chip" class="chip chip--spike" hidden>⚡ Sudden spike</span>
+          </div>
+        </div>
+        <figure class="chart">
+          <svg id="chart" role="img" aria-labelledby="chart-title chart-summary"></svg>
+          <p id="chart-empty" class="empty">Loading the recent readings…</p>
+          <figcaption id="chart-summary" class="chart__summary"></figcaption>
+        </figure>
+      </section>
+    </div>
   </main>
 
   <footer class="footer">
