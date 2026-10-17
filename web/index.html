@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>SmogShield | Live air quality</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%23b00020'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/app.js" defer></script>
 </head>
@@ -34,9 +35,10 @@
     <p id="control-status" class="topbar__status" role="status"></p>
   </header>
 
+  <noscript><p class="banner banner--offline">SmogShield needs JavaScript to show live air quality.</p></noscript>
   <div id="simulated" class="banner banner--simulated" role="status" hidden>
     SIMULATED DATA
-    <small>Demo scenario: these are not real air quality readings.</small>
+    <small id="simulated-why">Demo scenario: these are not real air quality readings.</small>
   </div>
   <div id="offline" class="banner banner--offline" role="status" hidden></div>
 
@@ -45,7 +47,7 @@
     <section id="hero" class="card hero" data-level="loading" aria-labelledby="hero-label">
       <div class="hero__level">
         <p id="hero-label" class="hero__label">AQI (hourly PM2.5 estimate)</p>
-        <p id="hero-aqi" class="hero__aqi">--</p>
+        <p id="hero-aqi" class="hero__aqi">—</p>
         <p id="hero-category" class="hero__category">Loading…</p>
       </div>
       <div class="hero__body">
@@ -109,7 +111,7 @@
           </div>
         </div>
         <figure class="chart">
-          <svg id="chart" role="img" aria-labelledby="chart-title chart-summary"></svg>
+          <svg id="chart" role="img" aria-labelledby="chart-title chart-summary" hidden></svg>
           <p id="chart-empty" class="empty">Loading the recent readings…</p>
           <figcaption id="chart-summary" class="chart__summary"></figcaption>
         </figure>
@@ -140,19 +142,19 @@
         <div class="audiences">
           <article class="audience" data-audience="general">
             <h3>General public</h3>
-            <ul id="aud-general"></ul>
+            <ul id="aud-general"><li>Loading…</li></ul>
           </article>
           <article class="audience" data-audience="children">
             <h3>Children &amp; schools</h3>
-            <ul id="aud-children"></ul>
+            <ul id="aud-children"><li>Loading…</li></ul>
           </article>
           <article class="audience" data-audience="elderly">
             <h3>Elderly</h3>
-            <ul id="aud-elderly"></ul>
+            <ul id="aud-elderly"><li>Loading…</li></ul>
           </article>
           <article class="audience" data-audience="respiratory_heart">
             <h3>Heart &amp; lung conditions</h3>
-            <ul id="aud-respiratory_heart"></ul>
+            <ul id="aud-respiratory_heart"><li>Loading…</li></ul>
           </article>
         </div>
         <p id="advice-disclaimer" class="advice__disclaimer">General guidance, not medical advice.</p>

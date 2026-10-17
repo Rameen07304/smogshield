@@ -124,6 +124,7 @@ a { color: inherit; }
   .mode-badge[data-mode="live"]::before { animation: pulse 2s ease-in-out infinite; }
 }
 .mode-badge[data-mode="simulated"] { background: #ffd400; color: #000; border-color: #000; }
+.mode-badge[data-mode="offline"] { background: #b00020; color: #fff; border-color: transparent; }
 
 .field { display: grid; gap: 4px; }
 .field label { font-size: .8rem; font-weight: 700; color: var(--muted); }

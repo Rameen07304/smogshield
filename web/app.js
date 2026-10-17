@@ -58,7 +58,7 @@ function renderHero(s) {
   const latest = s.readings?.at(-1);
 
   $("hero").dataset.level = level;
-  $("hero-aqi").textContent = known && a.aqi != null ? a.aqi : "--";
+  $("hero-aqi").textContent = known && a.aqi != null ? a.aqi : "—";
   $("hero-category").textContent = LEVELS[level].label;
 
   const place = $("hero-place");
@@ -137,7 +137,7 @@ function renderChart(s) {
   }
   $("spike-chip").hidden = !(known && a.is_spike);
 
-  $("chart").hidden = !known;
+  $("chart").toggleAttribute("hidden", !known);  // <svg> has no .hidden property, so set the attribute
   $("chart-empty").hidden = known;
   if (!known) {
     $("chart-empty").textContent = "No valid readings to chart right now.";
@@ -413,7 +413,9 @@ function pipelineOutputs(s) {
 function renderPipeline(s) {
   const outputs = pipelineOutputs(s);
   for (const step of STEPS) $(`out-${step}`).textContent = outputs[step];
-  $("pipeline-run").textContent = `Last run ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · refreshes every ${POLL_MS / 1000} s`;
+  const at = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  $("pipeline-run").dataset.at = at;
+  $("pipeline-run").textContent = `Last run ${at} · refreshes every ${POLL_MS / 1000} s`;
 
   // Light the nodes up one after another, then leave them all "done"
   flowTimers.forEach(clearTimeout);
@@ -450,6 +452,11 @@ function renderMode(s) {
   badge.dataset.mode = simulated ? "simulated" : "live";
   badge.textContent = simulated ? "Simulated" : "Live";
   $("simulated").hidden = !simulated;
+  // Explain why: a chosen demo scenario, or live data failing and the backend falling back to mock
+  const liveChosen = controlsLoaded && $("scenario").value === "live";
+  $("simulated-why").textContent = liveChosen
+    ? "Live data is unavailable right now, so these are simulated readings, not real air quality."
+    : "Demo scenario: these are not real air quality readings.";
 }
 
 function render(s) {
@@ -463,11 +470,24 @@ function render(s) {
 function showOffline(error) {
   console.error(error);
   pipelineOffline();
+  $("mode-badge").dataset.mode = "offline";  // never claim LIVE while we can't reach the server
+  $("mode-badge").textContent = "Offline";
   const banner = $("offline");
   banner.hidden = false;
-  banner.textContent = lastGood
-    ? "Can't reach the SmogShield server. Showing the last data received; retrying…"
-    : "Can't reach the SmogShield server yet. Retrying…";
+  if (lastGood) {
+    // Keep every panel as it was: stale data is far more useful on stage than an empty screen
+    banner.textContent = `Can't reach the SmogShield server. Showing data from ${$("pipeline-run").dataset.at || "the last refresh"}; retrying…`;
+    return;
+  }
+  banner.textContent = "Can't reach the SmogShield server yet. Retrying every few seconds…";
+  // Nothing received yet: say so in each panel instead of "Loading…" forever
+  $("hero-category").textContent = "Not connected";
+  $("hero-place").textContent = "Waiting for the server";
+  $("hero-summary").textContent = "Start it with: uvicorn app:app";
+  $("chart-empty").textContent = "The chart appears once the server responds.";
+  $("advice-headline").textContent = "Advice appears once the server responds.";
+  for (const who of AUDIENCES) fillList(`aud-${who}`, [], "Waiting for the server…");
+  if (!feedLoaded) $("feed-empty").textContent = "Alerts appear once the server responds.";
 }
 
 // ---------- demo controls (city, scenario, emergency button) ----------
@@ -498,9 +518,14 @@ function setControlsBusy(busy) {
   for (const id of ["city", "scenario", "emergency"]) $(id).disabled = busy || !controlsLoaded;
 }
 
+let statusTimer = null;
 function setControlStatus(text, tone = "") {
   $("control-status").textContent = text;
   $("control-status").dataset.tone = tone;
+  clearTimeout(statusTimer);
+  if (text && tone !== "error" && !text.endsWith("…")) {
+    statusTimer = setTimeout(() => setControlStatus(""), 8000);  // confirmations fade; errors and "working…" stay
+  }
 }
 
 /** POSTs a control change, then refreshes everything right away */

@@ -53,7 +53,7 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 | `agents/alert.py` | Decides whether to alert, how loudly, and delivers it |
 | `graph.py` | LangGraph orchestrator + self-check |
 | `app.py` | FastAPI server: dashboard and API (below) |
-| `web/index.html` | Dashboard (plain HTML/JS, no build step) |
+| `web/` | Dashboard: `index.html`, `styles.css`, `app.js` (plain HTML/CSS/JS, no build step, no CDNs) and `fonts/` (Noto Nastaliq Urdu, SIL Open Font License) |
 | `data/mock_readings.json` | Demo scenarios |
 | `tests/` | Unit and end-to-end tests |
 | `var/` | Runtime data, created on first alert, gitignored: `var/alerts.json` holds the alert feed and alert memory. Delete it to start with an empty feed. |
@@ -67,6 +67,11 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 | `GET /api/alerts?limit=20` | The alert feed, newest first |
 | `GET /api/scenario` | The forced mock scenario (`live` = none) and the list of options |
 | `POST /api/scenario/{name}` | Demo control: force a scenario, or `live` to go back. Also clears the alert memory so the new scenario alerts right away. Lasts until the server restarts. |
+| `GET /api/city` | The monitored city and the list of known cities |
+| `POST /api/city/{name}` | Switch the monitored city (any case; unknown names give 404). Lasts until the server restarts. |
+| `GET /static/...` | Dashboard files from `web/` |
+
+Open the dashboard in Urdu with `http://localhost:8000/?lang=ur` (the language toggle is remembered per browser).
 
 ## Configuration
 
