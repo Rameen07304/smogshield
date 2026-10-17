@@ -242,6 +242,49 @@ select {
   .scale__marker { transition: left .6s; }
 }
 
+/* ---------- pipeline strip ---------- */
+.pipeline { padding: clamp(14px, 1.6vw, 22px) clamp(16px, 2vw, 28px); }
+.pipeline__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 34px;                       /* room for the connectors between nodes */
+}
+.node {
+  --node-accent: var(--border);
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 3px solid var(--node-accent);
+}
+/* Connector to the next node: a track that fills when data passes along it */
+.node:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  width: 34px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--focus) var(--flow, 0%), var(--border) var(--flow, 0%));
+}
+.node__name { font-weight: 900; font-size: 1.15rem; }
+.node__role { color: var(--muted); font-size: .85rem; line-height: 1.3; }
+.node__out { margin-top: 4px; font-weight: 750; font-size: .95rem; line-height: 1.3; }
+.node[data-state="active"] { --node-accent: var(--focus); background: var(--surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 25%, transparent); }
+.node[data-state="done"] { --node-accent: var(--focus); --flow: 100%; }
+.node[data-state="error"] { --node-accent: #c4001d; }
+@media (prefers-reduced-motion: no-preference) {
+  .node { transition: border-color .25s, box-shadow .25s, background-color .25s; }
+}
+.pipeline__run { margin: 10px 0 0; color: var(--muted); font-size: .85rem; }
+
 /* ---------- panels (chart, advisory, alert feed) ----------
    Projector: chart + advisory on the left, alert feed down the right. Phones: one column. */
 .panels {
@@ -428,6 +471,20 @@ select {
 /* ---------- small screens ---------- */
 @media (max-width: 1100px) {
   .panels { grid-template-columns: minmax(0, 1fr); grid-template-areas: "chart" "advisory" "feed"; }
+  .pipeline__steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .node::after { display: none; }   /* connectors only make sense in a single row */
+}
+@media (max-width: 560px) {
+  .pipeline__steps { grid-template-columns: 1fr; gap: 22px; }
+  .node:not(:last-child)::after {   /* vertical connector below each node */
+    display: block;
+    top: 100%;
+    left: 50%;
+    width: 6px;
+    height: 22px;
+    margin: 0 0 0 -3px;
+    background: linear-gradient(to bottom, var(--focus) var(--flow, 0%), var(--border) var(--flow, 0%));
+  }
 }
 @media (max-width: 760px) {
   .topbar__controls, .field { width: 100%; }

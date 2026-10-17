@@ -70,6 +70,34 @@
       </div>
     </section>
 
+    <!-- 3. Pipeline: the four agents, lighting up in order on every refresh -->
+    <section class="card pipeline" aria-labelledby="pipeline-title">
+      <h2 id="pipeline-title" class="visually-hidden">Agent pipeline</h2>
+      <ol class="pipeline__steps" role="list">
+        <li class="node" data-step="monitor">
+          <span class="node__name">Monitor</span>
+          <span class="node__role">Collects air readings</span>
+          <span class="node__out" id="out-monitor">Waiting…</span>
+        </li>
+        <li class="node" data-step="analysis">
+          <span class="node__name">Analysis</span>
+          <span class="node__role">Scores the air: AQI, trend, spikes</span>
+          <span class="node__out" id="out-analysis">Waiting…</span>
+        </li>
+        <li class="node" data-step="advisory">
+          <span class="node__name">Advisory</span>
+          <span class="node__role">Writes guidance for each group</span>
+          <span class="node__out" id="out-advisory">Waiting…</span>
+        </li>
+        <li class="node" data-step="alert">
+          <span class="node__name">Alert</span>
+          <span class="node__role">Decides whether to warn people</span>
+          <span class="node__out" id="out-alert">Waiting…</span>
+        </li>
+      </ol>
+      <p id="pipeline-run" class="pipeline__run">Waiting for the first run…</p>
+    </section>
+
     <div class="panels">
       <!-- 4. PM2.5 trend -->
       <section class="card panel panel--chart" aria-labelledby="chart-title">

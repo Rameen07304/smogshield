@@ -383,6 +383,59 @@ async function refreshFeed() {
   }
 }
 
+// ---------- pipeline strip ----------
+
+const STEPS = ["monitor", "analysis", "advisory", "alert"];
+const STEP_MS = 280;  // how long each node stays lit as data "flows" through
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+let flowTimers = [];
+
+function pipelineOutputs(s) {
+  const readings = s.readings || [];
+  const latest = readings.at(-1);
+  const a = s.analysis || {};
+  const level = levelOf(a);
+  const alerts = s.alerts || [];
+  return {
+    monitor: latest
+      ? `${readings.length} hourly ${readings.length === 1 ? "reading" : "readings"} · ${latest.source === "live" ? "live" : "simulated"}`
+      : "No readings",
+    analysis: level === "unknown"
+      ? "No valid readings"
+      : `AQI ${a.aqi} · ${TREND_WORDS[a.trend] ?? a.trend}${a.is_spike ? " · spike!" : ""}`,
+    advisory: s.advisory?.audiences ? "Advice for 4 groups + Urdu" : "Cautious default advice",
+    alert: alerts.length
+      ? `${alerts[0].severity.toUpperCase()} alert raised`
+      : level === "unknown" ? "No alert without data" : "No new alert",
+  };
+}
+
+function renderPipeline(s) {
+  const outputs = pipelineOutputs(s);
+  for (const step of STEPS) $(`out-${step}`).textContent = outputs[step];
+  $("pipeline-run").textContent = `Last run ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · refreshes every ${POLL_MS / 1000} s`;
+
+  // Light the nodes up one after another, then leave them all "done"
+  flowTimers.forEach(clearTimeout);
+  flowTimers = [];
+  const nodes = STEPS.map((step) => document.querySelector(`.node[data-step="${step}"]`));
+  if (reducedMotion.matches) {
+    nodes.forEach((node) => { node.dataset.state = "done"; });
+    return;
+  }
+  nodes.forEach((node) => { node.dataset.state = ""; });
+  nodes.forEach((node, i) => {
+    flowTimers.push(setTimeout(() => { node.dataset.state = "active"; }, i * STEP_MS));
+    flowTimers.push(setTimeout(() => { node.dataset.state = "done"; }, (i + 1) * STEP_MS));
+  });
+}
+
+function pipelineOffline() {
+  flowTimers.forEach(clearTimeout);
+  for (const node of document.querySelectorAll(".node")) node.dataset.state = "error";
+  $("pipeline-run").textContent = "Pipeline unreachable: waiting for the server…";
+}
+
 /** LIVE badge or the SIMULATED banner, decided by the data's own source field */
 function renderMode(s) {
   const latest = s.readings?.at(-1);
@@ -402,12 +455,14 @@ function renderMode(s) {
 function render(s) {
   renderMode(s);
   renderHero(s);
+  renderPipeline(s);
   renderChart(s);
   renderAdvisory(s);
 }
 
 function showOffline(error) {
   console.error(error);
+  pipelineOffline();
   const banner = $("offline");
   banner.hidden = false;
   banner.textContent = lastGood
