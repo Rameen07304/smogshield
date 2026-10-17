@@ -7,11 +7,11 @@
 const SCENARIO_LABELS = {
   live: "Live data",
   good: "Good",
-  moderate: "Moderate",
-  unhealthy_sensitive: "Unhealthy for sensitive groups",
-  unhealthy: "Unhealthy",
-  very_unhealthy: "Very unhealthy",
-  hazardous: "Hazardous",
+  moderate: "Satisfactory",
+  unhealthy_sensitive: "Moderate",
+  unhealthy: "Poor",
+  very_unhealthy: "Very Poor",
+  hazardous: "Severe",
   spike: "Spike: smog builds, then clears",
 };
 
@@ -67,8 +67,8 @@ function renderHero(s) {
 
 // US EPA PM2.5 band tops (µg/m³), used to shade and label the chart
 const PM25_BANDS = [
-  [9.0, "good"], [35.4, "moderate"], [55.4, "unhealthy_sensitive"],
-  [125.4, "unhealthy"], [225.4, "very_unhealthy"], [Infinity, "hazardous"],
+  [9.0, "good"], [35.4, "satisfactory"], [55.4, "moderate"],
+  [125.4, "poor"], [225.4, "very_poor"], [Infinity, "severe"],
 ];
 const SVG_NS = "http://www.w3.org/2000/svg";
 

@@ -49,9 +49,9 @@ if __name__ == "__main__":
 
         # AQI math against known EPA values
         assert analysis.pm25_to_aqi(9.0) == (50, "good")
-        assert analysis.pm25_to_aqi(35.5) == (101, "unhealthy_sensitive")
-        assert analysis.pm25_to_aqi(260)[1] == "hazardous"
-        assert analysis.pm25_to_aqi(999) == (500, "hazardous")
+        assert analysis.pm25_to_aqi(35.5) == (101, "poor")
+        assert analysis.pm25_to_aqi(260)[1] == "very_poor"
+        assert analysis.pm25_to_aqi(999) == (500, "severe")
 
         # full pipeline produces every key
         result = run_once()

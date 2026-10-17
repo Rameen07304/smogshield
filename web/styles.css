@@ -34,13 +34,13 @@
 
   /* Official US AQI colors, each with a text color that stays readable on it */
   --good: #00e400;                --good-text: #000;
-  --moderate: #ffff00;            --moderate-text: #000;
-  --unhealthy_sensitive: #ff7e00; --unhealthy_sensitive-text: #000;
-  --unhealthy: #ff0000;           --unhealthy-text: #000;
-  --very_unhealthy: #8f3f97;      --very_unhealthy-text: #fff;
-  --hazardous: #7e0023;           --hazardous-text: #fff;
+  --satisfactory: #ffff00;        --satisfactory-text: #000;
+  --moderate: #ff7e00;            --moderate-text: #000;
+  --poor: #ff0000;                --poor-text: #000;
+  --very_poor: #8f3f97;           --very_poor-text: #fff;
+  --severe: #7e0023;              --severe-text: #fff;
   --unknown: #5b6270;             --unknown-text: #fff;   /* no data: neutral grey, never green */
-  --loading: var(--surface-2);    --loading-text: var(--muted);
+  --loading: var(--surface-2);      --loading-text: var(--muted);
 
   --radius: 18px;
   --gap: clamp(14px, 1.6vw, 24px);
@@ -199,11 +199,11 @@ select {
   .hero__level { transition: background-color .6s, color .6s; }
 }
 .hero[data-level="good"] .hero__level                { --level-bg: var(--good);                --level-fg: var(--good-text); }
-.hero[data-level="moderate"] .hero__level            { --level-bg: var(--moderate);            --level-fg: var(--moderate-text); }
-.hero[data-level="unhealthy_sensitive"] .hero__level { --level-bg: var(--unhealthy_sensitive); --level-fg: var(--unhealthy_sensitive-text); }
-.hero[data-level="unhealthy"] .hero__level           { --level-bg: var(--unhealthy);           --level-fg: var(--unhealthy-text); }
-.hero[data-level="very_unhealthy"] .hero__level      { --level-bg: var(--very_unhealthy);      --level-fg: var(--very_unhealthy-text); }
-.hero[data-level="hazardous"] .hero__level           { --level-bg: var(--hazardous);           --level-fg: var(--hazardous-text); }
+.hero[data-level="satisfactory"] .hero__level            { --level-bg: var(--satisfactory);            --level-fg: var(--satisfactory-text); }
+.hero[data-level="moderate"] .hero__level { --level-bg: var(--moderate); --level-fg: var(--moderate-text); }
+.hero[data-level="poor"] .hero__level           { --level-bg: var(--poor);           --level-fg: var(--poor-text); }
+.hero[data-level="very_poor"] .hero__level      { --level-bg: var(--very_poor);      --level-fg: var(--very_poor-text); }
+.hero[data-level="severe"] .hero__level           { --level-bg: var(--severe);           --level-fg: var(--severe-text); }
 .hero[data-level="unknown"] .hero__level             { --level-bg: var(--unknown);             --level-fg: var(--unknown-text); }
 
 .hero__label { margin: 0; font-size: 1rem; font-weight: 600; opacity: .9; }
@@ -238,11 +238,11 @@ select {
 .scale__bar span:first-child { border-radius: 7px 0 0 7px; }
 .scale__bar span:nth-last-child(2) { border-radius: 0 7px 7px 0; }
 .scale__bar [data-level="good"] { --seg: var(--good); }
+.scale__bar [data-level="satisfactory"] { --seg: var(--satisfactory); }
 .scale__bar [data-level="moderate"] { --seg: var(--moderate); }
-.scale__bar [data-level="unhealthy_sensitive"] { --seg: var(--unhealthy_sensitive); }
-.scale__bar [data-level="unhealthy"] { --seg: var(--unhealthy); }
-.scale__bar [data-level="very_unhealthy"] { --seg: var(--very_unhealthy); }
-.scale__bar [data-level="hazardous"] { --seg: var(--hazardous); }
+.scale__bar [data-level="poor"] { --seg: var(--poor); }
+.scale__bar [data-level="very_poor"] { --seg: var(--very_poor); }
+.scale__bar [data-level="severe"] { --seg: var(--severe); }
 .scale__labels span { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .scale__marker {
   position: absolute;
@@ -611,10 +611,10 @@ select {
 }
 .level-pill[data-level="good"]                { --pill-bg: var(--good);                --pill-fg: var(--good-text); }
 .level-pill[data-level="moderate"]            { --pill-bg: var(--moderate);            --pill-fg: var(--moderate-text); }
-.level-pill[data-level="unhealthy_sensitive"] { --pill-bg: var(--unhealthy_sensitive); --pill-fg: var(--unhealthy_sensitive-text); }
-.level-pill[data-level="unhealthy"]           { --pill-bg: var(--unhealthy);           --pill-fg: var(--unhealthy-text); }
-.level-pill[data-level="very_unhealthy"]      { --pill-bg: var(--very_unhealthy);      --pill-fg: var(--very_unhealthy-text); }
-.level-pill[data-level="hazardous"]           { --pill-bg: var(--hazardous);           --pill-fg: var(--hazardous-text); }
+.level-pill[data-level="satisfactory"]       { --pill-bg: var(--satisfactory);       --pill-fg: var(--satisfactory-text); }
+.level-pill[data-level="poor"]               { --pill-bg: var(--poor);               --pill-fg: var(--poor-text); }
+.level-pill[data-level="very_poor"]          { --pill-bg: var(--very_poor);          --pill-fg: var(--very_poor-text); }
+.level-pill[data-level="severe"]             { --pill-bg: var(--severe);             --pill-fg: var(--severe-text); }
 .level-pill[data-level="unknown"]             { --pill-bg: var(--unknown);             --pill-fg: var(--unknown-text); }
 
 @media (max-width: 1100px) {
@@ -701,10 +701,10 @@ select {
 }
 .level-tag[data-level="good"]                { --tag-bg: var(--good);                --tag-fg: var(--good-text); }
 .level-tag[data-level="moderate"]            { --tag-bg: var(--moderate);            --tag-fg: var(--moderate-text); }
-.level-tag[data-level="unhealthy_sensitive"] { --tag-bg: var(--unhealthy_sensitive); --tag-fg: var(--unhealthy_sensitive-text); }
-.level-tag[data-level="unhealthy"]           { --tag-bg: var(--unhealthy);           --tag-fg: var(--unhealthy-text); }
-.level-tag[data-level="very_unhealthy"]      { --tag-bg: var(--very_unhealthy);      --tag-fg: var(--very_unhealthy-text); }
-.level-tag[data-level="hazardous"]           { --tag-bg: var(--hazardous);           --tag-fg: var(--hazardous-text); }
+.level-tag[data-level="satisfactory"]       { --tag-bg: var(--satisfactory);       --tag-fg: var(--satisfactory-text); }
+.level-tag[data-level="poor"]               { --tag-bg: var(--poor);               --tag-fg: var(--poor-text); }
+.level-tag[data-level="very_poor"]          { --tag-bg: var(--very_poor);          --tag-fg: var(--very_poor-text); }
+.level-tag[data-level="severe"]             { --tag-bg: var(--severe);             --tag-fg: var(--severe-text); }
 
 .delivery { font-weight: 800; white-space: nowrap; }
 .delivery[data-kind="sent"] { color: #0b6b2e; }

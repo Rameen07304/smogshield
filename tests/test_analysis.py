@@ -50,11 +50,11 @@ class AqiTest(unittest.TestCase):
         # (PM2.5, expected AQI, expected level) from the EPA 2024 table
         cases = [
             (0.0, 0, "good"), (9.0, 50, "good"),
-            (9.1, 51, "moderate"), (35.4, 100, "moderate"),
-            (35.5, 101, "unhealthy_sensitive"), (55.4, 150, "unhealthy_sensitive"),
-            (55.5, 151, "unhealthy"), (125.4, 200, "unhealthy"),
-            (125.5, 201, "very_unhealthy"), (225.4, 300, "very_unhealthy"),
-            (225.5, 301, "hazardous"), (325.4, 500, "hazardous"),
+            (9.1, 51, "satisfactory"), (35.4, 100, "satisfactory"),
+            (35.5, 101, "moderate"), (55.4, 150, "moderate"),
+            (55.5, 151, "poor"), (125.4, 200, "poor"),
+            (125.5, 201, "very_poor"), (225.4, 300, "very_poor"),
+            (225.5, 301, "severe"), (325.4, 500, "severe"),
         ]
         for pm25, aqi, level in cases:
             with self.subTest(pm25=pm25):
@@ -63,10 +63,10 @@ class AqiTest(unittest.TestCase):
     def test_above_top_band_caps_at_500(self):
         for pm25 in (325.5, 500, 999, 5000):
             with self.subTest(pm25=pm25):
-                self.assertEqual(analysis.pm25_to_aqi(pm25), (500, "hazardous"))
+                self.assertEqual(analysis.pm25_to_aqi(pm25), (500, "severe"))
 
     def test_interpolates_inside_a_band(self):
-        self.assertEqual(analysis.pm25_to_aqi(12.0), (56, "moderate"))  # EPA calculator: 56
+        self.assertEqual(analysis.pm25_to_aqi(12.0), (56, "satisfactory"))  # EPA calculator: 56
 
     def test_truncates_to_one_decimal(self):
         self.assertEqual(analysis.pm25_to_aqi(9.05), (50, "good"))  # 9.05 -> 9.0, not 9.1
@@ -76,7 +76,7 @@ class AqiTest(unittest.TestCase):
 
 
 class ScenarioTest(unittest.TestCase):
-    LEVELS = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
+    LEVELS = ["good", "satisfactory", "moderate", "poor", "very_poor", "severe"]
 
     def test_each_level_scenario_lands_in_its_own_level(self):
         for level in self.LEVELS:

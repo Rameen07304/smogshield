@@ -7,11 +7,11 @@ const REQUEST_TIMEOUT_MS = 15000;
 
 const LEVELS = {
   good:                { label: "Good" },
+  satisfactory:        { label: "Satisfactory" },
   moderate:            { label: "Moderate" },
-  unhealthy_sensitive: { label: "Unhealthy for sensitive groups" },
-  unhealthy:           { label: "Unhealthy" },
-  very_unhealthy:      { label: "Very unhealthy" },
-  hazardous:           { label: "Hazardous" },
+  poor:                { label: "Poor" },
+  very_poor:           { label: "Very Poor" },
+  severe:              { label: "Severe" },
   unknown:             { label: "Data unavailable" },
 };
 const TREND_WORDS = { rising: "rising", falling: "falling", stable: "steady" };
