@@ -3,10 +3,10 @@
 A modular multi-agent system that monitors air quality and coordinates smog response in real time.
 
 ```
-monitor ──► analysis ──► advisory ──► alert ──► dashboard
-(Open-Meteo (AQI, level,  (public      (feed /
- mock data)  trend,       guidance,    Telegram)
-             spike)       Urdu)
+monitor ──► forecast ──► analysis ──► advisory ──► alert ──► dashboard
+(Open-Meteo (next 24 h,  (AQI, level,  (public      (feed /
+ mock data)  best time,   trend,       guidance,    Telegram,
+             outlook)     spike)       Urdu)        [FORECAST])
 ```
 
 Agents are plain Python functions wired together with [LangGraph](https://github.com/langchain-ai/langgraph).
@@ -48,13 +48,15 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 |------|-----------|
 | `schemas.py` | Contracts between agents. Change these as a team. |
 | `agents/monitor.py` | Fetches the last 6 hours from Open-Meteo, falls back to mock data |
+| `agents/forecast.py` | Hourly PM2.5 forecast from Open-Meteo: next 24 h (AQI, level, confidence), 6 h and 24 h summaries, best ~2-hour window to go outside, multi-day outlook; falls back to a scripted mock forecast |
 | `agents/analysis.py` | PM2.5 → AQI estimate, level, trend, spike flag |
-| `agents/advisory.py` | Level → guidance per audience (+ Urdu) |
-| `agents/alert.py` | Decides whether to alert, how loudly, and delivers it |
+| `agents/advisory.py` | Level and forecast → guidance per audience, plus a forecast note (+ Urdu) |
+| `agents/alert.py` | Decides whether to alert, how loudly, and delivers it, including predictive `[FORECAST]` alerts |
 | `graph.py` | LangGraph orchestrator + self-check |
 | `app.py` | FastAPI server: dashboard and API (below) |
 | `web/` | Dashboard: `index.html`, `styles.css`, `app.js` (plain HTML/CSS/JS, no build step, no CDNs) and `fonts/` (Noto Nastaliq Urdu, SIL Open Font License) |
 | `data/mock_readings.json` | Demo scenarios |
+| `data/mock_forecasts.json` | Scripted forecast curve per demo scenario (multipliers of the current PM2.5 by hours ahead) |
 | `tests/` | Unit and end-to-end tests |
 | `var/` | Runtime data, created on first alert, gitignored: `var/alerts.json` holds the alert feed and alert memory. Delete it to start with an empty feed. |
 
@@ -64,7 +66,7 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 |-----------------|--------------|
 | `GET /` | The live dashboard (Screen 1) |
 | `GET /how` | How it works (Screen 2): the agent pipeline, a live example, data honesty and safeguards |
-| `GET /api/status` | Runs the whole pipeline once and returns `readings`, `analysis`, `advisory`, `alerts` (new alerts from this run). The dashboard polls it every 5 s. |
+| `GET /api/status` | Runs the whole pipeline once and returns `readings`, `forecast`, `analysis`, `advisory`, `alerts` (new alerts from this run). The dashboard polls it every 5 s. |
 | `GET /api/alerts?limit=20` | The alert feed, newest first |
 | `GET /api/scenario` | The forced mock scenario (`live` = none) and the list of options |
 | `POST /api/scenario/{name}` | Demo control: force a scenario, or `live` to go back. Also clears the alert memory so the new scenario alerts right away. Lasts until the server restarts. |
@@ -86,6 +88,7 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 | `MOCK_SCENARIO` | unset | Forces mock data for one scenario: `good`, `moderate`, `unhealthy_sensitive`, `unhealthy`, `very_unhealthy`, `hazardous`, `spike`. |
 | `MONITOR_CITY` | `Lahore` | City to watch: Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Gujranwala, Sialkot. |
 | `LIVE_CACHE_MINUTES` | `10` | Reuse a city's live data this long before asking Open-Meteo again (it updates hourly). `0` = no cache. |
+| `FORECAST_CACHE_MINUTES` | `30` | Reuse a city's live forecast this long before asking Open-Meteo again. `0` = no cache. The forecast follows the same `USE_MOCK`, `MOCK_SCENARIO` and dashboard scenario switch as the monitor. |
 
 ### Alerts
 
@@ -97,6 +100,8 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 | `TELEGRAM_CHAT_ID` | placeholder | The chat or group the bot posts to. |
 | `ALERT_SIMULATIONS_TO_TELEGRAM` | `false` | Alerts from mock data are marked `[SIMULATION]` and stay in the dashboard feed. `true` also sends them to Telegram (e.g. to test the bot). |
 
+**Predictive alerts:** when the air is below Unhealthy now but the forecast reaches Unhealthy or worse within 6 hours, the alert agent sends a `warning` (never `critical`) starting with `[FORECAST]`, with kind `forecast`. It uses the same cooldown, memory expiry, `[SIMULATION]` and Telegram rules as other alerts, does not repeat for the same forecast peak, and stays quiet when a current-conditions alert already covers that level. Alerts stored before `kind` existed read as `current`.
+
 **Telegram setup:** in Telegram, talk to @BotFather, send `/newbot`, and copy the token. Add the bot to your group and send a message there, then open `https://api.telegram.org/bot<token>/getUpdates` and copy `"chat":{"id": ...}`. Messages are sent in the background with a 3 s timeout; if one fails, the alert stays in the feed marked `failed: telegram: ...` and a warning is logged. The token is never written to logs.
 
 ## Demo tips
@@ -105,11 +110,13 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 - **Force a smog emergency:** pick `hazardous` (or set `MOCK_SCENARIO=hazardous` in `.env` and restart). Use `spike` to show air building from clean to hazardous and back, about one step every 5 seconds, with a "Sudden spike" badge and escalating alerts (info → warning → critical).
 - **Mock data is always labelled:** the dashboard shows a SIMULATED DATA banner, and every alert from mock data starts with `[SIMULATION]` and is not sent to Telegram unless you allow it.
 - **Rehearsals don't swallow the demo alert:** restarting with mock data forced, or switching scenario in the menu, clears the alert memory. To also start with an empty feed, stop the server and delete `var/alerts.json`.
+- **Show a predictive alert:** pick `unhealthy_sensitive`. Its scripted forecast climbs to Unhealthy within a few hours, so a `[FORECAST]` warning arrives before conditions get there. `spike` and the high scenarios show forecasts that improve.
+- **The forecast is a model estimate**, not a measurement: hourly CAMS model output from Open-Meteo, with confidence high for 0–6 h, medium for 6–24 h, low beyond. Mock forecasts are labelled as simulated.
 - **The AQI is an estimate** from the latest hourly PM2.5 (the dashboard says so). Official US AQI uses longer averages, so other sites may show different numbers.
 
 ## Data attribution
 
-Air quality data from [Open-Meteo](https://open-meteo.com) (free, no key, non-commercial use), based on CAMS ENSEMBLE data from the Copernicus Atmosphere Monitoring Service. If a live call fails or takes more than 10 s, the monitor falls back to mock data.
+Air quality data from [Open-Meteo](https://open-meteo.com) (free, no key, non-commercial use), based on CAMS ENSEMBLE data from the Copernicus Atmosphere Monitoring Service. If a live call fails or takes more than 10 s, the monitor falls back to mock data. The forecast uses the same API's hourly `pm2_5` and `pm10` forecast (`forecast_days=4`) and falls back to the scripted mock forecast the same way.
 
 ## Adding an agent
 
