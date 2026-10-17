@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 from agents import analysis, monitor
-from schemas import Confidence, Forecast, ForecastPoint, SmogState
+from schemas import BestTime, Confidence, DayOutlook, Forecast, ForecastPoint, ForecastWindow, SmogState
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +24,11 @@ FORECAST_DAYS = 4            # today (from 00:00 local, incl. past hours) + 3 mo
 HOURS_AHEAD = 24             # length of the hourly forecast handed to the other agents
 TIMEOUT_SECONDS = 10
 DEFAULT_CACHE_MINUTES = 30   # override with FORECAST_CACHE_MINUTES; 0 = no cache
+BEST_TIME_HOURS = 2          # "best time to go outside" window length
+# A window's trend compares its first two hours with its last two: it counts as worsening or
+# improving only if PM2.5 moves by more than both of these, otherwise it is stable.
+TREND_MIN_CHANGE = 0.10      # 10% of the starting level...
+TREND_MIN_ABSOLUTE = 3.0     # ...and at least 3 µg/m³ (so 4 -> 6 in clean air is still "stable")
 NOTE = "Model forecast from Open-Meteo, based on CAMS (Copernicus Atmosphere Monitoring Service). An estimate, not a measurement."
 
 # (city, lat, lon) -> (time.monotonic() when fetched, cleaned series). Only successes are cached.
@@ -140,18 +145,85 @@ def hourly_points(points: list[dict], now: datetime, hours: int = HOURS_AHEAD) -
     return out
 
 
+def summarize_window(points: list[ForecastPoint], hours: int) -> ForecastWindow | None:
+    """Peak, typical level and trend of the first `hours` hours. None when there are no points."""
+    window = [p for p in points if p["hours_ahead"] < hours]
+    if not window:
+        return None
+    peak = max(window, key=lambda p: p["aqi"])            # max() keeps the earliest of equal peaks
+    average = sum(p["pm25"] for p in window) / len(window)
+    return {
+        "hours": hours,
+        "peak_aqi": peak["aqi"],
+        "peak_time": peak["time"],
+        "peak_level": peak["level"],
+        "typical_level": analysis.pm25_to_aqi(average)[1],
+        "trend": _trend([p["pm25"] for p in window]),
+        "confidence": confidence_for(hours),
+    }
+
+
+def best_time(points: list[ForecastPoint], span: int = BEST_TIME_HOURS) -> BestTime | None:
+    """The `span` consecutive hours with the lowest average PM2.5 (earliest wins a tie)."""
+    best: BestTime | None = None
+    for i in range(len(points) - span + 1):
+        chunk = points[i:i + span]
+        if chunk[-1]["hours_ahead"] - chunk[0]["hours_ahead"] != span - 1:
+            continue                                       # a gap in the data: not a real window
+        average = round(sum(p["pm25"] for p in chunk) / span, 1)
+        if best is None or average < best["avg_pm25"]:
+            aqi, level = analysis.pm25_to_aqi(average)
+            end = datetime.fromisoformat(chunk[-1]["time"]) + timedelta(hours=1)
+            best = {"start": chunk[0]["time"], "end": end.isoformat(), "avg_pm25": average, "aqi": aqi, "level": level}
+    return best
+
+
+def daily_outlook(points: list[dict], offset: int, now: datetime) -> list[DayOutlook]:
+    """One peak per local calendar day, from the current hour on (rest of today first)."""
+    start = now.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    days: dict[str, dict] = {}
+    for p in points:
+        when = datetime.fromisoformat(p["time"])
+        if when < start:
+            continue
+        local_date = (when + timedelta(seconds=offset)).date().isoformat()
+        if local_date not in days or p["pm25"] > days[local_date]["pm25"]:
+            days[local_date] = {"pm25": p["pm25"], "ahead": (when - start).total_seconds() / 3600}
+    outlook: list[DayOutlook] = []
+    for local_date in sorted(days):
+        aqi, level = analysis.pm25_to_aqi(days[local_date]["pm25"])
+        outlook.append({"date": local_date, "peak_aqi": aqi, "peak_level": level,
+                        "confidence": confidence_for(days[local_date]["ahead"])})
+    return outlook
+
+
+def _trend(values: list[float]) -> str:
+    """improving / worsening / stable: the first two hours against the last two."""
+    if len(values) < 2:
+        return "stable"
+    head = sum(values[:2]) / len(values[:2])
+    tail = sum(values[-2:]) / len(values[-2:])
+    threshold = max(TREND_MIN_ABSOLUTE, head * TREND_MIN_CHANGE)
+    if tail - head > threshold:
+        return "worsening"
+    if head - tail > threshold:
+        return "improving"
+    return "stable"
+
+
 def _forecast_from_series(city: str, series: dict, source: str, now: datetime) -> Forecast:
+    hourly = hourly_points(series["points"], now)
     return {
         "location": city,
         "generated_at": now.astimezone(timezone.utc).replace(microsecond=0).isoformat(),
         "source": source,
         "is_model_estimate": True,
         "note": NOTE,
-        "hourly": hourly_points(series["points"], now),
-        "next_6h": None,      # summaries: step 2
-        "next_24h": None,
-        "best_time": None,
-        "outlook": [],
+        "hourly": hourly,
+        "next_6h": summarize_window(hourly, 6),
+        "next_24h": summarize_window(hourly, HOURS_AHEAD),
+        "best_time": best_time(hourly),
+        "outlook": daily_outlook(series["points"], series["offset"], now),
     }
 
 

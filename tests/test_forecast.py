@@ -143,7 +143,118 @@ class FetchTest(ForecastTestCase):
             self.assertNotEqual(forecast.fetch_series("Lahore")["points"][0]["pm25"], -1)
 
 
+HOUR0 = NOW.replace(minute=0)   # 10:00 UTC, the current hour
+
+
+def points(values: list[float], start_ahead: int = 0) -> list[dict]:
+    """Forecast points for consecutive hours from the current hour."""
+    out = []
+    for i, v in enumerate(values):
+        ahead = start_ahead + i
+        aqi, level = analysis.pm25_to_aqi(v)
+        out.append({"time": (HOUR0 + timedelta(hours=ahead)).isoformat(), "hours_ahead": ahead, "pm25": float(v),
+                    "aqi": aqi, "level": level, "confidence": forecast.confidence_for(ahead)})
+    return out
+
+
+class WindowSummaryTest(unittest.TestCase):
+    def test_peak_and_when(self):
+        result = forecast.summarize_window(points([20, 25, 60, 30, 30, 30] + [10] * 18), 6)
+        self.assertEqual(result["peak_aqi"], analysis.pm25_to_aqi(60)[0])
+        self.assertEqual(result["peak_time"], (HOUR0 + timedelta(hours=2)).isoformat())
+        self.assertEqual(result["peak_level"], "unhealthy")
+        self.assertEqual(result["hours"], 6)
+
+    def test_equal_peaks_report_the_earliest(self):
+        result = forecast.summarize_window(points([40, 80, 30, 80]), 6)
+        self.assertEqual(result["peak_time"], (HOUR0 + timedelta(hours=1)).isoformat())
+
+    def test_window_only_uses_its_hours(self):
+        values = [20] * 6 + [300] * 18           # the bad air arrives after 6 hours
+        self.assertEqual(forecast.summarize_window(points(values), 6)["peak_level"], "moderate")
+        self.assertEqual(forecast.summarize_window(points(values), 24)["peak_level"], "hazardous")
+
+    def test_typical_level_is_the_level_of_the_average(self):
+        result = forecast.summarize_window(points([10, 10, 10, 10, 10, 100]), 6)   # average 25
+        self.assertEqual(result["typical_level"], analysis.pm25_to_aqi(25)[1])
+
+    def test_trends(self):
+        cases = {
+            "worsening": [20, 20, 25, 28, 30, 30],     # +10, more than 10% and 3 µg/m³
+            "improving": [100, 100, 95, 90, 80, 80],   # -20
+            "stable": [50, 52, 49, 51, 51, 53],        # +1
+        }
+        for expected, values in cases.items():
+            with self.subTest(trend=expected):
+                self.assertEqual(forecast.summarize_window(points(values), 6)["trend"], expected)
+
+    def test_small_change_in_clean_air_is_stable(self):
+        self.assertEqual(forecast.summarize_window(points([4, 4, 5, 5, 6, 6]), 6)["trend"], "stable")  # +2 < 3
+
+    def test_confidence_per_window(self):
+        values = list(range(10, 34))
+        self.assertEqual(forecast.summarize_window(points(values), 6)["confidence"], "high")
+        self.assertEqual(forecast.summarize_window(points(values), 24)["confidence"], "medium")
+
+    def test_no_points(self):
+        self.assertIsNone(forecast.summarize_window([], 6))
+
+
+class BestTimeTest(unittest.TestCase):
+    def test_lowest_two_hour_window(self):
+        values = [50, 45, 40, 30, 25, 10, 12, 30, 40]
+        result = forecast.best_time(points(values))
+        self.assertEqual(result["start"], (HOUR0 + timedelta(hours=5)).isoformat())
+        self.assertEqual(result["end"], (HOUR0 + timedelta(hours=7)).isoformat())   # two hours, end exclusive
+        self.assertEqual(result["avg_pm25"], 11.0)
+        self.assertEqual((result["aqi"], result["level"]), analysis.pm25_to_aqi(11.0))
+
+    def test_tie_takes_the_earliest(self):
+        result = forecast.best_time(points([30, 10, 10, 30, 10, 10]))
+        self.assertEqual(result["start"], (HOUR0 + timedelta(hours=1)).isoformat())
+
+    def test_skips_windows_across_a_gap(self):
+        pts = points([30, 5]) + points([5, 30], start_ahead=5)   # hours 0,1 then 5,6: 1 and 5 are not adjacent
+        result = forecast.best_time(pts)
+        self.assertEqual(result["avg_pm25"], 17.5)
+
+    def test_too_few_points(self):
+        self.assertIsNone(forecast.best_time(points([10])))
+        self.assertIsNone(forecast.best_time([]))
+
+
+class OutlookTest(unittest.TestCase):
+    def series(self, values_by_utc_hour: dict) -> list[dict]:
+        return [{"time": (HOUR0 + timedelta(hours=h)).isoformat(), "pm25": float(v)} for h, v in sorted(values_by_utc_hour.items())]
+
+    def test_one_peak_per_local_day(self):
+        # now is 15:30 local on Oct 17; UTC hour 14 = 19:00 local today, UTC hour 17 = 08:00 local Oct 18
+        result = forecast.daily_outlook(self.series({0: 40, 4: 200, 8: 60, 17: 300, 30: 20}), OFFSET, NOW)
+        self.assertEqual([d["date"] for d in result], ["2026-10-17", "2026-10-18"])
+        self.assertEqual(result[0]["peak_aqi"], analysis.pm25_to_aqi(200)[0])
+        self.assertEqual(result[1]["peak_level"], "hazardous")
+        self.assertEqual((result[0]["confidence"], result[1]["confidence"]), ("high", "medium"))
+
+    def test_past_hours_are_ignored(self):
+        result = forecast.daily_outlook(self.series({-3: 500, 0: 20}), OFFSET, NOW)
+        self.assertEqual(result[0]["peak_aqi"], analysis.pm25_to_aqi(20)[0])
+
+    def test_four_days_from_a_real_shaped_response(self):
+        series = forecast.clean_series(STEADY)
+        result = forecast.daily_outlook(series["points"], series["offset"], NOW)
+        self.assertEqual([d["date"] for d in result], ["2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20"])
+        # each day's confidence follows its peak hour: today's is 4 h ahead, tomorrow's (09:00 local) 18 h
+        self.assertEqual([d["confidence"] for d in result], ["high", "medium", "low", "low"])
+
+
 class BuildTest(ForecastTestCase):
+    def test_live_forecast_has_every_summary(self):
+        with mock.patch.object(forecast.requests, "get", return_value=fake_response(STEADY)):
+            result = forecast.build_forecast("Lahore", now=NOW)
+        self.assertEqual((result["next_6h"]["hours"], result["next_24h"]["hours"]), (6, 24))
+        self.assertIsNotNone(result["best_time"])
+        self.assertEqual(len(result["outlook"]), 4)
+
     def test_live_forecast_matches_schema(self):
         with mock.patch.object(forecast.requests, "get", return_value=fake_response(STEADY)):
             result = forecast.build_forecast("Lahore", now=NOW)
