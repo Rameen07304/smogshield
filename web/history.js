@@ -5,10 +5,10 @@
 
 const HISTORY_LIMIT = 100;  // the alert store keeps the newest 100 (FEED_SIZE in agents/alert.py)
 const SIM_PREFIX = "[SIMULATION] ";
-const URGENCY = {
-  info: { label: "INFO", icon: "ℹ" },
-  warning: { label: "WARNING", icon: "▲" },
-  critical: { label: "CRITICAL", icon: "⬣" },
+const URGENCY = {  // the shape beside each word is drawn in CSS, so colour is never the only cue
+  info: { label: "Info" },
+  warning: { label: "Warning" },
+  critical: { label: "Critical" },
 };
 let alerts = [];
 let historyLoaded = false;
@@ -17,10 +17,10 @@ const isSimulated = (a) => a.message.startsWith(SIM_PREFIX);
 
 /** "sent" | "queued" | "failed: telegram: <why>" -> { kind, label, detail } */
 function delivery(a) {
-  if (a.status === "sent") return { kind: "sent", label: "✓ Sent", detail: "" };
-  if (a.status === "queued") return { kind: "queued", label: "… Queued", detail: "Sending to Telegram" };
+  if (a.status === "sent") return { kind: "sent", label: "Sent", detail: "" };
+  if (a.status === "queued") return { kind: "queued", label: "Queued", detail: "Sending to Telegram" };
   const detail = a.status.replace(/^failed:\s*/, "");
-  return { kind: "failed", label: "✕ Failed", detail: detail ? `${detail} (kept in the dashboard feed)` : "" };
+  return { kind: "failed", label: "Failed", detail: detail ? `${detail} (kept in the dashboard feed)` : "" };
 }
 
 function cell(text, className) {
@@ -59,8 +59,8 @@ function buildRow(a) {
 
   // Urgency: a badge with icon + word (colour is never the only cue)
   const urgency = cell();
-  const sev = URGENCY[a.severity] ?? { label: a.severity.toUpperCase(), icon: "" };
-  const badge = span(`${sev.icon} ${sev.label}`, "sev-badge");
+  const sev = URGENCY[a.severity] ?? { label: a.severity.toUpperCase() };
+  const badge = span(sev.label, "sev-badge");
   const badgeWrap = span("", "alert-item");  // reuses the severity colors from the alert feed
   badgeWrap.dataset.severity = a.severity in URGENCY ? a.severity : "warning";
   badgeWrap.classList.add("history__sev");
@@ -69,7 +69,7 @@ function buildRow(a) {
 
   // Message, with the [SIMULATION] prefix turned into a tag
   const message = cell(null, "history__message");
-  if (simulated) message.append(span("SIMULATION", "sim-tag"), " ");
+  if (simulated) message.append(span("Simulated", "sim-tag"), " ");
   message.append(simulated ? a.message.slice(SIM_PREFIX.length) : a.message);
 
   // Channel and delivery

@@ -15,7 +15,6 @@ const LEVELS = {
   unknown:             { label: "Data unavailable" },
 };
 const TREND_WORDS = { rising: "rising", falling: "falling", stable: "steady" };
-const TREND_ARROWS = { rising: "↑", falling: "↓", stable: "→" };
 
 const $ = (id) => document.getElementById(id);
 

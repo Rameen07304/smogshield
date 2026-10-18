@@ -5,13 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>SmogShield | Live air quality</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%23b00020'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%230e6f68'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/common.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <!-- 1. Header strip -->
   <header class="topbar">
     <div class="topbar__brand">
       <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
@@ -43,77 +42,85 @@
 
   <noscript><p class="banner banner--offline">SmogShield needs JavaScript to show live air quality.</p></noscript>
   <div id="simulated" class="banner banner--simulated" role="status" hidden>
-    SIMULATED DATA
-    <small id="simulated-why">Demo scenario: these are not real air quality readings.</small>
+    <strong>Simulated data</strong>
+    <span id="simulated-why">Demo scenario: these are not real air quality readings.</span>
   </div>
   <div id="offline" class="banner banner--offline" role="status" hidden></div>
 
   <main id="content" class="page">
-    <!-- 2. Hero: current air quality -->
-    <section id="hero" class="card hero" data-level="loading" aria-labelledby="hero-label">
-      <div class="hero__level">
-        <p id="hero-label" class="hero__label">AQI (hourly estimate)</p>
-        <p id="hero-aqi" class="hero__aqi">—</p>
-        <p id="hero-category" class="hero__category">Loading…</p>
-      </div>
-      <div class="hero__body">
-        <p id="hero-place" class="hero__place">Loading live air quality…</p>
-        <p id="hero-summary" class="hero__summary">Fetching the latest readings.</p>
-        <div class="scale" aria-hidden="true">
-          <div class="scale__bar">
-            <span style="--w: 50" data-level="good"></span>
-            <span style="--w: 50" data-level="satisfactory"></span>
-            <span style="--w: 100" data-level="moderate"></span>
-            <span style="--w: 100" data-level="poor"></span>
-            <span style="--w: 100" data-level="very_poor"></span>
-            <span style="--w: 100" data-level="severe"></span>
-            <i id="scale-marker" class="scale__marker" hidden></i>
-          </div>
-          <div class="scale__labels">
-            <span style="--w: 50">Good</span><span style="--w: 50">Satisf.</span><span style="--w: 100">Moderate</span>
-            <span style="--w: 100">Poor</span><span style="--w: 100">Very poor</span><span style="--w: 100">Severe</span>
-          </div>
+    <div class="overview">
+      <!-- The claim: the air right now -->
+      <section id="hero" class="hero" data-level="loading" aria-labelledby="hero-label">
+        <div class="hero__level">
+          <p id="hero-label" class="hero__label">AQI (hourly estimate)</p>
+          <p id="hero-aqi" class="hero__aqi">—</p>
+          <p id="hero-category" class="hero__category">Loading…</p>
         </div>
-        <p id="hero-facts" class="hero__facts"></p>
-      </div>
-    </section>
+        <div class="hero__body">
+          <p id="hero-place" class="hero__place">Loading live air quality…</p>
+          <p id="hero-summary" class="hero__summary">Fetching the latest readings.</p>
+          <div class="scale" aria-hidden="true">
+            <div class="scale__bar">
+              <span style="--w: 50" data-level="good"></span>
+              <span style="--w: 50" data-level="satisfactory"></span>
+              <span style="--w: 100" data-level="moderate"></span>
+              <span style="--w: 100" data-level="poor"></span>
+              <span style="--w: 100" data-level="very_poor"></span>
+              <span style="--w: 100" data-level="severe"></span>
+              <i id="scale-marker" class="scale__marker" hidden></i>
+            </div>
+            <div class="scale__labels">
+              <span style="--w: 50">Good</span><span style="--w: 50">Satisf.</span><span style="--w: 100">Moderate</span>
+              <span style="--w: 100">Poor</span><span style="--w: 100">Very poor</span><span style="--w: 100">Severe</span>
+            </div>
+          </div>
+          <p id="hero-facts" class="hero__facts"></p>
+        </div>
+      </section>
 
-    <!-- 3. Pipeline: the four agents, lighting up in order on every refresh -->
-    <section class="card pipeline" aria-labelledby="pipeline-title">
-      <h2 id="pipeline-title" class="visually-hidden">Agent pipeline</h2>
-      <ol class="pipeline__steps" role="list">
-        <li class="node" data-step="monitor">
-          <span class="node__name">Monitor</span>
-          <span class="node__role">Collects air readings</span>
-          <span class="node__out" id="out-monitor">Waiting…</span>
-        </li>
-        <li class="node" data-step="analysis">
-          <span class="node__name">Analysis</span>
-          <span class="node__role">Scores the air: AQI, trend, spikes</span>
-          <span class="node__out" id="out-analysis">Waiting…</span>
-        </li>
-        <li class="node" data-step="advisory">
-          <span class="node__name">Advisory</span>
-          <span class="node__role">Writes guidance for each group</span>
-          <span class="node__out" id="out-advisory">Waiting…</span>
-        </li>
-        <li class="node" data-step="alert">
-          <span class="node__name">Alert</span>
-          <span class="node__role">Decides whether to warn people</span>
-          <span class="node__out" id="out-alert">Waiting…</span>
-        </li>
-      </ol>
-      <p id="pipeline-run" class="pipeline__run">Waiting for the first run…</p>
-    </section>
+      <!-- The proof: what each agent produced on this run, confirmed in pipeline order -->
+      <section class="pipeline" aria-labelledby="pipeline-title">
+        <div class="pipeline__head">
+          <h2 id="pipeline-title">How the agents got there</h2>
+        </div>
+        <ol class="pipeline__steps" role="list">
+          <li class="node" data-step="monitor">
+            <span class="node__mark" aria-hidden="true"></span>
+            <span class="node__who"><span class="node__name">Monitor</span><span class="node__role">Collects air readings</span></span>
+            <span class="node__out" id="out-monitor">Waiting…</span>
+          </li>
+          <li class="node" data-step="forecast">
+            <span class="node__mark" aria-hidden="true"></span>
+            <span class="node__who"><span class="node__name">Forecast</span><span class="node__role">Looks ahead 24 hours</span></span>
+            <span class="node__out" id="out-forecast">Waiting…</span>
+          </li>
+          <li class="node" data-step="analysis">
+            <span class="node__mark" aria-hidden="true"></span>
+            <span class="node__who"><span class="node__name">Analysis</span><span class="node__role">Scores AQI, trend, spikes</span></span>
+            <span class="node__out" id="out-analysis">Waiting…</span>
+          </li>
+          <li class="node" data-step="advisory">
+            <span class="node__mark" aria-hidden="true"></span>
+            <span class="node__who"><span class="node__name">Advisory</span><span class="node__role">Writes guidance per group</span></span>
+            <span class="node__out" id="out-advisory">Waiting…</span>
+          </li>
+          <li class="node" data-step="alert">
+            <span class="node__mark" aria-hidden="true"></span>
+            <span class="node__who"><span class="node__name">Alert</span><span class="node__role">Decides whether to warn</span></span>
+            <span class="node__out" id="out-alert">Waiting…</span>
+          </li>
+        </ol>
+        <p id="pipeline-run" class="pipeline__run">Waiting for the first run…</p>
+      </section>
+    </div>
 
     <div class="panels">
-      <!-- 4. PM2.5 trend -->
-      <section class="card panel panel--chart" aria-labelledby="chart-title">
+      <section class="panel panel--chart" aria-labelledby="chart-title">
         <div class="panel__head">
           <h2 id="chart-title">PM2.5 over the recent window</h2>
           <div class="chips">
             <span id="trend-chip" class="chip" hidden></span>
-            <span id="spike-chip" class="chip chip--spike" hidden>⚡ Sudden spike</span>
+            <span id="spike-chip" class="chip chip--spike" hidden>Sudden spike</span>
           </div>
         </div>
         <figure class="chart">
@@ -123,27 +130,40 @@
         </figure>
       </section>
 
-      <!-- 5. Advisory -->
-      <section class="card panel panel--advisory" aria-labelledby="advice-title">
+      <section class="panel panel--feed" aria-labelledby="feed-title">
         <div class="panel__head">
-          <h2 id="advice-title">What to do</h2>
-          <div class="lang-toggle" role="group" aria-label="Advice language">
-            <button type="button" data-lang="en" aria-pressed="true">English</button>
-            <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
-          </div>
+          <h2 id="feed-title">Alert feed</h2>
+          <span id="feed-count" class="chip" hidden></span>
         </div>
+        <p id="feed-empty" class="empty">Loading alerts…</p>
+        <ol id="feed" class="feed" role="list"></ol><!-- role: Safari drops list semantics with list-style: none -->
+        <a class="feed__more" href="/history">All alerts in History</a>
+        <p id="feed-error" class="feed__error" hidden>Couldn't refresh alerts. Showing the last ones received.</p>
+      </section>
 
-        <div id="advice-en">
-          <p id="advice-headline" class="advice__headline">Loading advice…</p>
-          <p id="advice-note" class="advice__note" hidden></p>
+      <section class="panel panel--advisory advice" aria-labelledby="advice-title">
+        <div class="advice__main">
+          <div class="panel__head">
+            <h2 id="advice-title">What to do</h2>
+            <div class="lang-toggle" role="group" aria-label="Advice language">
+              <button type="button" data-lang="en" aria-pressed="true">English</button>
+              <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
+            </div>
+          </div>
+          <div id="advice-en">
+            <p id="advice-headline" class="advice__headline">Loading advice…</p>
+            <p id="advice-note" class="advice__note" hidden></p>
+            <p id="advice-forecast" class="advice__note" hidden></p>
+          </div>
+          <div id="advice-ur" class="urdu" lang="ur" dir="rtl" hidden>
+            <p id="urdu-headline" class="advice__headline"></p>
+            <ul id="urdu-actions" class="urdu__list"></ul>
+          </div>
+          <p id="urdu-scope" class="advice__scope" hidden>
+            Urdu covers advice for the general public. The groups beside it are shown in English.
+          </p>
+          <p id="advice-disclaimer" class="advice__disclaimer">General guidance, not medical advice.</p>
         </div>
-        <div id="advice-ur" class="urdu" lang="ur" dir="rtl" hidden>
-          <p id="urdu-headline" class="advice__headline"></p>
-          <ul id="urdu-actions" class="urdu__list"></ul>
-        </div>
-        <p id="urdu-scope" class="advice__scope" hidden>
-          Urdu covers advice for the general public. The groups below are shown in English.
-        </p>
 
         <div class="audiences">
           <article class="audience" data-audience="general">
@@ -163,18 +183,6 @@
             <ul id="aud-respiratory_heart"><li>Loading…</li></ul>
           </article>
         </div>
-        <p id="advice-disclaimer" class="advice__disclaimer">General guidance, not medical advice.</p>
-      </section>
-
-      <!-- 6. Alert feed -->
-      <section class="card panel panel--feed" aria-labelledby="feed-title">
-        <div class="panel__head">
-          <h2 id="feed-title">Alert feed</h2>
-          <span id="feed-count" class="chip" hidden></span>
-        </div>
-        <p id="feed-empty" class="empty">Loading alerts…</p>
-        <ol id="feed" class="feed" role="list"></ol><!-- role: Safari drops list semantics with list-style: none -->
-        <p id="feed-error" class="feed__error" hidden>Couldn't refresh alerts. Showing the last ones received.</p>
       </section>
     </div>
   </main>
@@ -184,7 +192,7 @@
 
   <footer class="footer">
     Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
-    (Copernicus Atmosphere Monitoring Service).
+    (Copernicus Atmosphere Monitoring Service). Categories: Pakistan National Clean Air Policy 2023.
   </footer>
 </body>
 </html>

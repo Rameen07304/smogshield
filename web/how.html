@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>How it works | SmogShield</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%23b00020'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%230e6f68'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/common.js" defer></script>
   <script src="/static/how.js" defer></script>
@@ -28,16 +28,15 @@
   </header>
 
   <main id="content" class="page">
-    <!-- 1. Title and pitch -->
     <section class="intro">
       <h1>How SmogShield works</h1>
       <p class="intro__pitch">
-        <strong>SmogShield:</strong> four cooperating agents that turn raw air quality data into real-time smog response.
+        <strong>Five cooperating agents</strong> turn raw air quality data into a reading, a forecast, advice for
+        each group in English and <span lang="ur" class="urdu-inline">اردو</span>, and alerts, every few seconds.
       </p>
     </section>
 
-    <!-- 2. Pipeline diagram -->
-    <section class="card panel" aria-labelledby="flow-title">
+    <section class="panel" aria-labelledby="flow-title">
       <h2 id="flow-title" class="how__h2">The pipeline</h2>
       <ol class="flow" role="list">
         <li class="flow__node">
@@ -51,38 +50,46 @@
         </li>
         <li class="flow__node">
           <p class="flow__num" aria-hidden="true">2</p>
-          <h3>Analysis</h3>
-          <p class="flow__does">Computes the AQI, the trend and sudden spikes.</p>
+          <h3>Forecast</h3>
+          <p class="flow__does">Looks ahead at the next 24 hours.</p>
           <dl class="flow__io">
-            <div><dt>Receives</dt><dd>The recent readings.</dd></div>
-            <div><dt>Produces</dt><dd>An AQI number, a category (Good to Hazardous), the trend per hour, a spike flag and a one-line reason.</dd></div>
+            <div><dt>Receives</dt><dd>The city and its current reading.</dd></div>
+            <div><dt>Produces</dt><dd>An hourly PM2.5 forecast, 6 and 24 hour summaries, the best time to go outside, and a daily outlook.</dd></div>
           </dl>
         </li>
         <li class="flow__node">
           <p class="flow__num" aria-hidden="true">3</p>
-          <h3>Advisory</h3>
-          <p class="flow__does">Turns the assessment into guidance for each audience, in English and <span lang="ur" class="urdu-inline">اردو</span>.</p>
+          <h3>Analysis</h3>
+          <p class="flow__does">Computes the AQI, the trend and sudden spikes.</p>
           <dl class="flow__io">
-            <div><dt>Receives</dt><dd>The assessment: category, trend and spike flag.</dd></div>
-            <div><dt>Produces</dt><dd>A headline and advice for the public, children and schools, the elderly, and people with heart or lung conditions.</dd></div>
+            <div><dt>Receives</dt><dd>The recent readings.</dd></div>
+            <div><dt>Produces</dt><dd>An AQI number, a category (Good to Severe), the trend per hour, a spike flag and a one-line reason.</dd></div>
           </dl>
         </li>
         <li class="flow__node">
           <p class="flow__num" aria-hidden="true">4</p>
+          <h3>Advisory</h3>
+          <p class="flow__does">Turns the assessment into guidance for each group, in English and <span lang="ur" class="urdu-inline">اردو</span>.</p>
+          <dl class="flow__io">
+            <div><dt>Receives</dt><dd>The assessment and the forecast.</dd></div>
+            <div><dt>Produces</dt><dd>A headline and advice for the public, children and schools, the elderly, and people with heart or lung conditions.</dd></div>
+          </dl>
+        </li>
+        <li class="flow__node">
+          <p class="flow__num" aria-hidden="true">5</p>
           <h3>Alert</h3>
           <p class="flow__does">Decides when and how to notify people, without spamming them.</p>
           <dl class="flow__io">
-            <div><dt>Receives</dt><dd>The assessment, the advice and the location.</dd></div>
+            <div><dt>Receives</dt><dd>The assessment, the forecast, the advice and the location.</dd></div>
             <div><dt>Produces</dt><dd>An info, warning or critical alert in the dashboard feed (and Telegram, if set up), or nothing when nothing changed.</dd></div>
           </dl>
         </li>
       </ol>
     </section>
 
-    <!-- 3. Live example: what each agent produced on the latest run -->
-    <section class="card panel" aria-labelledby="live-title">
+    <section class="panel" aria-labelledby="live-title">
       <div class="panel__head">
-        <h2 id="live-title" class="how__h2 how__h2--inline">Live example: what each agent produced just now</h2>
+        <h2 id="live-title" class="how__h2 how__h2--inline">What each agent produced just now</h2>
         <div class="chips">
           <span id="mode-badge" class="mode-badge" data-mode="loading">Connecting…</span>
           <span id="live-updated" class="live__updated"></span>
@@ -94,6 +101,11 @@
           <p class="live-cell__agent">Monitor read</p>
           <p id="live-monitor" class="live-cell__main">Loading…</p>
           <p id="live-monitor-sub" class="live-cell__sub"></p>
+        </li>
+        <li class="live-cell">
+          <p class="live-cell__agent">Forecast expects</p>
+          <p id="live-forecast" class="live-cell__main">Loading…</p>
+          <p id="live-forecast-sub" class="live-cell__sub"></p>
         </li>
         <li class="live-cell">
           <p class="live-cell__agent">Analysis scored</p>
@@ -114,8 +126,7 @@
     </section>
 
     <div class="facts">
-      <!-- 4. Data and honesty -->
-      <section class="card panel" aria-labelledby="honesty-title">
+      <section class="panel" aria-labelledby="honesty-title">
         <h2 id="honesty-title" class="how__h2">Data and honesty</h2>
         <ul class="fact-list" role="list">
           <li>
@@ -133,7 +144,7 @@
           </li>
           <li>
             <strong>Demo scenarios are simulated, and always labelled.</strong>
-            A SIMULATED DATA banner, a badge on every screen, and a [SIMULATION] tag on every alert. Simulated
+            A simulated-data banner, a badge on every screen, and a Simulated tag on every alert. Simulated
             alerts are never sent to Telegram unless we switch that on.
           </li>
           <li>
@@ -143,8 +154,7 @@
         </ul>
       </section>
 
-      <!-- 5. Built to be reliable -->
-      <section class="card panel" aria-labelledby="reliable-title">
+      <section class="panel" aria-labelledby="reliable-title">
         <h2 id="reliable-title" class="how__h2">Built to be reliable</h2>
         <ul class="fact-list" role="list">
           <li>
@@ -178,7 +188,7 @@
 
   <footer class="footer">
     Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
-    (Copernicus Atmosphere Monitoring Service).
+    (Copernicus Atmosphere Monitoring Service). Categories: Pakistan National Clean Air Policy 2023.
   </footer>
 </body>
 </html>
