@@ -1,7 +1,7 @@
 // SmogShield dashboard (Screen 1): polls /api/status and renders each panel.
 // Rules: textContent only (never inject API data as HTML), keep the last good data on screen
 // when a poll fails, and never leave a panel blank.
-// Needs common.js first (POLL_MS, LEVELS, TREND_WORDS, TREND_ARROWS, $, getJSON, localTime, levelOf).
+// Needs common.js first (POLL_MS, LEVELS, TREND_WORDS, $, getJSON, localTime, levelOf).
 "use strict";
 
 const SCENARIO_LABELS = {
@@ -58,7 +58,7 @@ function renderHero(s) {
       pm10.textContent = `${latest.pm10} µg/m³`;
       facts.append(" · PM10 ", pm10);
     }
-    facts.append(` · ${TREND_ARROWS[a.trend] ?? ""} ${TREND_WORDS[a.trend] ?? a.trend}`);
+    facts.append(` · ${TREND_WORDS[a.trend] ?? a.trend}`);
     if (a.dominant_pollutant === "pm10") facts.append(" · AQI driven by PM10");
     const over = targetNote(latest);
     if (over) {
@@ -85,7 +85,7 @@ function targetNote(latest) {
   return parts.length ? `${parts.join("; ")}. Hourly value vs a 24-hour target.` : "";
 }
 
-// PM2.5 band tops (µg/m³) for the NCAP categories under US EPA AQI math, used to shade the chart.
+// PM2.5 band tops (µg/m³) for the NCAP categories under US EPA AQI math, drawn as threshold lines on the chart.
 // Must match agents/analysis.py: AQI 200 = 125.4, 300 = 225.4, 400 = 275.4.
 const PM25_BANDS = [
   [9.0, "good"], [35.4, "satisfactory"], [125.4, "moderate"],
@@ -123,8 +123,8 @@ function renderChart(s) {
     const rate = Math.abs(a.trend_per_hour ?? 0);
     trendChip.dataset.trend = a.trend;
     trendChip.textContent = a.trend === "stable"
-      ? "→ Steady"
-      : `${TREND_ARROWS[a.trend] ?? ""} ${a.trend === "rising" ? "Rising" : "Falling"} ${rate} µg/m³ per hour`;
+      ? "Steady"
+      : `${a.trend === "rising" ? "Rising" : "Falling"} ${rate} µg/m³ per hour`;
   }
   $("spike-chip").hidden = !(known && a.is_spike);
 
@@ -157,14 +157,15 @@ function drawChart(readings, analysis) {
   const y = (v) => pad.top + plotH * (1 - Math.min(v, top) / top);
   const nodes = [];
 
-  // Level bands behind the line, each labelled on the right (text, not just color)
+  // Category thresholds as hairlines, each band named on the right (the level colour lives in the hero only)
   let floor = 0;
   for (const [ceiling, level] of PM25_BANDS) {
     if (floor >= top) break;
     const bandTop = Math.min(ceiling, top);
     const h = y(floor) - y(bandTop);
-    nodes.push(svg("rect", { x: pad.left, y: y(bandTop), width: plotW, height: h,
-                             fill: `var(--${level})`, opacity: 0.22 }));
+    if (ceiling < top) {
+      nodes.push(svg("line", { class: "chart__threshold", x1: pad.left, x2: pad.left + plotW, y1: y(ceiling), y2: y(ceiling) }));
+    }
     if (h >= 16) {
       nodes.push(svg("text", { x: width - pad.right + 28, y: (y(floor) + y(bandTop)) / 2,  // clear of the spike ring
                                "dominant-baseline": "middle", class: "chart__band-label" }, LEVELS[level].label.replace(" for sensitive groups", " (sens.)")));
@@ -197,13 +198,12 @@ function drawChart(readings, analysis) {
   // Spike marker on the latest point: a ring plus a flag with the value
   if (spikeAt >= 0) {
     const cx = x(spikeAt), cy = y(values[spikeAt]);
-    nodes.push(svg("circle", { cx, cy, r: 16, fill: "none", stroke: "#ffd400", "stroke-width": 5 }));
-    nodes.push(svg("circle", { cx, cy, r: 20, fill: "none", stroke: "#000", "stroke-width": 1.5 }));
-    const flagW = 104, flagY = Math.max(cy - 56, 2);
+    nodes.push(svg("circle", { class: "chart__spike-ring", cx, cy, r: 14 }));
+    const flagW = 104, flagY = Math.max(cy - 52, 2);
     const flagX = Math.min(cx - flagW / 2, width - flagW - 2);
-    nodes.push(svg("rect", { x: flagX, y: flagY, width: flagW, height: 24, rx: 6, fill: "#ffd400", stroke: "#000" }));
+    nodes.push(svg("rect", { class: "chart__spike-flag", x: flagX, y: flagY, width: flagW, height: 24, rx: 3 }));
     nodes.push(svg("text", { x: flagX + flagW / 2, y: flagY + 12, "text-anchor": "middle", "dominant-baseline": "middle",
-                             class: "chart__spike-label" }, `SPIKE · ${values[spikeAt]}`));
+                             class: "chart__spike-label" }, `Spike · ${values[spikeAt]}`));
   }
 
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -240,6 +240,8 @@ function renderAdvisory(s) {
   $("advice-headline").textContent = adv.headline || "Advice is unavailable right now. Take care outdoors.";
   $("advice-note").textContent = adv.time_note || "";
   $("advice-note").hidden = !adv.time_note;
+  $("advice-forecast").textContent = adv.forecast_note || "";
+  $("advice-forecast").hidden = !adv.forecast_note;
   for (const who of AUDIENCES) {
     const items = adv.audiences?.[who] ?? (who === "general" ? adv.actions : []);
     fillList(`aud-${who}`, items, "No specific advice for this group right now.");
@@ -250,7 +252,7 @@ function renderAdvisory(s) {
   applyLanguage();
 }
 
-/** English: headline + four cards. Urdu: Urdu block replaces headline and general card. */
+/** English: headline + four groups. Urdu: the Urdu block replaces the headline and the general group. */
 function applyLanguage() {
   const urdu = adviceLang === "ur";
   $("advice-en").hidden = urdu;
@@ -275,10 +277,10 @@ applyLanguage();
 
 const FEED_LIMIT = 20;
 const SIM_PREFIX = "[SIMULATION] ";
-const SEVERITY = {
-  info: { label: "INFO", icon: "ℹ" },
-  warning: { label: "WARNING", icon: "▲" },
-  critical: { label: "CRITICAL", icon: "⬣" },
+const SEVERITY = {  // the shape beside each word is drawn in CSS, so colour is never the only cue
+  info: { label: "Info" },
+  warning: { label: "Warning" },
+  critical: { label: "Critical" },
 };
 const feedItems = new Map();  // alert key -> <li>, so existing items are updated, never re-created
 let feedLoaded = false;
@@ -303,12 +305,12 @@ function buildAlertItem(a) {
   top.className = "alert-item__top";
   const badge = document.createElement("span");
   badge.className = "sev-badge";
-  badge.textContent = `${sev.icon} ${sev.label}`;
+  badge.textContent = sev.label;
   top.append(badge);
   if (simulated) {
     const tag = document.createElement("span");
     tag.className = "sim-tag";
-    tag.textContent = "SIMULATION";
+    tag.textContent = "Simulated";
     top.append(tag);
   }
   const message = document.createElement("p");
@@ -376,8 +378,8 @@ async function refreshFeed() {
 
 // ---------- pipeline strip ----------
 
-const STEPS = ["monitor", "analysis", "advisory", "alert"];
-const STEP_MS = 280;  // how long each node stays lit as data "flows" through
+const STEPS = ["monitor", "forecast", "analysis", "advisory", "alert"];  // graph order (graph.py)
+const STEP_MS = 220;  // how long each row stays "working" before its check lands
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 let flowTimers = [];
 
@@ -391,6 +393,7 @@ function pipelineOutputs(s) {
     monitor: latest
       ? `${readings.length} hourly ${readings.length === 1 ? "reading" : "readings"} · ${latest.source === "live" ? "live" : "simulated"}`
       : "No readings",
+    forecast: forecastOutput(s.forecast),
     analysis: level === "unknown"
       ? "No valid readings"
       : `AQI ${a.aqi} · ${TREND_WORDS[a.trend] ?? a.trend}${a.is_spike ? " · spike!" : ""}`,
@@ -401,8 +404,21 @@ function pipelineOutputs(s) {
   };
 }
 
+/** "Next 6 h: peaks Poor (AQI 236)" from the forecast agent's summary, or why there is none */
+function forecastOutput(f) {
+  const six = f?.next_6h;
+  if (!six) return "No forecast available";
+  const peak = LEVELS[six.peak_level]?.label ?? six.peak_level;
+  return `Next 6 h peaks ${peak} (AQI ${six.peak_aqi})${f.source === "live" ? "" : " · simulated"}`;
+}
+
+let lastOutputs = "";  // the confirm sequence replays only when an agent's output actually changed
+
 function renderPipeline(s) {
   const outputs = pipelineOutputs(s);
+  const key = STEPS.map((step) => outputs[step]).join("|");
+  const changed = key !== lastOutputs;
+  lastOutputs = key;
   for (const step of STEPS) $(`out-${step}`).textContent = outputs[step];
   const at = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   $("pipeline-run").dataset.at = at;
@@ -412,7 +428,7 @@ function renderPipeline(s) {
   flowTimers.forEach(clearTimeout);
   flowTimers = [];
   const nodes = STEPS.map((step) => document.querySelector(`.node[data-step="${step}"]`));
-  if (reducedMotion.matches) {
+  if (reducedMotion.matches || !changed) {
     nodes.forEach((node) => { node.dataset.state = "done"; });
     return;
   }
@@ -426,6 +442,7 @@ function renderPipeline(s) {
 function pipelineOffline() {
   flowTimers.forEach(clearTimeout);
   for (const node of document.querySelectorAll(".node")) node.dataset.state = "error";
+  lastOutputs = "";  // replay the sequence when the server comes back
   $("pipeline-run").textContent = "Pipeline unreachable: waiting for the server…";
 }
 

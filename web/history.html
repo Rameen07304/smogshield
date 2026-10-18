@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>Alert history | SmogShield</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%23b00020'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%230e6f68'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/common.js" defer></script>
   <script src="/static/history.js" defer></script>
@@ -33,7 +33,7 @@
       <p class="intro__pitch">Every alert the Alert agent raised, newest first: when, where, how urgent, and whether it was delivered.</p>
     </section>
 
-    <section class="card panel" aria-labelledby="history-title">
+    <section class="panel" aria-labelledby="history-title">
       <div class="panel__head">
         <h2 id="history-title" class="how__h2 how__h2--inline">Alerts</h2>
         <span id="history-count" class="chip" hidden></span>
@@ -44,9 +44,9 @@
         <fieldset class="segmented">
           <legend>Urgency</legend>
           <label><input type="radio" name="urgency" value="all" checked><span>All <i data-count="urgency-all"></i></span></label>
-          <label><input type="radio" name="urgency" value="info"><span>ℹ Info <i data-count="urgency-info"></i></span></label>
-          <label><input type="radio" name="urgency" value="warning"><span>▲ Warning <i data-count="urgency-warning"></i></span></label>
-          <label><input type="radio" name="urgency" value="critical"><span>⬣ Critical <i data-count="urgency-critical"></i></span></label>
+          <label data-sev="info"><input type="radio" name="urgency" value="info"><span>Info <i data-count="urgency-info"></i></span></label>
+          <label data-sev="warning"><input type="radio" name="urgency" value="warning"><span>Warning <i data-count="urgency-warning"></i></span></label>
+          <label data-sev="critical"><input type="radio" name="urgency" value="critical"><span>Critical <i data-count="urgency-critical"></i></span></label>
         </fieldset>
         <fieldset class="segmented">
           <legend>Source</legend>
@@ -84,7 +84,7 @@
 
   <footer class="footer">
     Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
-    (Copernicus Atmosphere Monitoring Service).
+    (Copernicus Atmosphere Monitoring Service). Categories: Pakistan National Clean Air Policy 2023.
   </footer>
 </body>
 </html>
