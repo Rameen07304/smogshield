@@ -13,7 +13,7 @@ from schemas import Analysis, Level, Reading, SmogState
 log = logging.getLogger(__name__)
 
 # AQI number: US EPA method (2024 PM2.5, PM10 breakpoints).
-# Categories: Pakistan NCAP 2023, Table 1. https://environment.gov.pk/Policies
+# Categories: Pakistan NCAP 2023, Table 1. https://mocc.gov.pk/SiteImage/Misc/files/NCAP%20(28-02-2023)%20v1.pdf
 PM25_BREAKPOINTS: list[tuple[float, float, int, int]] = [
     (0.0, 9.0, 0, 50),
     (9.1, 35.4, 51, 100),
