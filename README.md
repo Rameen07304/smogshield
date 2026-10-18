@@ -49,7 +49,7 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 | `schemas.py` | Contracts between agents. Change these as a team. |
 | `agents/monitor.py` | Fetches the last 6 hours from Open-Meteo, falls back to mock data |
 | `agents/forecast.py` | Hourly PM2.5 forecast from Open-Meteo: next 24 h (AQI, level, confidence), 6 h and 24 h summaries, best ~2-hour window to go outside, multi-day outlook; falls back to a scripted mock forecast |
-| `agents/analysis.py` | PM2.5 → AQI estimate, level, trend, spike flag |
+| `agents/analysis.py` | PM2.5 and PM10 → AQI estimate, NCAP category, trend, spike flag (see [How the AQI is calculated](#how-the-aqi-is-calculated)) |
 | `agents/advisory.py` | Level and forecast → guidance per audience, including outdoor workers, plus a forecast note (+ Urdu); optional Groq enhancement with rule-based fallback |
 | `agents/alert.py` | Decides whether to alert, how loudly, and delivers it, including predictive `[FORECAST]` alerts |
 | `graph.py` | LangGraph orchestrator + self-check |
@@ -59,6 +59,27 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 | `data/mock_forecasts.json` | Scripted forecast curve per demo scenario (multipliers of the current PM2.5 by hours ahead) |
 | `tests/` | Unit and end-to-end tests |
 | `var/` | Runtime data, created on first alert, gitignored: `var/alerts.json` holds the alert feed and alert memory. Delete it to start with an empty feed. |
+
+## How the AQI is calculated
+
+- **Readings:** hourly PM2.5 and PM10 from [Open-Meteo](https://open-meteo.com). These are CAMS model estimates, not ground sensors.
+- **AQI number:** US EPA method with the 2024 breakpoints. PM2.5 and PM10 each get a sub-index, and the AQI is the higher of the two. The dashboard says "AQI driven by PM10" when PM10 is the higher one.
+- **Category:** Pakistan's [National Clean Air Policy (NCAP) 2023](https://mocc.gov.pk/SiteImage/Misc/files/NCAP%20(28-02-2023)%20v1.pdf), Table 1:
+
+  | AQI | Category |
+  |-----|----------|
+  | 0–50 | Good |
+  | 51–100 | Satisfactory |
+  | 101–200 | Moderate |
+  | 201–300 | Poor |
+  | 301–400 | Very Poor |
+  | 401–500 | Severe |
+
+- **Why the US EPA method:** NCAP defines the categories but does not publish concentration breakpoints, and its references cite US EPA "AQI Basics". So the number follows US EPA and the category follows NCAP.
+- **National targets:** the dashboard also compares the readings with NCAP Table 2's 24-hour targets (PM2.5 75 µg/m³, PM10 150 µg/m³), for example "PM2.5 is 2.4× the national 24-hour target".
+- **Honesty note:** official AQI uses 24-hour averages. Ours is an estimate from the latest hourly reading, so it reacts faster and other sites may show different numbers.
+
+The code is in [`agents/analysis.py`](agents/analysis.py).
 
 ## API
 
@@ -86,7 +107,7 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 |----------|---------|--------------|
 | `USE_MOCK` | `false` | `true` skips the network and always uses `data/mock_readings.json`. |
 | `MOCK_SCENARIO` | unset | Forces mock data for one scenario: `good`, `satisfactory`, `moderate`, `poor`, `very_poor`, `severe`, `spike`. |
-| `MONITOR_CITY` | `Lahore` | City to watch: Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Gujranwala, Sialkot. |
+| `MONITOR_CITY` | `Lahore` | City to watch: Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Gujranwala, Sialkot, Sheikhupura, Kasur, Sahiwal, Sargodha, Bahawalpur (any case). |
 | `LIVE_CACHE_MINUTES` | `10` | Reuse a city's live data this long before asking Open-Meteo again (it updates hourly). `0` = no cache. |
 | `FORECAST_CACHE_MINUTES` | `30` | Reuse a city's live forecast this long before asking Open-Meteo again. `0` = no cache. The forecast follows the same `USE_MOCK`, `MOCK_SCENARIO` and dashboard scenario switch as the monitor. |
 
@@ -112,7 +133,7 @@ The rule-based health guidance is informed by Pakistan's [National Clean Air Pol
 | `TELEGRAM_CHAT_ID` | placeholder | The chat or group the bot posts to. |
 | `ALERT_SIMULATIONS_TO_TELEGRAM` | `false` | Alerts from mock data are marked `[SIMULATION]` and stay in the dashboard feed. `true` also sends them to Telegram (e.g. to test the bot). |
 
-**Predictive alerts:** when the air is below Unhealthy now but the forecast reaches Unhealthy or worse within 6 hours, the alert agent sends a `warning` (never `critical`) starting with `[FORECAST]`, with kind `forecast`. It uses the same cooldown, memory expiry, `[SIMULATION]` and Telegram rules as other alerts, does not repeat for the same forecast peak, and stays quiet when a current-conditions alert already covers that level. Alerts stored before `kind` existed read as `current`.
+**Predictive alerts:** when the air is better than Poor now but the forecast reaches Poor or worse within 6 hours, the alert agent sends a `warning` (never `critical`) starting with `[FORECAST]`, with kind `forecast`. It uses the same cooldown, memory expiry, `[SIMULATION]` and Telegram rules as other alerts, does not repeat for the same forecast peak, and stays quiet when a current-conditions alert already covers that level. Alerts stored before `kind` existed read as `current`.
 
 **Telegram setup:** in Telegram, talk to @BotFather, send `/newbot`, and copy the token. Add the bot to your group and send a message there, then open `https://api.telegram.org/bot<token>/getUpdates` and copy `"chat":{"id": ...}`. Messages are sent in the background with a 3 s timeout; if one fails, the alert stays in the feed marked `failed: telegram: ...` and a warning is logged. The token is never written to logs.
 
@@ -122,9 +143,9 @@ The rule-based health guidance is informed by Pakistan's [National Clean Air Pol
 - **Force a smog emergency:** pick `severe` (or set `MOCK_SCENARIO=severe` in `.env` and restart). Use `spike` to show air building from clean to severe and back, about one step every 5 seconds, with a "Sudden spike" badge and escalating alerts (info → warning → critical).
 - **Mock data is always labelled:** the dashboard shows a SIMULATED DATA banner, and every alert from mock data starts with `[SIMULATION]` and is not sent to Telegram unless you allow it.
 - **Rehearsals don't swallow the demo alert:** restarting with mock data forced, or switching scenario in the menu, clears the alert memory. To also start with an empty feed, stop the server and delete `var/alerts.json`.
-- **Show a predictive alert:** pick `moderate`. Its scripted forecast climbs to Unhealthy within a few hours, so a `[FORECAST]` warning arrives before conditions get there. `spike` and the high scenarios show forecasts that improve.
+- **Show a predictive alert:** pick `moderate`. Its scripted forecast climbs to Poor within a few hours, so a `[FORECAST]` warning arrives before conditions get there. `spike` and the high scenarios show forecasts that improve.
 - **The forecast is a model estimate**, not a measurement: hourly CAMS model output from Open-Meteo, with confidence high for 0–6 h, medium for 6–24 h, low beyond. Mock forecasts are labelled as simulated.
-- **The AQI is an estimate** from the latest hourly PM2.5 (the dashboard says so). Official US AQI uses longer averages, so other sites may show different numbers.
+- **The AQI is an estimate** from the latest hourly PM2.5 and PM10 (the dashboard says so). Official AQI uses 24-hour averages, so other sites may show different numbers. See [How the AQI is calculated](#how-the-aqi-is-calculated).
 
 ## Data attribution
 
@@ -135,3 +156,11 @@ Air quality data from [Open-Meteo](https://open-meteo.com) (free, no key, non-co
 1. Create `agents/<name>.py` with `def run(state: SmogState) -> dict:` that returns only the keys it owns.
 2. Add its output type and state key in `schemas.py`.
 3. Add a node and edge in `graph.py`.
+
+## Team
+
+- **Rameen:** lead, orchestration, integration and reviews
+- **Dania:** dashboard (3 screens), alert agent, forecast agent, Telegram, most of the pipeline
+- **Fatima:** analysis agent, NCAP categories and PM10
+- **Rida:** advisory agent and guidance
+- **Halima:** monitor agent, cities, data documentation
