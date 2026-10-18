@@ -88,7 +88,7 @@ class Analysis(TypedDict):
     reason: str             # one-line, human-readable explanation of the above
 
 
-Audience = Literal["general", "children", "elderly", "respiratory_heart"]
+Audience = Literal["general", "children", "elderly", "respiratory_heart", "outdoor_workers"]
 
 
 class UrduAdvisory(TypedDict):

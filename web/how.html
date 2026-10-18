@@ -55,7 +55,7 @@
           <p class="flow__does">Computes the AQI, the trend and sudden spikes.</p>
           <dl class="flow__io">
             <div><dt>Receives</dt><dd>The recent readings.</dd></div>
-            <div><dt>Produces</dt><dd>An AQI number, a category (Good to Hazardous), the trend per hour, a spike flag and a one-line reason.</dd></div>
+            <div><dt>Produces</dt><dd>An AQI number, a category (Good to Severe), the trend per hour, a spike flag and a one-line reason.</dd></div>
           </dl>
         </li>
         <li class="flow__node">
@@ -64,7 +64,7 @@
           <p class="flow__does">Turns the assessment into guidance for each audience, in English and <span lang="ur" class="urdu-inline">اردو</span>.</p>
           <dl class="flow__io">
             <div><dt>Receives</dt><dd>The assessment: category, trend and spike flag.</dd></div>
-            <div><dt>Produces</dt><dd>A headline and advice for the public, children and schools, the elderly, and people with heart or lung conditions.</dd></div>
+            <div><dt>Produces</dt><dd>A headline and advice for the public, children and schools, the elderly, people with heart or lung conditions, and outdoor workers.</dd></div>
           </dl>
         </li>
         <li class="flow__node">

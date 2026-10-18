@@ -8,26 +8,44 @@ adds a forecast note (worse soon / better by when / best time to go out). Never 
 Wording rules: conservative, no specific medical claims, doses or treatments.
 """
 import logging
+import json
+import os
 from datetime import datetime, timedelta, timezone
+
+import requests
 
 from schemas import Advisory, SmogState
 
 log = logging.getLogger(__name__)
 
-DISCLAIMER = "General guidance, not medical advice. If you have symptoms or a health condition, follow your doctor's advice."
-DISCLAIMER_UR = "یہ عمومی رہنمائی ہے، طبی مشورہ نہیں۔ علامات یا کسی بیماری کی صورت میں اپنے ڈاکٹر کے مشورے پر عمل کریں۔"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+GROQ_TIMEOUT_SECONDS = 8
+
+HEALTH_BASIS = "Health-impact guidance is informed by Pakistan's National Clean Air Policy (NCAP)."
+DISCLAIMER = (
+    "General guidance, not medical advice. "
+    "Health-impact guidance is informed by Pakistan's National Clean Air Policy (NCAP). "
+    "If you have symptoms or a health condition, follow your doctor's advice."
+)
+DISCLAIMER_UR = (
+    "یہ عمومی رہنمائی ہے، طبی مشورہ نہیں۔ "
+    "صحت سے متعلق رہنمائی پاکستان کی قومی صاف ہوا پالیسی (NCAP) سے ماخوذ ہے۔ "
+    "علامات یا کسی بیماری کی صورت میں اپنے ڈاکٹر کے مشورے پر عمل کریں۔"
+)
 
 # level -> headline + advice per audience. Advice gets stricter as the level rises.
 GUIDANCE: dict[str, dict] = {
     "good": {
-        "headline": "Air quality is good.",
+        "headline": "Good air quality.",
         "general": ["Enjoy normal outdoor activities."],
         "children": ["Outdoor play and school sports can go ahead as normal."],
         "elderly": ["Normal outdoor activities are fine."],
         "respiratory_heart": ["No special precautions needed. Follow your usual care plan."],
+        "outdoor_workers": ["Normal outdoor work is fine. Take routine breaks and drink water."],
     },
     "satisfactory": {
-        "headline": "Air quality is acceptable.",
+        "headline": "Satisfactory air quality.",
         "general": ["Outdoor activities are fine for most people."],
         "children": [
             "Outdoor play is fine.",
@@ -36,14 +54,18 @@ GUIDANCE: dict[str, dict] = {
         "elderly": ["Outdoor activities are fine. If you are unusually sensitive, keep long or strenuous outings shorter."],
         "respiratory_heart": [
             "If you are unusually sensitive, make outdoor activities shorter and less intense.",
-            "Watch for symptoms such as coughing or shortness of breath.",
+            "Watch for coughing, wheezing or shortness of breath.",
+        ],
+        "outdoor_workers": [
+            "Most outdoor work can continue, but take regular breaks and watch for symptoms.",
+            "If work feels unusually difficult, reduce exertion and move to a cleaner-air area.",
         ],
     },
     "moderate": {
-        "headline": "Unhealthy for sensitive groups.",
+        "headline": "Moderate air quality.",
         "general": [
-            "Most people can continue outdoor activities.",
-            "If you notice symptoms, take more breaks and do less intense activities.",
+            "Most people can continue outdoor activities, but reduce prolonged or intense exertion.",
+            "If you notice coughing, breathing difficulty or unusual tiredness, take a break in cleaner air.",
         ],
         "children": [
             "Reduce long or intense outdoor activity and take more breaks.",
@@ -56,14 +78,18 @@ GUIDANCE: dict[str, dict] = {
         "respiratory_heart": [
             "Reduce long or intense outdoor activity.",
             "Follow your asthma or heart action plan and keep your prescribed medicines handy.",
-            "Watch for symptoms such as coughing, wheezing, chest tightness or unusual tiredness.",
+            "Pollution can worsen breathing symptoms; watch for coughing, wheezing, chest tightness or unusual tiredness.",
+        ],
+        "outdoor_workers": [
+            "Reduce prolonged or heavy outdoor work and take frequent breaks in a cleaner-air area.",
+            "Wear a properly fitted N95/KN95 mask during dusty or high-exertion tasks.",
         ],
     },
     "poor": {
-        "headline": "Unhealthy air. Everyone may feel effects.",
+        "headline": "Poor air quality. Everyone may feel effects.",
         "general": [
-            "Reduce long or intense outdoor activity and take more breaks.",
-            "Wear an N95/KN95 mask outdoors.",
+            "Reduce prolonged or intense outdoor activity and take more breaks.",
+            "Fine-particle pollution can affect breathing; wear an N95/KN95 mask outdoors.",
             "Keep windows closed and run an air purifier indoors if you have one.",
         ],
         "children": [
@@ -72,16 +98,21 @@ GUIDANCE: dict[str, dict] = {
         ],
         "elderly": [
             "Avoid long or intense outdoor activity and keep outings short.",
-            "Wear an N95/KN95 mask outdoors.",
+            "Older adults may be more vulnerable to breathing and heart effects; wear an N95/KN95 mask outdoors.",
         ],
         "respiratory_heart": [
             "Avoid long or intense outdoor activity and stay indoors where possible.",
-            "Follow your action plan and keep your prescribed medicines handy.",
+            "Pollution can worsen respiratory and heart conditions; follow your action plan and keep prescribed medicines handy.",
             "Contact a doctor if your symptoms get worse.",
+        ],
+        "outdoor_workers": [
+            "Avoid prolonged or heavy outdoor work where possible and take frequent indoor breaks.",
+            "Wear a properly fitted N95/KN95 mask and reduce exertion.",
+            "Stop work and seek medical help for breathing difficulty, chest pain or severe symptoms.",
         ],
     },
     "very_poor": {
-        "headline": "Very unhealthy air. Health alert.",
+        "headline": "Very poor air quality. Health alert.",
         "general": [
             "Avoid long or intense outdoor activity and move activities indoors.",
             "Wear an N95/KN95 mask whenever you go outside.",
@@ -89,7 +120,7 @@ GUIDANCE: dict[str, dict] = {
         ],
         "children": [
             "Keep children indoors and cancel outdoor play.",
-            "Schools: hold all activities indoors with windows closed.",
+            "Children's developing lungs are vulnerable to polluted air; schools should hold activities indoors with windows closed.",
         ],
         "elderly": [
             "Stay indoors as much as possible.",
@@ -97,12 +128,17 @@ GUIDANCE: dict[str, dict] = {
         ],
         "respiratory_heart": [
             "Stay indoors and avoid all outdoor physical activity.",
-            "Follow your action plan and keep your prescribed medicines handy.",
+            "Very high pollution can worsen respiratory and heart conditions; follow your action plan and keep prescribed medicines handy.",
             "Seek medical help if your symptoms get worse.",
+        ],
+        "outdoor_workers": [
+            "Postpone non-essential outdoor work and move tasks indoors if possible.",
+            "If work must continue, take frequent breaks in filtered air and wear a properly fitted N95/KN95 mask.",
+            "Stop work and seek medical help for breathing difficulty, chest pain or severe symptoms.",
         ],
     },
     "severe": {
-        "headline": "Hazardous smog. Emergency conditions.",
+        "headline": "Severe air quality. Emergency conditions.",
         "general": [
             "Stay indoors with windows and doors closed.",
             "Avoid all outdoor activity.",
@@ -111,15 +147,20 @@ GUIDANCE: dict[str, dict] = {
         ],
         "children": [
             "Keep children indoors with windows closed.",
-            "Schools: no outdoor activities; follow official closure notices.",
+            "Children's developing lungs are especially vulnerable; schools should cancel outdoor activities and follow official closure notices.",
         ],
         "elderly": [
             "Stay indoors with windows and doors closed.",
-            "Check on elderly relatives and neighbours.",
+            "Older adults may face greater breathing and heart risks; check on elderly relatives and neighbours.",
         ],
         "respiratory_heart": [
             "Stay indoors with windows and doors closed and avoid any exertion.",
-            "Follow your action plan and keep your prescribed medicines handy.",
+            "Severe pollution can worsen respiratory and heart conditions; follow your action plan and keep prescribed medicines handy.",
+            "Seek medical help urgently for breathing difficulty or chest pain.",
+        ],
+        "outdoor_workers": [
+            "Stop or postpone outdoor work and remain in cleaner indoor air.",
+            "If an emergency requires going outside, wear a properly fitted N95/KN95 mask and keep the task as brief as possible.",
             "Seek medical help urgently for breathing difficulty or chest pain.",
         ],
     },
@@ -266,10 +307,12 @@ def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advis
     lead = [n for n in (note, f_note) if n]       # time context first, then the forecast, so both are seen
     lead_ur = [n for n in (note_ur, f_note_ur) if n]
 
-    return {
+    result = {
         "headline": template["headline"] if known else FALLBACK_HEADLINE,
         "actions": lead + template["general"],
-        "audiences": {a: list(template[a]) for a in ("general", "children", "elderly", "respiratory_heart")},
+        "audiences": {a: list(template[a]) for a in (
+            "general", "children", "elderly", "respiratory_heart", "outdoor_workers"
+        )},
         "time_note": note,
         "forecast_note": f_note,
         "disclaimer": DISCLAIMER,
@@ -279,6 +322,75 @@ def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advis
             "forecast_note": f_note_ur,
         },
     }
+    llm_result = _llm_advisory(analysis, result)
+    if llm_result:
+        result["headline"] = llm_result["headline"]
+        result["actions"] = lead + llm_result["actions"]
+        result["audiences"] = llm_result["audiences"]
+    return result
+
+
+def _llm_advisory(analysis: dict, fallback: Advisory) -> dict | None:
+    """Return validated Groq advice when explicitly enabled; otherwise use templates."""
+    if os.getenv("LLM_ADVISORY_ENABLED", "").strip().lower() not in {"1", "true", "yes"}:
+        return None
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not api_key or api_key == "your_groq_api_key_here":
+        log.warning("LLM advisory enabled but GROQ_API_KEY is missing; using rule-based advice")
+        return None
+
+    prompt = {
+        "aqi": analysis.get("aqi"),
+        "level": analysis.get("level"),
+        "trend": analysis.get("trend"),
+        "is_spike": bool(analysis.get("is_spike")),
+        "audiences": list(fallback["audiences"]),
+        "instruction": (
+            "Return JSON only with headline, actions, and audiences. Keep advice concise, "
+            "practical, non-diagnostic, and consistent with the pollution level. "
+            "The audiences object must contain exactly the supplied audience keys, each with a list of strings."
+        ),
+    }
+    try:
+        response = requests.post(
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL),
+                "temperature": 0.2,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": "You provide safe public air-quality guidance."},
+                    {"role": "user", "content": json.dumps(prompt)},
+                ],
+            },
+            timeout=GROQ_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"]
+        candidate = json.loads(content)
+        if not _valid_llm_advisory(candidate, fallback["audiences"]):
+            raise ValueError("Groq returned an invalid advisory shape")
+        return candidate
+    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        log.warning("Groq advisory failed; using rule-based advice: %s", exc)
+        return None
+
+
+def _valid_llm_advisory(candidate: object, audiences: dict) -> bool:
+    if not isinstance(candidate, dict) or not isinstance(candidate.get("headline"), str):
+        return False
+    if not isinstance(candidate.get("actions"), list) or not candidate["actions"]:
+        return False
+    candidate_audiences = candidate.get("audiences")
+    return (
+        isinstance(candidate_audiences, dict)
+        and set(candidate_audiences) == set(audiences)
+        and all(
+            isinstance(items, list) and items and all(isinstance(item, str) and item.strip() for item in items)
+            for items in candidate_audiences.values()
+        )
+    )
 
 
 def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:

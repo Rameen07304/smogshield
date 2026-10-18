@@ -195,7 +195,7 @@ new ResizeObserver(() => {
 
 // ---------- advisory ----------
 
-const AUDIENCES = ["general", "children", "elderly", "respiratory_heart"];
+const AUDIENCES = ["general", "children", "elderly", "respiratory_heart", "outdoor_workers"];
 const LANG_KEY = "smogshield.lang";
 let adviceLang = "en";
 try { if (localStorage.getItem(LANG_KEY) === "ur") adviceLang = "ur"; } catch { /* storage blocked: English */ }
@@ -371,7 +371,7 @@ function pipelineOutputs(s) {
     analysis: level === "unknown"
       ? "No valid readings"
       : `AQI ${a.aqi} · ${TREND_WORDS[a.trend] ?? a.trend}${a.is_spike ? " · spike!" : ""}`,
-    advisory: s.advisory?.audiences ? "Advice for 4 groups + Urdu" : "Cautious default advice",
+    advisory: s.advisory?.audiences ? "Advice for 5 groups + Urdu" : "Cautious default advice",
     alert: alerts.length
       ? `${alerts[0].severity.toUpperCase()} alert raised`
       : level === "unknown" ? "No alert without data" : "No new alert",

@@ -50,7 +50,7 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 | `agents/monitor.py` | Fetches the last 6 hours from Open-Meteo, falls back to mock data |
 | `agents/forecast.py` | Hourly PM2.5 forecast from Open-Meteo: next 24 h (AQI, level, confidence), 6 h and 24 h summaries, best ~2-hour window to go outside, multi-day outlook; falls back to a scripted mock forecast |
 | `agents/analysis.py` | PM2.5 → AQI estimate, level, trend, spike flag |
-| `agents/advisory.py` | Level and forecast → guidance per audience, plus a forecast note (+ Urdu) |
+| `agents/advisory.py` | Level and forecast → guidance per audience, including outdoor workers, plus a forecast note (+ Urdu); optional Groq enhancement with rule-based fallback |
 | `agents/alert.py` | Decides whether to alert, how loudly, and delivers it, including predictive `[FORECAST]` alerts |
 | `graph.py` | LangGraph orchestrator + self-check |
 | `app.py` | FastAPI server: dashboard and API (below) |
@@ -89,6 +89,18 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 | `MONITOR_CITY` | `Lahore` | City to watch: Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Gujranwala, Sialkot. |
 | `LIVE_CACHE_MINUTES` | `10` | Reuse a city's live data this long before asking Open-Meteo again (it updates hourly). `0` = no cache. |
 | `FORECAST_CACHE_MINUTES` | `30` | Reuse a city's live forecast this long before asking Open-Meteo again. `0` = no cache. The forecast follows the same `USE_MOCK`, `MOCK_SCENARIO` and dashboard scenario switch as the monitor. |
+
+### Advisory
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `LLM_ADVISORY_ENABLED` | `false` | Opt in to Groq-generated English advice. The validated rule-based advice remains the fallback. |
+| `GROQ_API_KEY` | placeholder | Groq API key. Keep the real key in local `.env` only; never commit or share it publicly. |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model used for optional advisory generation. |
+
+When enabled, Groq receives the AQI, level, trend, spike state, and audience names. The response must be JSON with a headline, actions, and advice for all five audiences. Missing configuration, API failures, timeouts, invalid JSON, or an invalid response shape use the deterministic rule-based advice instead.
+
+The rule-based health guidance is informed by Pakistan's [National Clean Air Policy (NCAP)](http://faolex.fao.org/docs/pdf/pak233407.pdf), especially its discussion of PM2.5-related respiratory and cardiovascular impacts and vulnerable groups. It is general information, not medical advice.
 
 ### Alerts
 
