@@ -59,17 +59,40 @@ function renderHero(s) {
       facts.append(" · PM10 ", pm10);
     }
     facts.append(` · ${TREND_ARROWS[a.trend] ?? ""} ${TREND_WORDS[a.trend] ?? a.trend}`);
+    if (a.dominant_pollutant === "pm10") facts.append(" · AQI driven by PM10");
+    const over = targetNote(latest);
+    if (over) {
+      const note = document.createElement("small");
+      note.className = "hero__target";
+      note.textContent = over;
+      facts.append(note);
+    }
   } else {
     facts.textContent = a.reason || "Waiting for valid readings.";
   }
   document.title = `${known ? `AQI ${a.aqi} ${LEVELS[level].label}` : "Data unavailable"} | SmogShield`;
 }
 
-// US EPA PM2.5 band tops (µg/m³), used to shade and label the chart
+/** "PM2.5 is 2.4× the national 24-hour target" when a pollutant is above its NCAP target, else "" */
+function targetNote(latest) {
+  const parts = [];
+  for (const [key, name] of [["pm25", "PM2.5"], ["pm10", "PM10"]]) {
+    const value = latest[key], target = NATIONAL_TARGETS[key];
+    if (typeof value === "number" && value > target) {
+      parts.push(`${name} is ${(value / target).toFixed(1)}× the national 24-hour target (${target} µg/m³)`);
+    }
+  }
+  return parts.length ? `${parts.join("; ")}. Hourly value vs a 24-hour target.` : "";
+}
+
+// PM2.5 band tops (µg/m³) for the NCAP categories under US EPA AQI math, used to shade the chart.
+// Must match agents/analysis.py: AQI 200 = 125.4, 300 = 225.4, 400 = 275.4.
 const PM25_BANDS = [
-  [9.0, "good"], [35.4, "satisfactory"], [55.4, "moderate"],
-  [125.4, "poor"], [225.4, "very_poor"], [Infinity, "severe"],
+  [9.0, "good"], [35.4, "satisfactory"], [125.4, "moderate"],
+  [225.4, "poor"], [275.4, "very_poor"], [Infinity, "severe"],
 ];
+// NCAP 2023 Table 2: national 24-hour targets (µg/m³). We compare them with an hourly value.
+const NATIONAL_TARGETS = { pm25: 75, pm10: 150 };
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 function svg(tag, attrs = {}, text) {

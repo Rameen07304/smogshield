@@ -229,6 +229,7 @@ select {
 .hero__summary { margin: 0; font-size: clamp(1.4rem, 2.2vw, 2.1rem); font-weight: 700; line-height: 1.2; }
 .hero__facts { margin: 0; color: var(--muted); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 .hero__facts b { color: var(--text); }
+.hero__target { display: block; margin-top: .3rem; font-size: .85rem; }
 
 /* AQI scale: segment widths follow the AQI ranges (0-50, 51-100, ..., 301-500) */
 .scale { display: grid; gap: 4px; }
