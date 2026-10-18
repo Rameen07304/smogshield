@@ -50,8 +50,11 @@ if __name__ == "__main__":
         # AQI math against known breakpoint values
         assert analysis.pm25_to_aqi(9.0) == (50, "good")
         assert analysis.pm25_to_aqi(35.5) == (101, "moderate")
-        assert analysis.pm25_to_aqi(260)[1] == "severe"
+        assert analysis.pm25_to_aqi(125.5) == (201, "poor")
+        assert analysis.pm25_to_aqi(260)[1] == "very_poor"
+        assert analysis.pm25_to_aqi(275.5) == (401, "severe")
         assert analysis.pm25_to_aqi(999) == (500, "severe")
+        assert analysis.pm10_to_aqi(540) == 429
 
         # full pipeline produces every key
         result = run_once()

@@ -225,7 +225,7 @@ def note_for(level: str, values: list[float]) -> dict:
 
 class ForecastWordingTest(unittest.TestCase):
     def test_worsening_within_6_hours(self):
-        result = note_for("satisfactory", [30, 40, 60, 70, 70, 70] + [30] * 18)   # Unhealthy from hour 2 = 17:00 local
+        result = note_for("satisfactory", [30, 40, 130, 150, 150, 150] + [30] * 18)   # Poor from hour 2 = 17:00 local
         self.assertEqual(result["forecast_note"].split(" Best time")[0],
                          "Air quality is forecast to worsen over the next 6 hours, reaching Poor around 17:00; "
                          "plan indoor activities.")
@@ -238,18 +238,18 @@ class ForecastWordingTest(unittest.TestCase):
         self.assertEqual(result["urdu"]["forecast_note"], advisory.SLIGHTLY_WORSE_NOTE[1])
 
     def test_improves_by_tomorrow_morning(self):
-        values = [80] * 16 + [20] * 8                                          # better from hour 16 = 07:00 local tomorrow
+        values = [150] * 16 + [20] * 8                                        # better from hour 16 = 07:00 local tomorrow
         result = note_for("poor", values)
         self.assertTrue(result["forecast_note"].startswith("Expected to improve by tomorrow morning."))
         self.assertTrue(result["urdu"]["forecast_note"].startswith("کل صبح تک بہتری کی توقع ہے۔"))
 
     def test_improves_this_evening(self):
-        result = note_for("poor", [80, 80, 80, 20] + [20] * 20)           # hour 3 = 18:00 local today
+        result = note_for("poor", [150, 150, 150, 20] + [20] * 20)       # hour 3 = 18:00 local today
         self.assertTrue(result["forecast_note"].startswith("Expected to improve by this evening."))
         self.assertTrue(result["urdu"]["forecast_note"].startswith("آج شام تک بہتری کی توقع ہے۔"))
 
     def test_not_improving_and_no_clean_window(self):
-        result = note_for("poor", [80] * 24)
+        result = note_for("poor", [150] * 24)
         self.assertEqual(result["forecast_note"],
                          "Not expected to improve in the next 24 hours. "
                          "Even the cleanest hours in the next 24 hours stay Poor; limit time outdoors.")
@@ -274,9 +274,9 @@ class ForecastWordingTest(unittest.TestCase):
         cases = {
             "good": ([5] + [15] * 23, advisory.SLIGHTLY_WORSE_NOTE),
             "satisfactory": ([30] + [80] * 23, advisory.WORSEN_NOTE),
-            "moderate": ([45] + [80] * 23, advisory.WORSEN_NOTE),
-            "poor": ([80] + [150] * 23, advisory.WORSEN_NOTE),
-            "very_poor": ([150] + [260] * 23, advisory.WORSEN_NOTE),
+            "moderate": ([45] + [150] * 23, advisory.WORSEN_NOTE),
+            "poor": ([150] + [250] * 23, advisory.WORSEN_NOTE),
+            "very_poor": ([250] + [320] * 23, advisory.WORSEN_NOTE),
             "severe": ([300] * 3 + [100] * 21, advisory.IMPROVE_NOTE),
         }
         self.assertEqual(list(cases), LEVELS)
