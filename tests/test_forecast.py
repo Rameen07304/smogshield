@@ -162,7 +162,7 @@ class WindowSummaryTest(unittest.TestCase):
         result = forecast.summarize_window(points([20, 25, 60, 30, 30, 30] + [10] * 18), 6)
         self.assertEqual(result["peak_aqi"], analysis.pm25_to_aqi(60)[0])
         self.assertEqual(result["peak_time"], (HOUR0 + timedelta(hours=2)).isoformat())
-        self.assertEqual(result["peak_level"], "poor")
+        self.assertEqual(result["peak_level"], "moderate")
         self.assertEqual(result["hours"], 6)
 
     def test_equal_peaks_report_the_earliest(self):
@@ -277,7 +277,10 @@ class MockForecastTest(ForecastTestCase):
             "good": lambda f, now: all(p["level"] == "good" for p in f["hourly"]),
             "satisfactory": lambda f, now: f["next_6h"]["peak_level"] not in UNHEALTHY_OR_WORSE
                                        and f["next_24h"]["peak_aqi"] > f["hourly"][0]["aqi"],          # worse into the evening
-            "moderate": lambda f, now: f["next_6h"]["peak_level"] in UNHEALTHY_OR_WORSE,      # predictive-alert demo
+            "moderate": lambda f, now: (
+                f["next_6h"]["peak_level"] in UNHEALTHY_OR_WORSE
+                and any(p["pm25"] >= 125.5 for p in f["hourly"][:7])
+            ),  # predictive-alert demo crosses into Poor within 6 hours
             "poor": lambda f, now: f["next_24h"]["trend"] == "improving",
             "very_poor": lambda f, now: f["next_6h"]["trend"] == "worsening" and f["next_24h"]["trend"] == "improving",
             "severe": lambda f, now: f["next_24h"]["trend"] == "improving"

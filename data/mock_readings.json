@@ -1,5 +1,5 @@
 {
-  "_note": "Hourly mock readings in µg/m³, cycled by the monitor agent (one step every few seconds). Each scenario's PM2.5 stays inside one US EPA (2024) band; PM10 is roughly 1.6-2x PM2.5, typical for Punjab winter smog. 'spike' builds into a smog emergency and then clears. Pick a scenario with MOCK_SCENARIO=<name>.",
+  "_note": "Hourly mock readings in µg/m³, cycled by the monitor agent (one step every few seconds). Each steady scenario stays in its NCAP 2023 AQI category. PM10 follows typical Punjab winter smog; 'spike' rises from clean air into a smog emergency and clears. Pick a scenario with MOCK_SCENARIO=<name>.",
   "default_scenario": "spike",
   "city_defaults": {
     "Lahore": "spike",
@@ -26,20 +26,20 @@
       "pm10": [75, 82, 90, 96, 104, 100, 94, 88]
     },
     "poor": {
-      "pm25": [68, 75, 84, 92, 101, 110, 98, 88],
-      "pm10": [130, 142, 160, 175, 190, 205, 185, 168]
+      "pm25": [140, 152, 168, 181, 195, 210, 198, 176],
+      "pm10": [180, 195, 215, 240, 270, 300, 285, 250]
     },
     "very_poor": {
-      "pm25": [140, 152, 168, 181, 195, 210, 198, 176],
-      "pm10": [250, 270, 295, 320, 340, 365, 345, 310]
+      "pm25": [232, 240, 250, 260, 270, 265, 255, 242],
+      "pm10": [300, 320, 345, 370, 390, 410, 395, 370]
     },
     "severe": {
-      "pm25": [240, 262, 285, 310, 335, 360, 342, 318],
+      "pm25": [280, 292, 305, 320, 335, 350, 340, 322],
       "pm10": [400, 430, 470, 505, 540, 580, 555, 520]
     },
     "spike": {
-      "pm25": [22, 28, 35, 41, 55, 68, 90, 120, 160, 210, 260, 310, 280, 230, 170, 120, 80, 55, 38, 25],
-      "pm10": [45, 55, 68, 78, 102, 125, 162, 210, 275, 355, 430, 505, 460, 385, 290, 210, 142, 100, 72, 50]
+      "pm25": [5, 6, 8, 12, 20, 35, 60, 90, 130, 180, 230, 280, 320, 300, 250, 190, 130, 80, 35, 7],
+      "pm10": [10, 15, 20, 25, 35, 55, 90, 140, 210, 300, 380, 450, 500, 480, 410, 320, 220, 140, 70, 20]
     }
   }
 }

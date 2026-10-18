@@ -79,7 +79,10 @@ class Forecast(TypedDict):
 
 class Analysis(TypedDict):
     """Interpretation of the readings. Owned by: analysis agent."""
-    aqi: int | None         # US EPA AQI computed from latest PM2.5; None when level is "unknown"
+    aqi: int | None         # highest US EPA sub-index; None when level is "unknown"
+    aqi_pm25: int | None    # US EPA AQI sub-index from latest PM2.5
+    aqi_pm10: int | None    # US EPA AQI sub-index from latest PM10, when available
+    dominant_pollutant: Literal["pm25", "pm10"]
     level: Level            # the AQI category
     trend: Literal["rising", "falling", "stable"]
     trend_per_hour: float   # PM2.5 change in µg/m³ per hour over the window (+ rising, - falling)

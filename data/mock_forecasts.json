@@ -1,9 +1,9 @@
 {
-  "_note": "Scripted demo forecasts, one per mock scenario (same names as mock_readings.json). Each curve is a list of [hours_ahead, multiplier] keyframes: the forecast PM2.5 is the CURRENT PM2.5 reading times the multiplier, joined by straight lines between keyframes and held flat after the last one. So the forecast always starts at the reading the dashboard shows. Multipliers keep each scenario honest: good stays good, moderate crosses into poor within 4 hours (the predictive-alert demo), severe eases over 24-36 hours, spike eases after about 3 hours.",
+  "_note": "Scripted demo forecasts, one per mock scenario (same names as mock_readings.json). Each curve is a list of [hours_ahead, multiplier] keyframes: the forecast PM2.5 is the CURRENT PM2.5 reading times the multiplier, joined by straight lines between keyframes and held flat after the last one. So the forecast always starts at the reading the dashboard shows. Multipliers keep each scenario honest: good stays good, moderate crosses into NCAP Poor within 6 hours (the predictive-alert demo), severe eases over 24-36 hours, spike eases after about 3 hours.",
   "curves": {
     "good":                [[0, 1.0], [6, 1.1], [12, 1.2], [24, 1.05], [48, 1.15], [96, 1.0]],
     "satisfactory":            [[0, 1.0], [3, 1.05], [6, 1.12], [10, 1.3], [14, 1.2], [24, 1.0], [48, 0.9], [72, 1.1], [96, 1.0]],
-    "moderate": [[0, 1.0], [2, 1.3], [4, 1.6], [8, 1.8], [12, 1.5], [24, 1.1], [36, 0.9], [72, 0.8], [96, 0.8]],
+    "moderate": [[0, 1.0], [2, 2.5], [4, 3.5], [6, 3.8], [8, 4.0], [12, 3.2], [24, 1.8], [36, 1.0], [72, 0.8], [96, 0.8]],
     "poor":           [[0, 1.0], [6, 0.95], [12, 0.85], [24, 0.7], [48, 0.6], [96, 0.55]],
     "very_poor":      [[0, 1.0], [4, 1.15], [8, 1.2], [16, 0.9], [24, 0.75], [48, 0.55], [96, 0.5]],
     "severe":           [[0, 1.0], [6, 0.9], [12, 0.75], [24, 0.5], [36, 0.35], [48, 0.3], [96, 0.28]],

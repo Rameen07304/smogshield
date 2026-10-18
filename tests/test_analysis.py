@@ -47,14 +47,15 @@ def scenario_windows(name: str, size: int = 6) -> list[list[float]]:
 
 class AqiTest(unittest.TestCase):
     def test_every_band_boundary(self):
-        # (PM2.5, expected AQI, expected level) from the EPA 2024 table
+        # AQI numbers use EPA 2024 breakpoints; categories use NCAP 2023 Table 1.
         cases = [
             (0.0, 0, "good"), (9.0, 50, "good"),
             (9.1, 51, "satisfactory"), (35.4, 100, "satisfactory"),
             (35.5, 101, "moderate"), (55.4, 150, "moderate"),
-            (55.5, 151, "poor"), (125.4, 200, "poor"),
-            (125.5, 201, "very_poor"), (225.4, 300, "very_poor"),
-            (225.5, 301, "severe"), (325.4, 500, "severe"),
+            (55.5, 151, "moderate"), (125.4, 200, "moderate"),
+            (125.5, 201, "poor"), (225.4, 300, "poor"),
+            (225.5, 301, "very_poor"), (275.4, 400, "very_poor"),
+            (275.5, 401, "severe"), (325.4, 500, "severe"),
         ]
         for pm25, aqi, level in cases:
             with self.subTest(pm25=pm25):
@@ -73,6 +74,43 @@ class AqiTest(unittest.TestCase):
 
     def test_negative_is_treated_as_zero(self):
         self.assertEqual(analysis.pm25_to_aqi(-5), (0, "good"))
+
+    def test_pm10_breakpoints_and_integer_truncation(self):
+        cases = [
+            (0, 0), (54, 50), (54.9, 50), (55, 51), (154, 100), (155, 101),
+            (254, 150), (255, 151), (354, 200), (355, 201), (424, 300),
+            (425, 301), (604, 500), (605, 500), (700, 500),
+        ]
+        for pm10, expected in cases:
+            with self.subTest(pm10=pm10):
+                self.assertEqual(analysis.pm10_to_aqi(pm10), expected)
+
+    def test_pm10_dominates_the_overall_aqi(self):
+        reading = window([30])[0]
+        reading["pm10"] = 540
+        result = analysis.assess([reading])
+        self.assertEqual(result["aqi_pm25"], analysis.pm25_to_aqi(30)[0])
+        self.assertEqual(result["aqi_pm10"], 429)
+        self.assertEqual((result["aqi"], result["level"], result["dominant_pollutant"]),
+                         (429, "severe", "pm10"))
+        self.assertIn("PM10 540 µg/m³ gives AQI 429 (Severe)", result["reason"])
+
+    def test_missing_invalid_and_negative_pm10_use_pm25_only(self):
+        cases = [
+            ("none", None),
+            ("missing", ...),
+            ("nan", float("nan")),
+            ("negative", -1),
+        ]
+        for name, pm10 in cases:
+            with self.subTest(pm10=name):
+                reading = window([30])[0]
+                if pm10 is not ...:
+                    reading["pm10"] = pm10
+                result = analysis.assess([reading])
+                self.assertEqual(result["aqi"], analysis.pm25_to_aqi(30)[0])
+                self.assertEqual(result["aqi_pm10"], None)
+                self.assertEqual(result["dominant_pollutant"], "pm25")
 
 
 class ScenarioTest(unittest.TestCase):
@@ -159,6 +197,8 @@ class BadInputTest(unittest.TestCase):
                 self.assertEqual(set(result), set(Analysis.__annotations__))
                 self.assertIn("No valid readings", result["reason"])
                 self.assertEqual((result["level"], result["aqi"]), ("unknown", None))  # never "good"
+                self.assertEqual((result["aqi_pm25"], result["aqi_pm10"], result["dominant_pollutant"]),
+                                 (None, None, "pm25"))
                 self.assertFalse(result["is_hazardous"])
 
     def test_only_invalid_readings_is_unknown(self):
@@ -193,6 +233,9 @@ class OutputContractTest(unittest.TestCase):
         a = result["analysis"]
         self.assertEqual(set(a), set(Analysis.__annotations__))
         self.assertIsInstance(a["aqi"], int)
+        self.assertIsInstance(a["aqi_pm25"], int)
+        self.assertIsNone(a["aqi_pm10"])
+        self.assertEqual(a["dominant_pollutant"], "pm25")
         self.assertIn(a["level"], analysis.LEVEL_LABELS)
         self.assertIn(a["trend"], {"rising", "falling", "stable"})
         self.assertIsInstance(a["trend_per_hour"], float)

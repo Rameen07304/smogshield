@@ -142,8 +142,8 @@ class RunTest(AlertTestCase):
         self.assertEqual(len(alert.read_feed()), 1)
 
     def test_level_increase_gives_a_new_alert(self):
-        alert.run(state_for([80] * 6))
-        new = alert.run(state_for([150] * 6))["alerts"]
+        alert.run(state_for([150] * 6))
+        new = alert.run(state_for([250] * 6))["alerts"]
         self.assertEqual((new[0]["level"], new[0]["severity"]), ("very_poor", "critical"))
         self.assertEqual([a["level"] for a in alert.read_feed()], ["very_poor", "poor"])  # newest first
 
@@ -409,7 +409,7 @@ def with_forecast(values_now: list, forecast_values: list, source: str = "live")
     return state
 
 
-GETS_UNHEALTHY = [30, 40, 60, 70, 70, 70] + [30] * 18       # satisfactory now, Unhealthy from hour 2
+GETS_UNHEALTHY = [30, 40, 130, 150, 150, 150] + [30] * 18  # satisfactory now, Poor from hour 2
 
 
 class ForecastDecisionTest(unittest.TestCase):
@@ -480,7 +480,7 @@ class ForecastAlertRunTest(AlertTestCase):
         self.assertEqual(counts, [1, 0, 0, 0])
 
     def test_no_predictive_alert_when_already_unhealthy(self):
-        result = alert.run(with_forecast([80] * 6, [80, 150, 150] + [80] * 21))["alerts"]
+        result = alert.run(with_forecast([150] * 6, [150, 200, 200] + [150] * 21))["alerts"]
         self.assertEqual([a["kind"] for a in result], ["current"])      # the current alert only
 
     def test_no_predictive_alert_without_a_forecast_threat(self):
@@ -490,7 +490,7 @@ class ForecastAlertRunTest(AlertTestCase):
                 self.assertEqual(alert.run(with_forecast([30] * 6, forecast_values))["alerts"], [])
 
     def test_current_and_forecast_alerts_together_in_one_run(self):
-        result = alert.run(with_forecast([45] * 6, [45, 60, 70] + [45] * 21))["alerts"]   # USG now, Unhealthy soon
+        result = alert.run(with_forecast([45] * 6, [45, 60, 130] + [45] * 21))["alerts"]  # moderate now, Poor soon
         self.assertEqual([(a["kind"], a["severity"]) for a in result], [("current", "info"), ("forecast", "warning")])
 
     def test_simulated_forecast_alert_is_labelled_and_kept_off_telegram(self):
