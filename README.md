@@ -85,7 +85,7 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 | Variable | Default | What it does |
 |----------|---------|--------------|
 | `USE_MOCK` | `false` | `true` skips the network and always uses `data/mock_readings.json`. |
-| `MOCK_SCENARIO` | unset | Forces mock data for one scenario: `good`, `moderate`, `unhealthy_sensitive`, `unhealthy`, `very_unhealthy`, `hazardous`, `spike`. |
+| `MOCK_SCENARIO` | unset | Forces mock data for one scenario: `good`, `satisfactory`, `moderate`, `poor`, `very_poor`, `severe`, `spike`. |
 | `MONITOR_CITY` | `Lahore` | City to watch: Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Gujranwala, Sialkot. |
 | `LIVE_CACHE_MINUTES` | `10` | Reuse a city's live data this long before asking Open-Meteo again (it updates hourly). `0` = no cache. |
 | `FORECAST_CACHE_MINUTES` | `30` | Reuse a city's live forecast this long before asking Open-Meteo again. `0` = no cache. The forecast follows the same `USE_MOCK`, `MOCK_SCENARIO` and dashboard scenario switch as the monitor. |
@@ -107,10 +107,10 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 ## Demo tips
 
 - **Switch scenarios from the dashboard's "Demo scenario" menu.** It takes effect on the next poll, clears the alert memory so the new scenario alerts at once, and "Live data" switches back. Nothing to restart.
-- **Force a smog emergency:** pick `hazardous` (or set `MOCK_SCENARIO=hazardous` in `.env` and restart). Use `spike` to show air building from clean to hazardous and back, about one step every 5 seconds, with a "Sudden spike" badge and escalating alerts (info → warning → critical).
+- **Force a smog emergency:** pick `severe` (or set `MOCK_SCENARIO=severe` in `.env` and restart). Use `spike` to show air building from clean to severe and back, about one step every 5 seconds, with a "Sudden spike" badge and escalating alerts (info → warning → critical).
 - **Mock data is always labelled:** the dashboard shows a SIMULATED DATA banner, and every alert from mock data starts with `[SIMULATION]` and is not sent to Telegram unless you allow it.
 - **Rehearsals don't swallow the demo alert:** restarting with mock data forced, or switching scenario in the menu, clears the alert memory. To also start with an empty feed, stop the server and delete `var/alerts.json`.
-- **Show a predictive alert:** pick `unhealthy_sensitive`. Its scripted forecast climbs to Unhealthy within a few hours, so a `[FORECAST]` warning arrives before conditions get there. `spike` and the high scenarios show forecasts that improve.
+- **Show a predictive alert:** pick `moderate`. Its scripted forecast climbs to Unhealthy within a few hours, so a `[FORECAST]` warning arrives before conditions get there. `spike` and the high scenarios show forecasts that improve.
 - **The forecast is a model estimate**, not a measurement: hourly CAMS model output from Open-Meteo, with confidence high for 0–6 h, medium for 6–24 h, low beyond. Mock forecasts are labelled as simulated.
 - **The AQI is an estimate** from the latest hourly PM2.5 (the dashboard says so). Official US AQI uses longer averages, so other sites may show different numbers.
 

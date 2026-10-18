@@ -4,7 +4,7 @@ Reads: state["analysis"], state["advisory"], state["readings"], state["forecast"
 Owns:  state["alerts"]  (alerts raised by THIS run; [] = nothing new)
 
 When to alert (per location, so we never spam):
-  - the level reaches "unhealthy_sensitive" or rises above the last alerted level
+  - the level reaches "moderate" or rises above the last alerted level
     -> alert right away (escalations are never held back by the cooldown)
   - the spike flag is set -> alert, at most once per cooldown
   - same or lower level -> no alert. After a full cooldown without alerts the remembered
@@ -60,25 +60,25 @@ DEFAULT_MEMORY_HOURS = 3        # override with ALERT_MEMORY_HOURS
 TELEGRAM_TIMEOUT_SECONDS = 3
 
 # Levels from best to worst; the list index is the severity rank
-LEVEL_ORDER = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
-THRESHOLD = "unhealthy_sensitive"   # lowest level that raises an alert on its own
+LEVEL_ORDER = ["good", "satisfactory", "moderate", "poor", "very_poor", "severe"]
+THRESHOLD = "moderate"              # lowest level that raises an alert on its own
 SIMULATION_PREFIX = "[SIMULATION] "  # on every alert built from mock data
 FORECAST_PREFIX = "[FORECAST] "      # on every predictive alert
 FORECAST_HORIZON_HOURS = 6           # predictive alerts look this far ahead
-FORECAST_TRIGGER = "unhealthy"       # predict only when the forecast reaches this level or worse
+FORECAST_TRIGGER = "poor"            # predict only when the forecast reaches this level or worse
 FORECAST_SEVERITY = "warning"        # a prediction is never critical
 LOCAL_UTC_OFFSET = timedelta(hours=5)   # message times in Pakistan Standard Time, like the advisory
 URGENCY = {
     "good": "info",                 # only reachable through a spike
-    "moderate": "info",             # only reachable through a spike
-    "unhealthy_sensitive": "info",
-    "unhealthy": "warning",
-    "very_unhealthy": "critical",
-    "hazardous": "critical",
+    "satisfactory": "info",         # only reachable through a spike
+    "moderate": "info",
+    "poor": "warning",
+    "very_poor": "critical",
+    "severe": "critical",
 }
 LEVEL_LABELS = {
-    "good": "Good", "moderate": "Moderate", "unhealthy_sensitive": "Unhealthy for sensitive groups",
-    "unhealthy": "Unhealthy", "very_unhealthy": "Very unhealthy", "hazardous": "Hazardous",
+    "good": "Good", "satisfactory": "Satisfactory", "moderate": "Moderate",
+    "poor": "Poor", "very_poor": "Very Poor", "severe": "Severe",
 }
 
 _lock = threading.Lock()  # several dashboard tabs can poll at the same time

@@ -47,11 +47,11 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory(prefix="smogshield-selfcheck-") as tmp:
         alert.STORE_FILE = Path(tmp) / "alerts.json"
 
-        # AQI math against known EPA values
+        # AQI math against known breakpoint values
         assert analysis.pm25_to_aqi(9.0) == (50, "good")
-        assert analysis.pm25_to_aqi(35.5) == (101, "unhealthy_sensitive")
-        assert analysis.pm25_to_aqi(260)[1] == "hazardous"
-        assert analysis.pm25_to_aqi(999) == (500, "hazardous")
+        assert analysis.pm25_to_aqi(35.5) == (101, "moderate")
+        assert analysis.pm25_to_aqi(260)[1] == "severe"
+        assert analysis.pm25_to_aqi(999) == (500, "severe")
 
         # full pipeline produces every key
         result = run_once()

@@ -162,7 +162,7 @@ class WindowSummaryTest(unittest.TestCase):
         result = forecast.summarize_window(points([20, 25, 60, 30, 30, 30] + [10] * 18), 6)
         self.assertEqual(result["peak_aqi"], analysis.pm25_to_aqi(60)[0])
         self.assertEqual(result["peak_time"], (HOUR0 + timedelta(hours=2)).isoformat())
-        self.assertEqual(result["peak_level"], "unhealthy")
+        self.assertEqual(result["peak_level"], "poor")
         self.assertEqual(result["hours"], 6)
 
     def test_equal_peaks_report_the_earliest(self):
@@ -171,8 +171,8 @@ class WindowSummaryTest(unittest.TestCase):
 
     def test_window_only_uses_its_hours(self):
         values = [20] * 6 + [300] * 18           # the bad air arrives after 6 hours
-        self.assertEqual(forecast.summarize_window(points(values), 6)["peak_level"], "moderate")
-        self.assertEqual(forecast.summarize_window(points(values), 24)["peak_level"], "hazardous")
+        self.assertEqual(forecast.summarize_window(points(values), 6)["peak_level"], "satisfactory")
+        self.assertEqual(forecast.summarize_window(points(values), 24)["peak_level"], "severe")
 
     def test_typical_level_is_the_level_of_the_average(self):
         result = forecast.summarize_window(points([10, 10, 10, 10, 10, 100]), 6)   # average 25
@@ -232,7 +232,7 @@ class OutlookTest(unittest.TestCase):
         result = forecast.daily_outlook(self.series({0: 40, 4: 200, 8: 60, 17: 300, 30: 20}), OFFSET, NOW)
         self.assertEqual([d["date"] for d in result], ["2026-10-17", "2026-10-18"])
         self.assertEqual(result[0]["peak_aqi"], analysis.pm25_to_aqi(200)[0])
-        self.assertEqual(result[1]["peak_level"], "hazardous")
+        self.assertEqual(result[1]["peak_level"], "severe")
         self.assertEqual((result[0]["confidence"], result[1]["confidence"]), ("high", "medium"))
 
     def test_past_hours_are_ignored(self):
@@ -248,7 +248,7 @@ class OutlookTest(unittest.TestCase):
 
 
 MOCK_READINGS = __import__("json").loads((Path(__file__).parent.parent / "data" / "mock_readings.json").read_text(encoding="utf-8"))
-UNHEALTHY_OR_WORSE = {"unhealthy", "very_unhealthy", "hazardous"}
+UNHEALTHY_OR_WORSE = {"poor", "very_poor", "severe"}
 
 
 def reading(pm25: float, source: str = "mock", city: str = "Lahore") -> list[dict]:
@@ -275,12 +275,12 @@ class MockForecastTest(ForecastTestCase):
     def test_each_scenario_tells_its_story(self):
         checks = {
             "good": lambda f, now: all(p["level"] == "good" for p in f["hourly"]),
-            "moderate": lambda f, now: f["next_6h"]["peak_level"] not in UNHEALTHY_OR_WORSE
+            "satisfactory": lambda f, now: f["next_6h"]["peak_level"] not in UNHEALTHY_OR_WORSE
                                        and f["next_24h"]["peak_aqi"] > f["hourly"][0]["aqi"],          # worse into the evening
-            "unhealthy_sensitive": lambda f, now: f["next_6h"]["peak_level"] in UNHEALTHY_OR_WORSE,      # predictive-alert demo
-            "unhealthy": lambda f, now: f["next_24h"]["trend"] == "improving",
-            "very_unhealthy": lambda f, now: f["next_6h"]["trend"] == "worsening" and f["next_24h"]["trend"] == "improving",
-            "hazardous": lambda f, now: f["next_24h"]["trend"] == "improving"
+            "moderate": lambda f, now: f["next_6h"]["peak_level"] in UNHEALTHY_OR_WORSE,      # predictive-alert demo
+            "poor": lambda f, now: f["next_24h"]["trend"] == "improving",
+            "very_poor": lambda f, now: f["next_6h"]["trend"] == "worsening" and f["next_24h"]["trend"] == "improving",
+            "severe": lambda f, now: f["next_24h"]["trend"] == "improving"
                                         and f["outlook"][2]["peak_aqi"] < f["hourly"][0]["aqi"],          # better in 1-2 days
             "spike": lambda f, now: f["next_24h"]["trend"] == "improving"
                                     and f["hourly"][8]["pm25"] < f["hourly"][0]["pm25"],                  # easing after a few hours
@@ -292,7 +292,7 @@ class MockForecastTest(ForecastTestCase):
                     self.assertTrue(check(result, NOW))
 
     def test_covers_the_rest_of_today_and_three_days(self):
-        result = forecast.mock_forecast("Lahore", 100.0, scenario="unhealthy", now=NOW)
+        result = forecast.mock_forecast("Lahore", 100.0, scenario="poor", now=NOW)
         self.assertEqual([d["date"] for d in result["outlook"]], ["2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20"])
         self.assertEqual(len(result["hourly"]), 24)
 
@@ -303,11 +303,11 @@ class MockForecastTest(ForecastTestCase):
 
 class MockSwitchTest(ForecastTestCase):
     def test_mock_scenario_env_drives_the_forecast(self):
-        os.environ["MOCK_SCENARIO"] = "hazardous"
+        os.environ["MOCK_SCENARIO"] = "severe"
         with mock.patch.object(forecast.requests, "get", side_effect=AssertionError("network called")):
             result = forecast.build_forecast("Lahore", now=NOW, readings=reading(300.0))
         self.assertEqual(result["source"], "mock")
-        self.assertEqual(result["next_24h"]["trend"], "improving")   # the hazardous curve
+        self.assertEqual(result["next_24h"]["trend"], "improving")   # the severe curve
 
     def test_use_mock_env_drives_the_forecast(self):
         os.environ["USE_MOCK"] = "true"
@@ -345,7 +345,7 @@ class MockSwitchTest(ForecastTestCase):
                     self.assertTrue(all(p["pm25"] == 40.0 for p in result["hourly"]))
 
     def test_no_reading_uses_the_base_level(self):
-        result = forecast.mock_forecast("Lahore", None, scenario="unhealthy", now=NOW)
+        result = forecast.mock_forecast("Lahore", None, scenario="poor", now=NOW)
         self.assertEqual(result["hourly"][0]["pm25"], forecast.MOCK_BASE_PM25)
 
     def test_bad_readings_never_raise(self):

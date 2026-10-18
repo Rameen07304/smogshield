@@ -26,7 +26,7 @@ GUIDANCE: dict[str, dict] = {
         "elderly": ["Normal outdoor activities are fine."],
         "respiratory_heart": ["No special precautions needed. Follow your usual care plan."],
     },
-    "moderate": {
+    "satisfactory": {
         "headline": "Air quality is acceptable.",
         "general": ["Outdoor activities are fine for most people."],
         "children": [
@@ -39,7 +39,7 @@ GUIDANCE: dict[str, dict] = {
             "Watch for symptoms such as coughing or shortness of breath.",
         ],
     },
-    "unhealthy_sensitive": {
+    "moderate": {
         "headline": "Unhealthy for sensitive groups.",
         "general": [
             "Most people can continue outdoor activities.",
@@ -59,7 +59,7 @@ GUIDANCE: dict[str, dict] = {
             "Watch for symptoms such as coughing, wheezing, chest tightness or unusual tiredness.",
         ],
     },
-    "unhealthy": {
+    "poor": {
         "headline": "Unhealthy air. Everyone may feel effects.",
         "general": [
             "Reduce long or intense outdoor activity and take more breaks.",
@@ -80,7 +80,7 @@ GUIDANCE: dict[str, dict] = {
             "Contact a doctor if your symptoms get worse.",
         ],
     },
-    "very_unhealthy": {
+    "very_poor": {
         "headline": "Very unhealthy air. Health alert.",
         "general": [
             "Avoid long or intense outdoor activity and move activities indoors.",
@@ -101,7 +101,7 @@ GUIDANCE: dict[str, dict] = {
             "Seek medical help if your symptoms get worse.",
         ],
     },
-    "hazardous": {
+    "severe": {
         "headline": "Hazardous smog. Emergency conditions.",
         "general": [
             "Stay indoors with windows and doors closed.",
@@ -126,8 +126,8 @@ GUIDANCE: dict[str, dict] = {
 }
 
 # "unknown" (no valid readings) or any missing/unrecognised level: be cautious and say so.
-# Use the "unhealthy" advice with an honest headline, never "Air quality is good."
-FALLBACK_LEVEL = "unhealthy"
+# Use the "poor" advice with an honest headline, never "Air quality is good."
+FALLBACK_LEVEL = "poor"
 FALLBACK_HEADLINE = "Air quality data is unavailable right now. Take precautions."
 
 # Urdu headline + public advice per level. Ask a native speaker to review before the demo.
@@ -136,18 +136,18 @@ URDU: dict[str, dict] = {
         "headline": "ہوا کا معیار اچھا ہے۔",
         "actions": ["معمول کی بیرونی سرگرمیاں جاری رکھیں۔"],
     },
-    "moderate": {
+    "satisfactory": {
         "headline": "ہوا کا معیار قابلِ قبول ہے۔",
         "actions": ["زیادہ تر لوگوں کے لیے بیرونی سرگرمیاں ٹھیک ہیں۔"],
     },
-    "unhealthy_sensitive": {
+    "moderate": {
         "headline": "حساس افراد کے لیے غیر صحت بخش۔",
         "actions": [
             "زیادہ تر لوگ بیرونی سرگرمیاں جاری رکھ سکتے ہیں۔",
             "علامات محسوس ہوں تو زیادہ وقفے لیں اور ہلکی سرگرمی کریں۔",
         ],
     },
-    "unhealthy": {
+    "poor": {
         "headline": "غیر صحت بخش ہوا۔ ہر کوئی متاثر ہو سکتا ہے۔",
         "actions": [
             "طویل یا سخت بیرونی سرگرمی کم کریں اور زیادہ وقفے لیں۔",
@@ -155,7 +155,7 @@ URDU: dict[str, dict] = {
             "کھڑکیاں بند رکھیں اور اگر ہو سکے تو گھر میں ایئر پیوریفائر چلائیں۔",
         ],
     },
-    "very_unhealthy": {
+    "very_poor": {
         "headline": "انتہائی غیر صحت بخش ہوا۔ صحت کا انتباہ۔",
         "actions": [
             "طویل یا سخت بیرونی سرگرمی سے گریز کریں اور سرگرمیاں گھر کے اندر منتقل کریں۔",
@@ -163,7 +163,7 @@ URDU: dict[str, dict] = {
             "کھڑکیاں اور دروازے بند رکھیں اور اگر ہو سکے تو ایئر پیوریفائر چلائیں۔",
         ],
     },
-    "hazardous": {
+    "severe": {
         "headline": "خطرناک اسموگ۔ ہنگامی صورتحال۔",
         "actions": [
             "کھڑکیاں اور دروازے بند کر کے گھر کے اندر رہیں۔",
@@ -180,15 +180,15 @@ SPIKE_NOTE = (
     "Sudden spike in pollution: postpone outdoor plans and check again within the hour.",
     "آلودگی میں اچانک اضافہ: بیرونی منصوبے ملتوی کریں اور ایک گھنٹے میں دوبارہ چیک کریں۔",
 )
-RISING_NOTE = (  # from "unhealthy_sensitive" upward
+RISING_NOTE = (  # from "moderate" upward
     "Conditions are worsening: postpone outdoor plans if you can and check again soon.",
     "حالات بگڑ رہے ہیں: اگر ممکن ہو تو بیرونی منصوبے ملتوی کریں اور جلد دوبارہ چیک کریں۔",
 )
-GENTLE_RISING_NOTE = (  # good / moderate: outdoor activity is still fine, so don't say postpone
+GENTLE_RISING_NOTE = (  # good / satisfactory: outdoor activity is still fine, so don't say postpone
     "Air quality is trending worse; keep an eye on updates.",
     "ہوا کا معیار خراب ہونے کی طرف جا رہا ہے؛ تازہ معلومات پر نظر رکھیں۔",
 )
-GENTLE_LEVELS = {"good", "moderate"}
+GENTLE_LEVELS = {"good", "satisfactory"}
 UNAVAILABLE_NOTE = (
     "No current air quality readings. Follow these precautions until data is back, and check again soon.",
     "ہوا کے معیار کی تازہ ریڈنگ دستیاب نہیں۔ ڈیٹا واپس آنے تک ان احتیاطی تدابیر پر عمل کریں اور جلد دوبارہ چیک کریں۔",
@@ -202,14 +202,14 @@ FALLING_NOTE = (
 # ---------- forecast wording (deterministic templates; times in the cities' local time) ----------
 
 LOCAL_UTC_OFFSET = timedelta(hours=5)   # every monitored city is in Pakistan Standard Time (no DST)
-LEVEL_ORDER = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
+LEVEL_ORDER = ["good", "satisfactory", "moderate", "poor", "very_poor", "severe"]
 LEVEL_NAMES = {   # (English, Urdu) for use inside a sentence
     "good": ("Good", "اچھا"),
+    "satisfactory": ("Satisfactory", "قابل قبول"),
     "moderate": ("Moderate", "درمیانہ"),
-    "unhealthy_sensitive": ("Unhealthy for sensitive groups", "حساس افراد کے لیے غیر صحت بخش"),
-    "unhealthy": ("Unhealthy", "غیر صحت بخش"),
-    "very_unhealthy": ("Very unhealthy", "انتہائی غیر صحت بخش"),
-    "hazardous": ("Hazardous", "خطرناک"),
+    "poor": ("Poor", "خراب"),
+    "very_poor": ("Very Poor", "بہت خراب"),
+    "severe": ("Severe", "شدید"),
 }
 WORSEN_NOTE = (
     "Air quality is forecast to worsen over the next 6 hours, reaching {level} around {time}; plan indoor activities.",
@@ -293,7 +293,7 @@ def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:
     six = forecast["next_6h"]
     peak_rank = LEVEL_ORDER.index(six["peak_level"]) if six["peak_level"] in LEVEL_ORDER else rank
     if peak_rank > rank:
-        if peak_rank >= LEVEL_ORDER.index("unhealthy_sensitive"):
+        if peak_rank >= LEVEL_ORDER.index("moderate"):
             name, name_ur = LEVEL_NAMES[six["peak_level"]]
             # when that level is first reached (the time to plan around), not when it peaks
             onset = next((p["time"] for p in forecast.get("hourly") or []
@@ -303,7 +303,7 @@ def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:
             sentences.append((WORSEN_NOTE[0].format(level=name, time=at), WORSEN_NOTE[1].format(level=name_ur, time=at)))
         else:
             sentences.append(SLIGHTLY_WORSE_NOTE)
-    elif rank >= LEVEL_ORDER.index("unhealthy_sensitive"):
+    elif rank >= LEVEL_ORDER.index("moderate"):
         better = next((p for p in forecast.get("hourly") or []
                        if p.get("hours_ahead", 0) >= 1 and p.get("level") in LEVEL_ORDER
                        and LEVEL_ORDER.index(p["level"]) < rank), None)
@@ -315,8 +315,8 @@ def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:
 
     # 2. The best time to go out, once the air is not simply good
     best = forecast.get("best_time")
-    if best and rank >= LEVEL_ORDER.index("moderate") and best.get("level") in LEVEL_ORDER:
-        if LEVEL_ORDER.index(best["level"]) >= LEVEL_ORDER.index("unhealthy"):
+    if best and rank >= LEVEL_ORDER.index("satisfactory") and best.get("level") in LEVEL_ORDER:
+        if LEVEL_ORDER.index(best["level"]) >= LEVEL_ORDER.index("poor"):
             name, name_ur = LEVEL_NAMES[best["level"]]
             sentences.append((NO_CLEAN_WINDOW_NOTE[0].format(level=name), NO_CLEAN_WINDOW_NOTE[1].format(level=name_ur)))
         else:

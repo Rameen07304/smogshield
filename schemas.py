@@ -7,7 +7,7 @@ LangGraph merges that dict back into the shared state.
 from typing import Literal, TypedDict
 
 Level = Literal[
-    "good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous",
+    "good", "satisfactory", "moderate", "poor", "very_poor", "severe",
     "unknown",  # no valid readings: never treat as good
 ]
 
@@ -83,7 +83,7 @@ class Analysis(TypedDict):
     level: Level            # the AQI category
     trend: Literal["rising", "falling", "stable"]
     trend_per_hour: float   # PM2.5 change in µg/m³ per hour over the window (+ rising, - falling)
-    is_hazardous: bool      # True from "unhealthy" upward
+    is_hazardous: bool      # True from "poor" upward
     is_spike: bool          # sudden jump vs the recent window, even if the level is still low
     reason: str             # one-line, human-readable explanation of the above
 

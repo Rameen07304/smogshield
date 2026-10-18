@@ -18,7 +18,7 @@ for _key in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"):
 from agents import advisory, alert, analysis, monitor  # noqa: E402
 from schemas import Advisory, Audience, UrduAdvisory  # noqa: E402
 
-LEVELS = ["good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"]
+LEVELS = ["good", "satisfactory", "moderate", "poor", "very_poor", "severe"]
 AUDIENCES = list(Audience.__args__)
 
 
@@ -62,17 +62,17 @@ class SeverityTest(unittest.TestCase):
         for level in LEVELS:
             with self.subTest(level=level):
                 says_mask = "mask" in all_text(advisory.build_advisory(make_analysis(level)))
-                self.assertEqual(says_mask, level in {"unhealthy", "very_unhealthy", "hazardous"})
+                self.assertEqual(says_mask, level in {"poor", "very_poor", "severe"})
 
     def test_hazardous_says_stay_indoors_and_good_does_not(self):
-        hazardous = advisory.build_advisory(make_analysis("hazardous"))
+        severe = advisory.build_advisory(make_analysis("severe"))
         good = advisory.build_advisory(make_analysis("good"))
-        self.assertIn("stay indoors", " ".join(hazardous["audiences"]["general"]).lower())
+        self.assertIn("stay indoors", " ".join(severe["audiences"]["general"]).lower())
         for word in ("indoors", "mask", "avoid", "reduce"):
             self.assertNotIn(word, all_text(good))
 
     def test_sensitive_groups_get_warned_before_the_public(self):
-        usg = advisory.build_advisory(make_analysis("unhealthy_sensitive"))
+        usg = advisory.build_advisory(make_analysis("moderate"))
         self.assertIn("reduce", " ".join(usg["audiences"]["respiratory_heart"]).lower())
         self.assertIn("most people can continue", " ".join(usg["audiences"]["general"]).lower())
 
@@ -84,26 +84,26 @@ class SeverityTest(unittest.TestCase):
 
 class TimeContextTest(unittest.TestCase):
     def test_spike_note_comes_first(self):
-        result = advisory.build_advisory(make_analysis("moderate", trend="rising", is_spike=True))
+        result = advisory.build_advisory(make_analysis("satisfactory", trend="rising", is_spike=True))
         self.assertEqual(result["time_note"], advisory.SPIKE_NOTE[0])
         self.assertEqual(result["actions"][0], advisory.SPIKE_NOTE[0])
         self.assertEqual(result["urdu"]["actions"][0], advisory.SPIKE_NOTE[1])
 
     def test_rising(self):
-        result = advisory.build_advisory(make_analysis("unhealthy", trend="rising"))
+        result = advisory.build_advisory(make_analysis("poor", trend="rising"))
         self.assertIn("worsening", result["time_note"])
         self.assertEqual(result["actions"][0], result["time_note"])
 
     def test_falling(self):
-        self.assertIn("improving", advisory.build_advisory(make_analysis("unhealthy", trend="falling"))["time_note"])
+        self.assertIn("improving", advisory.build_advisory(make_analysis("poor", trend="falling"))["time_note"])
 
     def test_stable_has_no_note(self):
-        result = advisory.build_advisory(make_analysis("unhealthy"))
+        result = advisory.build_advisory(make_analysis("poor"))
         self.assertEqual(result["time_note"], "")
         self.assertEqual(result["actions"], result["audiences"]["general"])
 
     def test_rising_in_good_or_moderate_air_is_gentle(self):
-        for level in ("good", "moderate"):
+        for level in ("good", "satisfactory"):
             with self.subTest(level=level):
                 result = advisory.build_advisory(make_analysis(level, trend="rising"))
                 self.assertEqual(result["time_note"], advisory.GENTLE_RISING_NOTE[0])
@@ -111,7 +111,7 @@ class TimeContextTest(unittest.TestCase):
                 self.assertNotIn("postpone", " ".join(result["actions"]).lower())  # no contradiction
 
     def test_rising_from_sensitive_groups_up_says_postpone(self):
-        for level in ("unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"):
+        for level in ("moderate", "poor", "very_poor", "severe"):
             with self.subTest(level=level):
                 self.assertEqual(advisory.build_advisory(make_analysis(level, trend="rising"))["time_note"],
                                  advisory.RISING_NOTE[0])
@@ -161,9 +161,9 @@ class BadInputTest(unittest.TestCase):
         self.assertEqual(advisory.run({})["advisory"]["headline"], advisory.FALLBACK_HEADLINE)
 
     def test_output_does_not_share_the_template_lists(self):
-        result = advisory.build_advisory(make_analysis("hazardous"))
+        result = advisory.build_advisory(make_analysis("severe"))
         result["audiences"]["general"].append("mutated")
-        self.assertNotIn("mutated", advisory.GUIDANCE["hazardous"]["general"])
+        self.assertNotIn("mutated", advisory.GUIDANCE["severe"]["general"])
 
 
 class ContractTest(unittest.TestCase):
@@ -176,7 +176,7 @@ class ContractTest(unittest.TestCase):
         self.addCleanup(store_patch.stop)
 
     def test_matches_schema(self):
-        result = advisory.run({"analysis": make_analysis("unhealthy", trend="rising")})
+        result = advisory.run({"analysis": make_analysis("poor", trend="rising")})
         self.assertEqual(set(result), {"advisory"})  # only the key advisory owns
         adv = result["advisory"]
         self.assertEqual(set(adv), set(Advisory.__annotations__))
@@ -198,7 +198,7 @@ class ContractTest(unittest.TestCase):
                 if scenario != "spike":
                     self.assertEqual(level, scenario)
                 self.assertEqual(state["advisory"]["headline"], advisory.GUIDANCE[level]["headline"])
-                if level in {"very_unhealthy", "hazardous"}:
+                if level in {"very_poor", "severe"}:
                     self.assertEqual(state["alerts"][0]["severity"], "critical")
                     self.assertIn(state["advisory"]["headline"], state["alerts"][0]["message"])
 
@@ -225,47 +225,47 @@ def note_for(level: str, values: list[float]) -> dict:
 
 class ForecastWordingTest(unittest.TestCase):
     def test_worsening_within_6_hours(self):
-        result = note_for("moderate", [30, 40, 60, 70, 70, 70] + [30] * 18)   # Unhealthy from hour 2 = 17:00 local
+        result = note_for("satisfactory", [30, 40, 60, 70, 70, 70] + [30] * 18)   # Unhealthy from hour 2 = 17:00 local
         self.assertEqual(result["forecast_note"].split(" Best time")[0],
-                         "Air quality is forecast to worsen over the next 6 hours, reaching Unhealthy around 17:00; "
+                         "Air quality is forecast to worsen over the next 6 hours, reaching Poor around 17:00; "
                          "plan indoor activities.")
         self.assertTrue(result["urdu"]["forecast_note"].startswith(
-            "اگلے 6 گھنٹوں میں ہوا کا معیار خراب ہونے کی پیش گوئی ہے، تقریباً 17:00 تک غیر صحت بخش"))
+            "اگلے 6 گھنٹوں میں ہوا کا معیار خراب ہونے کی پیش گوئی ہے، تقریباً 17:00 تک خراب"))
 
     def test_slightly_worse_in_good_air(self):
-        result = note_for("good", [5, 6, 8, 12, 15, 15] + [5] * 18)            # good -> moderate only
+        result = note_for("good", [5, 6, 8, 12, 15, 15] + [5] * 18)            # good -> satisfactory only
         self.assertEqual(result["forecast_note"], advisory.SLIGHTLY_WORSE_NOTE[0])  # no "best time" in good air
         self.assertEqual(result["urdu"]["forecast_note"], advisory.SLIGHTLY_WORSE_NOTE[1])
 
     def test_improves_by_tomorrow_morning(self):
         values = [80] * 16 + [20] * 8                                          # better from hour 16 = 07:00 local tomorrow
-        result = note_for("unhealthy", values)
+        result = note_for("poor", values)
         self.assertTrue(result["forecast_note"].startswith("Expected to improve by tomorrow morning."))
         self.assertTrue(result["urdu"]["forecast_note"].startswith("کل صبح تک بہتری کی توقع ہے۔"))
 
     def test_improves_this_evening(self):
-        result = note_for("unhealthy", [80, 80, 80, 20] + [20] * 20)           # hour 3 = 18:00 local today
+        result = note_for("poor", [80, 80, 80, 20] + [20] * 20)           # hour 3 = 18:00 local today
         self.assertTrue(result["forecast_note"].startswith("Expected to improve by this evening."))
         self.assertTrue(result["urdu"]["forecast_note"].startswith("آج شام تک بہتری کی توقع ہے۔"))
 
     def test_not_improving_and_no_clean_window(self):
-        result = note_for("unhealthy", [80] * 24)
+        result = note_for("poor", [80] * 24)
         self.assertEqual(result["forecast_note"],
                          "Not expected to improve in the next 24 hours. "
-                         "Even the cleanest hours in the next 24 hours stay Unhealthy; limit time outdoors.")
+                         "Even the cleanest hours in the next 24 hours stay Poor; limit time outdoors.")
         self.assertEqual(result["urdu"]["forecast_note"],
                          "اگلے 24 گھنٹوں میں بہتری کی توقع نہیں۔ "
-                         "اگلے 24 گھنٹوں کے صاف ترین اوقات بھی غیر صحت بخش رہیں گے؛ باہر کم وقت گزاریں۔")
+                         "اگلے 24 گھنٹوں کے صاف ترین اوقات بھی خراب رہیں گے؛ باہر کم وقت گزاریں۔")
 
     def test_best_time_to_go_outside(self):
         values = [30] * 15 + [12, 12] + [30] * 7                              # hours 15-16 = 06:00-08:00 local tomorrow
-        result = note_for("moderate", values)
+        result = note_for("satisfactory", values)
         self.assertEqual(result["forecast_note"], "Best time to go outside: tomorrow 06:00–08:00.")
         self.assertEqual(result["urdu"]["forecast_note"], "باہر جانے کا بہترین وقت: کل 06:00–08:00۔")
 
     def test_best_time_later_today_has_no_day(self):
         values = [30, 30, 30, 12, 12] + [30] * 19                             # hours 3-4 = 18:00-20:00 local today
-        result = note_for("moderate", values)
+        result = note_for("satisfactory", values)
         self.assertEqual(result["forecast_note"], "Best time to go outside: 18:00–20:00.")
         self.assertEqual(result["urdu"]["forecast_note"], "باہر جانے کا بہترین وقت: 18:00–20:00۔")
 
@@ -273,11 +273,11 @@ class ForecastWordingTest(unittest.TestCase):
         # Each level gets a forecast that worsens (or, at the top, improves) so the note has to speak
         cases = {
             "good": ([5] + [15] * 23, advisory.SLIGHTLY_WORSE_NOTE),
-            "moderate": ([30] + [80] * 23, advisory.WORSEN_NOTE),
-            "unhealthy_sensitive": ([45] + [80] * 23, advisory.WORSEN_NOTE),
-            "unhealthy": ([80] + [150] * 23, advisory.WORSEN_NOTE),
-            "very_unhealthy": ([150] + [260] * 23, advisory.WORSEN_NOTE),
-            "hazardous": ([300] * 3 + [100] * 21, advisory.IMPROVE_NOTE),
+            "satisfactory": ([30] + [80] * 23, advisory.WORSEN_NOTE),
+            "moderate": ([45] + [80] * 23, advisory.WORSEN_NOTE),
+            "poor": ([80] + [150] * 23, advisory.WORSEN_NOTE),
+            "very_poor": ([150] + [260] * 23, advisory.WORSEN_NOTE),
+            "severe": ([300] * 3 + [100] * 21, advisory.IMPROVE_NOTE),
         }
         self.assertEqual(list(cases), LEVELS)
         for level, (values, template) in cases.items():
@@ -301,13 +301,13 @@ class ForecastWordingTest(unittest.TestCase):
                 self.assertEqual(plain["disclaimer"], with_forecast["disclaimer"])
 
     def test_note_comes_after_the_time_note(self):
-        result = advisory.build_advisory(make_analysis("unhealthy", trend="rising"), make_forecast([80] * 24))
+        result = advisory.build_advisory(make_analysis("poor", trend="rising"), make_forecast([80] * 24))
         self.assertEqual(result["actions"][:2], [result["time_note"], result["forecast_note"]])
 
     def test_no_forecast_no_note(self):
         for missing in (None, {}, {"next_6h": None}):
             with self.subTest(forecast=missing):
-                result = advisory.build_advisory(make_analysis("unhealthy"), missing)
+                result = advisory.build_advisory(make_analysis("poor"), missing)
                 self.assertEqual((result["forecast_note"], result["urdu"]["forecast_note"]), ("", ""))
 
     def test_unknown_level_gets_no_forecast_note(self):
@@ -315,17 +315,17 @@ class ForecastWordingTest(unittest.TestCase):
         self.assertEqual(result["forecast_note"], "")
 
     def test_malformed_forecast_never_raises(self):
-        for bad in ({"next_6h": {"peak_level": "moderate"}, "generated_at": "x"}, {"next_6h": "nonsense"},
-                    {"next_6h": {"peak_level": "unhealthy", "peak_time": "not a time"}}):
+        for bad in ({"next_6h": {"peak_level": "satisfactory"}, "generated_at": "x"}, {"next_6h": "nonsense"},
+                    {"next_6h": {"peak_level": "poor", "peak_time": "not a time"}}):
             with self.subTest(forecast=bad):
-                result = advisory.build_advisory(make_analysis("moderate"), bad)
+                result = advisory.build_advisory(make_analysis("satisfactory"), bad)
                 self.assertEqual(set(result), set(Advisory.__annotations__))
 
     def test_pipeline_passes_the_forecast_through(self):
-        readings = monitor.mock_readings("Lahore", "unhealthy_sensitive")
+        readings = monitor.mock_readings("Lahore", "moderate")
         state = {
             "readings": readings,
-            "forecast": forecast_agent.mock_forecast("Lahore", readings[-1]["pm25"], scenario="unhealthy_sensitive"),
+            "forecast": forecast_agent.mock_forecast("Lahore", readings[-1]["pm25"], scenario="moderate"),
         }
         state.update(analysis.run(state))
         result = advisory.run(state)["advisory"]

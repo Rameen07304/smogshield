@@ -12,23 +12,23 @@ from schemas import Analysis, Level, Reading, SmogState
 
 log = logging.getLogger(__name__)
 
-# US EPA PM2.5 breakpoints (2024 revision): (conc_low, conc_high, aqi_low, aqi_high, level)
+# PEPA health breakpoints - 2023
 PM25_BREAKPOINTS: list[tuple[float, float, int, int, Level]] = [
     (0.0, 9.0, 0, 50, "good"),
-    (9.1, 35.4, 51, 100, "moderate"),
-    (35.5, 55.4, 101, 150, "unhealthy_sensitive"),
-    (55.5, 125.4, 151, 200, "unhealthy"),
-    (125.5, 225.4, 201, 300, "very_unhealthy"),
-    (225.5, 325.4, 301, 500, "hazardous"),
+    (9.1, 35.4, 51, 100, "satisfactory"),
+    (35.5, 55.4, 101, 150, "moderate"),
+    (55.5, 125.4, 151, 200, "poor"),
+    (125.5, 225.4, 201, 300, "very_poor"),
+    (225.5, 325.4, 301, 500, "severe"),
 ]
-HAZARDOUS_LEVELS = {"unhealthy", "very_unhealthy", "hazardous"}
+HAZARDOUS_LEVELS = {"poor", "very_poor", "severe"}
 LEVEL_LABELS: dict[str, str] = {
     "good": "Good",
+    "satisfactory": "Satisfactory",
     "moderate": "Moderate",
-    "unhealthy_sensitive": "Unhealthy for sensitive groups",
-    "unhealthy": "Unhealthy",
-    "very_unhealthy": "Very unhealthy",
-    "hazardous": "Hazardous",
+    "poor": "Poor",
+    "very_poor": "Very Poor",
+    "severe": "Severe",
     "unknown": "Data unavailable",
 }
 
@@ -42,13 +42,13 @@ SPIKE_MIN_JUMP = 15.0       # and at least 15 µg/m³ higher (so 4 -> 7 in clean
 
 
 def pm25_to_aqi(pm25: float) -> tuple[int, Level]:
-    """US AQI and level for a PM2.5 concentration (µg/m³). Above the top band -> 500."""
+    """PK AQI and level for a PM2.5 concentration (µg/m³). Above the top band -> 500."""
     pm25 = max(pm25, 0.0)
     pm25 = int(pm25 * 10) / 10  # EPA truncates to 1 decimal
     for c_lo, c_hi, a_lo, a_hi, level in PM25_BREAKPOINTS:
         if pm25 <= c_hi:
             return round((a_hi - a_lo) / (c_hi - c_lo) * (pm25 - c_lo) + a_lo), level
-    return 500, "hazardous"  # off the chart
+    return 500, "severe"  # off the chart
 
 
 def run(state: SmogState) -> dict:

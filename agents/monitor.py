@@ -13,8 +13,8 @@ Mock data: data/mock_readings.json. Used when
 Env vars:
     MONITOR_CITY   city to watch (default Lahore, see CITIES)
     USE_MOCK       true -> skip the network, use mock data
-    MOCK_SCENARIO  good | moderate | unhealthy_sensitive | unhealthy |
-                   very_unhealthy | hazardous | spike
+    MOCK_SCENARIO  good | satisfactory | moderate | poor |
+                   very_poor | severe | spike
     LIVE_CACHE_MINUTES  reuse a city's live reading this long (default 10, 0 = off).
                    Open-Meteo updates hourly, so the dashboard's 5 s polling doesn't need more.
 
