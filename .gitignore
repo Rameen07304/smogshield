@@ -7,9 +7,5 @@ venv/
 .vscode/
 var/
 
-# Impeccable working files (screenshots, decision sketches, page-server state)
-.impeccable/review/
-.impeccable/mocks/
-.impeccable/questions/
-.impeccable/build/
-.impeccable/config.local.json
+# Design tool working folder
+.impeccable/
