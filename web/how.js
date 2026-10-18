@@ -27,7 +27,8 @@ function renderLive(s, feed) {
 
   // Monitor: the reading it fetched
   if (latest) {
-    setText("live-monitor", `${latest.location}: PM2.5 ${latest.pm25} µg/m³`);
+    setText("live-monitor", `${latest.location}: PM2.5 ${latest.pm25} µg/m³` +
+      (latest.pm10 != null ? ` · PM10 ${latest.pm10} µg/m³` : ""));
     setText("live-monitor-sub",
       `${readings.length} hourly ${readings.length === 1 ? "reading" : "readings"}, ${simulated ? "simulated (demo)" : "live from Open-Meteo"}` +
       (latest.pm10 != null ? `; PM10 ${latest.pm10} µg/m³` : ""));

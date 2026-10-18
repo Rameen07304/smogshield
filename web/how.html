@@ -124,8 +124,11 @@
             model forecasts. They estimate the air over the surrounding area, not at one street corner.
           </li>
           <li>
-            <strong>The AQI is an hourly PM2.5 estimate.</strong>
-            We apply the US EPA PM2.5 breakpoints to the latest hour. Official AQI uses longer averages, so other
+            <strong>The AQI is an hourly estimate.</strong>
+            The number uses the US EPA method for PM2.5 and PM10, and the higher of the two wins. Categories
+            (Good to Severe) follow Pakistan's
+            <a href="https://mocc.gov.pk/SiteImage/Misc/files/NCAP%20(28-02-2023)%20v1.pdf" rel="noopener">National
+            Clean Air Policy 2023</a>, Table 1. We use the latest hour; official AQI uses longer averages, so other
             sites can show different numbers.
           </li>
           <li>
