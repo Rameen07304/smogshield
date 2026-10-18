@@ -3,6 +3,7 @@
 Run from the smogshield folder:  python -m unittest discover tests -v
 """
 import os
+import json
 import sys
 import tempfile
 import unittest
@@ -55,14 +56,35 @@ class LevelTest(unittest.TestCase):
     def test_disclaimer_always_present(self):
         for level in LEVELS:
             self.assertIn("not medical advice", advisory.build_advisory(make_analysis(level))["disclaimer"])
+            self.assertIn("National Clean Air Policy", advisory.build_advisory(make_analysis(level))["disclaimer"])
 
 
 class SeverityTest(unittest.TestCase):
+    def test_outdoor_workers_get_level_appropriate_advice(self):
+        good = advisory.build_advisory(make_analysis("good"))["audiences"]["outdoor_workers"]
+        severe = advisory.build_advisory(make_analysis("severe"))["audiences"]["outdoor_workers"]
+        self.assertNotIn("mask", " ".join(good).lower())
+        self.assertIn("stop", " ".join(severe).lower())
+        self.assertIn("n95", " ".join(severe).lower())
+
+    def test_headlines_use_project_level_names(self):
+        expected = {
+            "good": "Good air quality.",
+            "satisfactory": "Satisfactory air quality.",
+            "moderate": "Moderate air quality.",
+            "poor": "Poor air quality. Everyone may feel effects.",
+            "very_poor": "Very poor air quality. Health alert.",
+            "severe": "Severe air quality. Emergency conditions.",
+        }
+        for level, headline in expected.items():
+            with self.subTest(level=level):
+                self.assertEqual(advisory.build_advisory(make_analysis(level))["headline"], headline)
+
     def test_masks_only_from_unhealthy_up(self):
         for level in LEVELS:
             with self.subTest(level=level):
                 says_mask = "mask" in all_text(advisory.build_advisory(make_analysis(level)))
-                self.assertEqual(says_mask, level in {"poor", "very_poor", "severe"})
+                self.assertEqual(says_mask, level in {"moderate", "poor", "very_poor", "severe"})
 
     def test_hazardous_says_stay_indoors_and_good_does_not(self):
         severe = advisory.build_advisory(make_analysis("severe"))
@@ -164,6 +186,56 @@ class BadInputTest(unittest.TestCase):
         result = advisory.build_advisory(make_analysis("severe"))
         result["audiences"]["general"].append("mutated")
         self.assertNotIn("mutated", advisory.GUIDANCE["severe"]["general"])
+
+
+class GroqAdvisoryTest(unittest.TestCase):
+    def setUp(self):
+        self.env = mock.patch.dict(os.environ, {
+            "LLM_ADVISORY_ENABLED": "true",
+            "GROQ_API_KEY": "test-key",
+            "GROQ_MODEL": "test-model",
+        }, clear=False)
+        self.env.start()
+        self.addCleanup(self.env.stop)
+        advisory._llm_cache.clear()
+        self.addCleanup(advisory._llm_cache.clear)
+
+    def _response(self, payload):
+        audiences = {audience: [f"LLM advice for {audience}"] for audience in AUDIENCES}
+        body = {"headline": "LLM headline", "actions": ["LLM action"], "audiences": audiences}
+        return mock.Mock(
+            json=mock.Mock(return_value={"choices": [{"message": {"content": json.dumps(body)}}]}),
+            raise_for_status=mock.Mock(),
+        )
+
+    def test_valid_response_replaces_templates_and_preserves_time_note(self):
+        with mock.patch.object(advisory.requests, "post", return_value=self._response(None)) as post:
+            result = advisory.build_advisory(make_analysis("poor", trend="rising"))
+        self.assertEqual(result["headline"], "LLM headline")
+        self.assertEqual(result["audiences"]["outdoor_workers"], ["LLM advice for outdoor_workers"])
+        self.assertEqual(result["actions"][0], advisory.RISING_NOTE[0])
+        post.assert_called_once()
+
+    def test_api_failure_uses_rule_based_advice(self):
+        with mock.patch.object(advisory.requests, "post", side_effect=advisory.requests.RequestException("offline")):
+            result = advisory.build_advisory(make_analysis("severe"))
+        self.assertEqual(result["headline"], "Severe air quality. Emergency conditions.")
+        self.assertIn("stop", " ".join(result["audiences"]["outdoor_workers"]).lower())
+
+    def test_repeated_polls_reuse_one_groq_answer(self):
+        with mock.patch.object(advisory.requests, "post", return_value=self._response(None)) as post:
+            for _ in range(5):  # the dashboard polls every 5 s
+                result = advisory.build_advisory(make_analysis("poor", trend="rising"))
+            result["audiences"]["general"].append("mutated")
+            again = advisory.build_advisory(make_analysis("poor", trend="rising"))
+        post.assert_called_once()
+        self.assertNotIn("mutated", again["audiences"]["general"])
+
+    def test_failure_is_not_retried_on_every_poll(self):
+        with mock.patch.object(advisory.requests, "post", side_effect=advisory.requests.RequestException("offline")) as post:
+            for _ in range(3):
+                advisory.build_advisory(make_analysis("severe"))
+        post.assert_called_once()
 
 
 class ContractTest(unittest.TestCase):
