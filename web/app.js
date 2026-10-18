@@ -7,11 +7,11 @@
 const SCENARIO_LABELS = {
   live: "Live data",
   good: "Good",
-  moderate: "Satisfactory",
-  unhealthy_sensitive: "Moderate",
-  unhealthy: "Poor",
-  very_unhealthy: "Very Poor",
-  hazardous: "Severe",
+  satisfactory: "Satisfactory",
+  moderate: "Moderate",
+  poor: "Poor",
+  very_poor: "Very Poor",
+  severe: "Severe",
   spike: "Spike: smog builds, then clears",
 };
 
@@ -525,7 +525,7 @@ $("scenario").addEventListener("change", (event) => {
 });
 
 $("emergency").addEventListener("click", () => {
-  changeControl("/api/scenario/hazardous", "Triggering a simulated smog emergency…",
+  changeControl("/api/scenario/severe", "Triggering a simulated smog emergency…",
                 "Smog emergency triggered (simulated data).");
 });
 

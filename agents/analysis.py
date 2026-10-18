@@ -25,7 +25,6 @@ HAZARDOUS_LEVELS = {"poor", "very_poor", "severe"}
 LEVEL_LABELS: dict[str, str] = {
     "good": "Good",
     "satisfactory": "Satisfactory",
-    # "unhealthy_sensitive": "Unhealthy for sensitive groups",
     "moderate": "Moderate",
     "poor": "Poor",
     "very_poor": "Very Poor",

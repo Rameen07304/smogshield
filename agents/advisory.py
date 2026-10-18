@@ -184,11 +184,11 @@ RISING_NOTE = (  # from "moderate" upward
     "Conditions are worsening: postpone outdoor plans if you can and check again soon.",
     "حالات بگڑ رہے ہیں: اگر ممکن ہو تو بیرونی منصوبے ملتوی کریں اور جلد دوبارہ چیک کریں۔",
 )
-GENTLE_RISING_NOTE = (  # good / moderate: outdoor activity is still fine, so don't say postpone
+GENTLE_RISING_NOTE = (  # good / satisfactory: outdoor activity is still fine, so don't say postpone
     "Air quality is trending worse; keep an eye on updates.",
     "ہوا کا معیار خراب ہونے کی طرف جا رہا ہے؛ تازہ معلومات پر نظر رکھیں۔",
 )
-GENTLE_LEVELS = {"good", "moderate"}
+GENTLE_LEVELS = {"good", "satisfactory"}
 UNAVAILABLE_NOTE = (
     "No current air quality readings. Follow these precautions until data is back, and check again soon.",
     "ہوا کے معیار کی تازہ ریڈنگ دستیاب نہیں۔ ڈیٹا واپس آنے تک ان احتیاطی تدابیر پر عمل کریں اور جلد دوبارہ چیک کریں۔",
@@ -315,7 +315,7 @@ def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:
 
     # 2. The best time to go out, once the air is not simply good
     best = forecast.get("best_time")
-    if best and rank >= LEVEL_ORDER.index("moderate") and best.get("level") in LEVEL_ORDER:
+    if best and rank >= LEVEL_ORDER.index("satisfactory") and best.get("level") in LEVEL_ORDER:
         if LEVEL_ORDER.index(best["level"]) >= LEVEL_ORDER.index("poor"):
             name, name_ur = LEVEL_NAMES[best["level"]]
             sentences.append((NO_CLEAN_WINDOW_NOTE[0].format(level=name), NO_CLEAN_WINDOW_NOTE[1].format(level=name_ur)))

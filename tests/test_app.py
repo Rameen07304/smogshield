@@ -46,7 +46,7 @@ class ControlEndpointTest(unittest.TestCase):
     def test_set_city_any_case(self):
         self.assertEqual(app.set_city("karachi")["current"], "Karachi")
         self.assertEqual(os.environ["MONITOR_CITY"], "Karachi")
-        os.environ["MOCK_SCENARIO"] = "moderate"  # mock data: no network needed
+        os.environ["MOCK_SCENARIO"] = "satisfactory"  # mock data: no network needed
         self.assertEqual(app.monitor.run({})["readings"][-1]["location"], "Karachi")
 
     def test_unknown_city_is_404_and_changes_nothing(self):
@@ -80,7 +80,7 @@ class ControlEndpointTest(unittest.TestCase):
                 self.assertIsNotNone(forecast["next_6h"])
 
     def test_scenario_round_trip(self):
-        self.assertEqual(app.set_scenario("hazardous")["current"], "hazardous")
+        self.assertEqual(app.set_scenario("severe")["current"], "severe")
         self.assertEqual(app.set_scenario("live")["current"], "live")
         with self.assertRaises(app.HTTPException):
             app.set_scenario("bogus")

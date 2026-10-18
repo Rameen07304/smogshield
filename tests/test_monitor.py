@@ -73,13 +73,13 @@ class MockPathTest(MonitorTestCase):
 
     def test_scenario_param_forces_mock(self):
         with mock.patch.object(monitor.requests, "get", side_effect=AssertionError("network called")):
-            reading = monitor.fetch_air_quality("Karachi", scenario="hazardous")
+            reading = monitor.fetch_air_quality("Karachi", scenario="severe")
         self.assertEqual(reading["source"], "mock")
         self.assertGreater(reading["pm25"], 225.5)
 
     def test_every_scenario_matches_its_level(self):
         # Each named scenario must land in the AQI level it's named after, at every step
-        for level in ("good", "moderate", "unhealthy_sensitive", "unhealthy", "very_unhealthy", "hazardous"):
+        for level in ("good", "satisfactory", "moderate", "poor", "very_poor", "severe"):
             for reading in monitor.mock_readings("Lahore", level, window=20):
                 with self.subTest(level=level, pm25=reading["pm25"]):
                     self.assertEqual(analysis.pm25_to_aqi(reading["pm25"])[1], level)
@@ -102,7 +102,7 @@ class BrokenMockFileTest(MonitorTestCase):
             if content is not None:
                 path.write_text(content, encoding="utf-8")
             with mock.patch.object(monitor, "MOCK_FILE", path), self.assertLogs(monitor.log, "WARNING") as logs:
-                readings = monitor.mock_readings("Lahore", "hazardous")
+                readings = monitor.mock_readings("Lahore", "severe")
                 scenarios = monitor.mock_scenarios()
         self.assertTrue(any("built-in" in line for line in logs.output))
         self.assertEqual(scenarios, ["builtin"])
@@ -132,7 +132,7 @@ class BrokenMockFileTest(MonitorTestCase):
             state = monitor.run({})
             reading = monitor.fetch_air_quality("Lahore")
         self.assertEqual(len(state["readings"]), monitor.WINDOW)
-        self.assertEqual(analysis.run(state)["analysis"]["level"], "moderate")
+        self.assertEqual(analysis.run(state)["analysis"]["level"], "satisfactory")
         self.assertEqual(reading["source"], "mock")
 
     def test_real_file_is_valid(self):
@@ -284,7 +284,7 @@ class CacheTest(MonitorTestCase):
 
 class GraphNodeTest(MonitorTestCase):
     def test_run_output_feeds_analysis(self):
-        os.environ["MOCK_SCENARIO"] = "hazardous"
+        os.environ["MOCK_SCENARIO"] = "severe"
         result = monitor.run({})
         self.assertEqual(set(result), {"readings"})  # only the key the monitor owns
         self.assertTrue(analysis.run(result)["analysis"]["is_hazardous"])

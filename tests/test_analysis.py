@@ -90,7 +90,7 @@ class ScenarioTest(unittest.TestCase):
     def test_spike_scenario_spikes_then_peaks_hazardous(self):
         results = [analysis.assess(window(v)) for v in scenario_windows("spike")]
         self.assertTrue(any(r["is_spike"] for r in results))
-        self.assertIn("hazardous", {r["level"] for r in results})
+        self.assertIn("severe", {r["level"] for r in results})
         self.assertIn("rising", {r["trend"] for r in results})
         self.assertIn("falling", {r["trend"] for r in results})
 
@@ -131,9 +131,9 @@ class TrendTest(unittest.TestCase):
 
 
 class SpikeTest(unittest.TestCase):
-    def test_jump_while_still_moderate(self):
+    def test_jump_while_still_satisfactory(self):
         result = analysis.assess(window([12, 13, 12, 14, 13, 32]))
-        self.assertEqual(result["level"], "moderate")
+        self.assertEqual(result["level"], "satisfactory")
         self.assertTrue(result["is_spike"])
         self.assertIn("spike", result["reason"])
 

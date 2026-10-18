@@ -29,7 +29,7 @@ class SelfCheckTest(unittest.TestCase):
         store = project / "var" / "alerts.json"
         env = {
             **os.environ,
-            "MOCK_SCENARIO": "hazardous",              # guarantees a critical alert is raised
+            "MOCK_SCENARIO": "severe",              # guarantees a critical alert is raised
             "ALERT_SIMULATIONS_TO_TELEGRAM": "true",   # so only the self-check's own guard can stop it
             "TELEGRAM_BOT_TOKEN": "123456:FAKE-TOKEN",
             "TELEGRAM_CHAT_ID": "42",

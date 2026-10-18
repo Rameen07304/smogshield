@@ -82,51 +82,51 @@ class DecisionTest(unittest.TestCase):
         return alert.should_alert(level, spike, memory, at, COOLDOWN)
 
     def test_no_alert_for_good_or_moderate(self):
-        for level in ("good", "moderate"):
+        for level in ("good", "satisfactory"):
             self.assertFalse(self.decide(level)[0], level)
 
     def test_alert_at_threshold(self):
-        self.assertTrue(self.decide("unhealthy_sensitive")[0])
+        self.assertTrue(self.decide("moderate")[0])
 
     def test_same_level_does_not_repeat_even_after_cooldown(self):
-        _, memory = self.decide("unhealthy")
-        self.assertFalse(self.decide("unhealthy", memory)[0])
-        self.assertFalse(self.decide("unhealthy", memory, at=NOW + timedelta(hours=5))[0])
+        _, memory = self.decide("poor")
+        self.assertFalse(self.decide("poor", memory)[0])
+        self.assertFalse(self.decide("poor", memory, at=NOW + timedelta(hours=5))[0])
 
     def test_level_increase_alerts_immediately(self):
-        _, memory = self.decide("unhealthy")
-        self.assertTrue(self.decide("very_unhealthy", memory, at=NOW + timedelta(minutes=1))[0])
+        _, memory = self.decide("poor")
+        self.assertTrue(self.decide("very_poor", memory, at=NOW + timedelta(minutes=1))[0])
 
     def test_flapping_within_cooldown_is_quiet(self):
-        _, memory = self.decide("unhealthy")
-        _, memory = self.decide("unhealthy_sensitive", memory, at=NOW + timedelta(minutes=5))
-        self.assertFalse(self.decide("unhealthy", memory, at=NOW + timedelta(minutes=10))[0])
+        _, memory = self.decide("poor")
+        _, memory = self.decide("moderate", memory, at=NOW + timedelta(minutes=5))
+        self.assertFalse(self.decide("poor", memory, at=NOW + timedelta(minutes=10))[0])
 
     def test_rise_after_quiet_recovery_alerts_again(self):
-        _, memory = self.decide("unhealthy")
-        _, memory = self.decide("moderate", memory, at=NOW + timedelta(minutes=40))
-        self.assertTrue(self.decide("unhealthy", memory, at=NOW + timedelta(minutes=45))[0])
+        _, memory = self.decide("poor")
+        _, memory = self.decide("satisfactory", memory, at=NOW + timedelta(minutes=40))
+        self.assertTrue(self.decide("poor", memory, at=NOW + timedelta(minutes=45))[0])
 
     def test_spike_alerts_even_at_moderate_once_per_cooldown(self):
-        alerted, memory = self.decide("moderate", spike=True)
+        alerted, memory = self.decide("satisfactory", spike=True)
         self.assertTrue(alerted)
-        self.assertFalse(self.decide("moderate", memory, spike=True, at=NOW + timedelta(minutes=5))[0])
-        self.assertTrue(self.decide("moderate", memory, spike=True, at=NOW + timedelta(minutes=31))[0])
+        self.assertFalse(self.decide("satisfactory", memory, spike=True, at=NOW + timedelta(minutes=5))[0])
+        self.assertTrue(self.decide("satisfactory", memory, spike=True, at=NOW + timedelta(minutes=31))[0])
 
     def test_memory_expires_after_max_age(self):
-        _, memory = self.decide("hazardous")
+        _, memory = self.decide("severe")
         max_age = timedelta(hours=3)
-        self.assertFalse(alert.should_alert("hazardous", False, memory, NOW + timedelta(hours=2), COOLDOWN, max_age)[0])
-        self.assertTrue(alert.should_alert("hazardous", False, memory, NOW + timedelta(hours=3), COOLDOWN, max_age)[0])
+        self.assertFalse(alert.should_alert("severe", False, memory, NOW + timedelta(hours=2), COOLDOWN, max_age)[0])
+        self.assertTrue(alert.should_alert("severe", False, memory, NOW + timedelta(hours=3), COOLDOWN, max_age)[0])
 
     def test_garbage_memory_is_treated_as_empty(self):
-        self.assertTrue(self.decide("unhealthy", {"level": "???", "alerted_at": "yesterday"})[0])
+        self.assertTrue(self.decide("poor", {"level": "???", "alerted_at": "yesterday"})[0])
 
 
 class UrgencyTest(unittest.TestCase):
     def test_mapping(self):
-        expected = {"unhealthy_sensitive": "info", "unhealthy": "warning",
-                    "very_unhealthy": "critical", "hazardous": "critical"}
+        expected = {"moderate": "info", "poor": "warning",
+                    "very_poor": "critical", "severe": "critical"}
         for level, urgency in expected.items():
             self.assertEqual(alert.urgency_for(level), urgency, level)
 
@@ -144,8 +144,8 @@ class RunTest(AlertTestCase):
     def test_level_increase_gives_a_new_alert(self):
         alert.run(state_for([80] * 6))
         new = alert.run(state_for([150] * 6))["alerts"]
-        self.assertEqual((new[0]["level"], new[0]["severity"]), ("very_unhealthy", "critical"))
-        self.assertEqual([a["level"] for a in alert.read_feed()], ["very_unhealthy", "unhealthy"])  # newest first
+        self.assertEqual((new[0]["level"], new[0]["severity"]), ("very_poor", "critical"))
+        self.assertEqual([a["level"] for a in alert.read_feed()], ["very_poor", "poor"])  # newest first
 
     def test_locations_are_tracked_separately(self):
         alert.run(state_for([80] * 6, "Lahore"))
@@ -163,11 +163,11 @@ class RunTest(AlertTestCase):
         self.assertEqual(len(alert.read_feed()), 2)
 
     def test_startup_with_forced_mock_clears_memory(self):
-        # The rehearsal: hazardous alert, then the process stops
+        # The rehearsal: severe alert, then the process stops
         alert.run(state_for([300] * 6))
         self.assertEqual(alert.run(state_for([300] * 6))["alerts"], [])
-        # Demo: a new process with MOCK_SCENARIO=hazardous must alert again
-        for forced in ({"MOCK_SCENARIO": "hazardous"}, {"USE_MOCK": "true"}):
+        # Demo: a new process with MOCK_SCENARIO=severe must alert again
+        for forced in ({"MOCK_SCENARIO": "severe"}, {"USE_MOCK": "true"}):
             with self.subTest(env=forced), mock.patch.dict(os.environ, forced), \
                     mock.patch.object(alert, "_startup_done", False):
                 self.assertEqual(len(alert.run(state_for([300] * 6))["alerts"]), 1)
@@ -194,7 +194,7 @@ class RunTest(AlertTestCase):
         self.assertEqual(alert.read_feed(), [])
 
     def test_bad_input_never_raises(self):
-        for state in ({}, {"analysis": {"level": "nope"}}, {"analysis": {"level": "hazardous"}, "readings": None}):
+        for state in ({}, {"analysis": {"level": "nope"}}, {"analysis": {"level": "severe"}, "readings": None}):
             with self.subTest(state=state):
                 self.assertIsInstance(alert.run(state)["alerts"], list)
 
@@ -375,9 +375,9 @@ class ContractTest(AlertTestCase):
     def test_all_mock_scenarios_end_to_end(self):
         # Cycle each scenario once through analysis -> advisory -> alert, as the dashboard would
         expected = {
-            "good": [], "moderate": [],
-            "unhealthy_sensitive": ["info"], "unhealthy": ["warning"],
-            "very_unhealthy": ["critical"], "hazardous": ["critical"],
+            "good": [], "satisfactory": [],
+            "moderate": ["info"], "poor": ["warning"],
+            "very_poor": ["critical"], "severe": ["critical"],
             # rising: sensitive-groups level, then a spike, then each worse level once
             "spike": ["info", "info", "warning", "critical", "critical"],
         }
@@ -409,7 +409,7 @@ def with_forecast(values_now: list, forecast_values: list, source: str = "live")
     return state
 
 
-GETS_UNHEALTHY = [30, 40, 60, 70, 70, 70] + [30] * 18       # moderate now, Unhealthy from hour 2
+GETS_UNHEALTHY = [30, 40, 60, 70, 70, 70] + [30] * 18       # satisfactory now, Unhealthy from hour 2
 
 
 class ForecastDecisionTest(unittest.TestCase):
@@ -420,45 +420,45 @@ class ForecastDecisionTest(unittest.TestCase):
 
     def test_fires_only_when_below_unhealthy_now_and_unhealthy_ahead(self):
         cases = {
-            ("moderate", "unhealthy"): True,
-            ("unhealthy_sensitive", "hazardous"): True,
-            ("good", "very_unhealthy"): True,
-            ("moderate", "unhealthy_sensitive"): False,   # forecast not bad enough
-            ("unhealthy", "very_unhealthy"): False,       # already unhealthy now: the current alert covers it
-            ("hazardous", "hazardous"): False,
-            ("moderate", None): False,                    # no forecast
-            ("unknown", "hazardous"): False,
+            ("satisfactory", "poor"): True,
+            ("moderate", "severe"): True,
+            ("good", "very_poor"): True,
+            ("satisfactory", "moderate"): False,   # forecast not bad enough
+            ("poor", "very_poor"): False,       # already poor now: the current alert covers it
+            ("severe", "severe"): False,
+            ("satisfactory", None): False,                    # no forecast
+            ("unknown", "severe"): False,
         }
         for (current, peak), expected in cases.items():
             with self.subTest(current=current, peak=peak):
                 self.assertEqual(self.decide(current, peak)[0], expected)
 
     def test_same_forecast_does_not_repeat(self):
-        _, memory = self.decide("moderate", "unhealthy")
-        self.assertFalse(self.decide("moderate", "unhealthy", memory, at=NOW + timedelta(minutes=5))[0])
-        self.assertFalse(self.decide("moderate", "unhealthy", memory, at=NOW + timedelta(hours=2))[0])
+        _, memory = self.decide("satisfactory", "poor")
+        self.assertFalse(self.decide("satisfactory", "poor", memory, at=NOW + timedelta(minutes=5))[0])
+        self.assertFalse(self.decide("satisfactory", "poor", memory, at=NOW + timedelta(hours=2))[0])
 
     def test_worse_forecast_alerts_again(self):
-        _, memory = self.decide("moderate", "unhealthy")
-        self.assertTrue(self.decide("moderate", "very_unhealthy", memory, at=NOW + timedelta(minutes=5))[0])
+        _, memory = self.decide("satisfactory", "poor")
+        self.assertTrue(self.decide("satisfactory", "very_poor", memory, at=NOW + timedelta(minutes=5))[0])
 
     def test_rearms_after_the_threat_clears_for_a_cooldown(self):
-        _, memory = self.decide("moderate", "unhealthy")
-        _, memory = self.decide("moderate", "moderate", memory, at=NOW + timedelta(minutes=10))   # too soon to forget
-        self.assertFalse(self.decide("moderate", "unhealthy", memory, at=NOW + timedelta(minutes=15))[0])
-        _, memory = self.decide("moderate", "moderate", memory, at=NOW + timedelta(minutes=40))   # quiet for a cooldown
-        self.assertTrue(self.decide("moderate", "unhealthy", memory, at=NOW + timedelta(minutes=45))[0])
+        _, memory = self.decide("satisfactory", "poor")
+        _, memory = self.decide("satisfactory", "satisfactory", memory, at=NOW + timedelta(minutes=10))   # too soon to forget
+        self.assertFalse(self.decide("satisfactory", "poor", memory, at=NOW + timedelta(minutes=15))[0])
+        _, memory = self.decide("satisfactory", "satisfactory", memory, at=NOW + timedelta(minutes=40))   # quiet for a cooldown
+        self.assertTrue(self.decide("satisfactory", "poor", memory, at=NOW + timedelta(minutes=45))[0])
 
     def test_memory_expires(self):
-        _, memory = self.decide("moderate", "unhealthy")
-        self.assertTrue(self.decide("moderate", "unhealthy", memory, at=NOW + timedelta(hours=3))[0])
+        _, memory = self.decide("satisfactory", "poor")
+        self.assertTrue(self.decide("satisfactory", "poor", memory, at=NOW + timedelta(hours=3))[0])
 
     def test_no_duplicate_of_a_current_alert_at_that_level(self):
-        current_memory = {"level": "unhealthy", "alerted_at": NOW.isoformat()}
-        self.assertFalse(self.decide("unhealthy_sensitive", "unhealthy", current_memory=current_memory)[0])
-        self.assertTrue(self.decide("unhealthy_sensitive", "very_unhealthy", current_memory=current_memory)[0])
-        stale = {"level": "unhealthy", "alerted_at": (NOW - timedelta(hours=4)).isoformat()}   # expired memory
-        self.assertTrue(self.decide("unhealthy_sensitive", "unhealthy", current_memory=stale)[0])
+        current_memory = {"level": "poor", "alerted_at": NOW.isoformat()}
+        self.assertFalse(self.decide("moderate", "poor", current_memory=current_memory)[0])
+        self.assertTrue(self.decide("moderate", "very_poor", current_memory=current_memory)[0])
+        stale = {"level": "poor", "alerted_at": (NOW - timedelta(hours=4)).isoformat()}   # expired memory
+        self.assertTrue(self.decide("moderate", "poor", current_memory=stale)[0])
 
 
 class ForecastAlertRunTest(AlertTestCase):
@@ -466,14 +466,14 @@ class ForecastAlertRunTest(AlertTestCase):
         result = alert.run(with_forecast([30] * 6, GETS_UNHEALTHY))["alerts"]
         self.assertEqual(len(result), 1)
         predicted = result[0]
-        self.assertEqual((predicted["kind"], predicted["severity"], predicted["level"]), ("forecast", "warning", "unhealthy"))
-        self.assertTrue(predicted["message"].startswith("[FORECAST] Lahore: forecast to reach Unhealthy (AQI "))
+        self.assertEqual((predicted["kind"], predicted["severity"], predicted["level"]), ("forecast", "warning", "poor"))
+        self.assertTrue(predicted["message"].startswith("[FORECAST] Lahore: forecast to reach Poor (AQI "))
         self.assertIn("within 6 hours", predicted["message"])
         self.assertEqual(set(predicted), set(Alert.__annotations__))
 
     def test_never_critical_even_for_hazardous_forecasts(self):
         predicted = alert.run(with_forecast([30] * 6, [30, 300, 400] + [30] * 21))["alerts"][0]
-        self.assertEqual((predicted["severity"], predicted["level"]), ("warning", "hazardous"))
+        self.assertEqual((predicted["severity"], predicted["level"]), ("warning", "severe"))
 
     def test_fires_once_for_repeated_polls(self):
         counts = [len(alert.run(with_forecast([30] * 6, GETS_UNHEALTHY))["alerts"]) for _ in range(4)]
@@ -510,15 +510,15 @@ class ForecastAlertRunTest(AlertTestCase):
 
     def test_bad_forecasts_never_raise(self):
         state = state_for([30] * 6)
-        for bad in (None, "nonsense", {}, {"next_6h": "x"}, {"next_6h": {"peak_level": "unhealthy"}}):
+        for bad in (None, "nonsense", {}, {"next_6h": "x"}, {"next_6h": {"peak_level": "poor"}}):
             with self.subTest(forecast=bad):
                 state["forecast"] = bad
                 self.assertIsInstance(alert.run(state)["alerts"], list)
 
     def test_unhealthy_sensitive_scenario_predicts_end_to_end(self):
-        readings = state_for(MOCK["scenarios"]["unhealthy_sensitive"]["pm25"][:6], source="mock")
+        readings = state_for(MOCK["scenarios"]["moderate"]["pm25"][:6], source="mock")
         readings["forecast"] = forecast_agent.mock_forecast("Lahore", readings["readings"][-1]["pm25"],
-                                                            scenario="unhealthy_sensitive")
+                                                            scenario="moderate")
         kinds = [a["kind"] for a in alert.run(readings)["alerts"]]
         self.assertIn("forecast", kinds)
 
@@ -526,7 +526,7 @@ class ForecastAlertRunTest(AlertTestCase):
 class KindCompatibilityTest(AlertTestCase):
     def test_old_stored_alerts_read_as_current_without_rewriting_the_file(self):
         old = {"severity": "critical", "message": "Lahore: AQI 300 (Hazardous).", "created_at": NOW.isoformat(),
-               "location": "Lahore", "level": "hazardous", "channel": "feed", "status": "sent"}
+               "location": "Lahore", "level": "severe", "channel": "feed", "status": "sent"}
         alert.STORE_FILE.write_text(json.dumps({"memory": {}, "feed": [old]}), encoding="utf-8")
         before = alert.STORE_FILE.read_bytes()
         feed = alert.read_feed()

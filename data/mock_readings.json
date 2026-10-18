@@ -3,13 +3,13 @@
   "default_scenario": "spike",
   "city_defaults": {
     "Lahore": "spike",
-    "Faisalabad": "very_unhealthy",
-    "Gujranwala": "very_unhealthy",
-    "Multan": "unhealthy",
-    "Peshawar": "unhealthy_sensitive",
-    "Rawalpindi": "unhealthy_sensitive",
-    "Karachi": "moderate",
-    "Islamabad": "moderate",
+    "Faisalabad": "very_poor",
+    "Gujranwala": "very_poor",
+    "Multan": "poor",
+    "Peshawar": "moderate",
+    "Rawalpindi": "moderate",
+    "Karachi": "satisfactory",
+    "Islamabad": "satisfactory",
     "Quetta": "good"
   },
   "scenarios": {
@@ -17,23 +17,23 @@
       "pm25": [4.2, 5.1, 6.0, 5.4, 4.8, 6.6, 7.3, 5.9],
       "pm10": [12, 15, 18, 16, 14, 19, 21, 17]
     },
-    "moderate": {
+    "satisfactory": {
       "pm25": [18, 21, 24, 27, 25, 29, 31, 28],
       "pm10": [38, 44, 50, 55, 52, 60, 64, 58]
     },
-    "unhealthy_sensitive": {
+    "moderate": {
       "pm25": [38, 41, 45, 48, 52, 50, 47, 44],
       "pm10": [75, 82, 90, 96, 104, 100, 94, 88]
     },
-    "unhealthy": {
+    "poor": {
       "pm25": [68, 75, 84, 92, 101, 110, 98, 88],
       "pm10": [130, 142, 160, 175, 190, 205, 185, 168]
     },
-    "very_unhealthy": {
+    "very_poor": {
       "pm25": [140, 152, 168, 181, 195, 210, 198, 176],
       "pm10": [250, 270, 295, 320, 340, 365, 345, 310]
     },
-    "hazardous": {
+    "severe": {
       "pm25": [240, 262, 285, 310, 335, 360, 342, 318],
       "pm10": [400, 430, 470, 505, 540, 580, 555, 520]
     },

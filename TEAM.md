@@ -12,7 +12,7 @@ Repo: https://github.com/Rameen07304/smogshield. Read the [README](README.md) fi
 - **Before every PR:** run `python graph.py` and make sure it prints `OK`.
 - **Never commit `.env` or API keys.** This repo is public. Put keys in `.env` only; it's gitignored.
 - **Config:** copy `.env.example` to `.env` (see the README's Configuration section for what each variable does). No keys are needed today. If your agent needs a new setting, add it to `.env.example` with a placeholder value like `your_key_here`, never the real one, and tell the Lead.
-- **Demo tip:** `MOCK_SCENARIO=hazardous` in `.env` forces a smog emergency on stage; `spike` plays the full build-up and recovery.
+- **Demo tip:** `MOCK_SCENARIO=severe` in `.env` forces a smog emergency on stage; `spike` plays the full build-up and recovery.
 - **The demo must always work on mock data.** A real API is a bonus, not a dependency.
 
 ## Who does what
@@ -67,5 +67,5 @@ Repo: https://github.com/Rameen07304/smogshield. Read the [README](README.md) fi
 ## Demo story (draft, Lead refines)
 1. Dashboard shows clean air in our city.
 2. Smog builds: AQI climbs, the trend says "rising", and an early info alert appears.
-3. Spike hits "very unhealthy / hazardous": a critical alert and emergency guidance.
+3. Spike hits "very poor / severe": a critical alert and emergency guidance.
 4. Explain the agents: each one is an independent module and they hand off through shared contracts.

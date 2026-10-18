@@ -70,8 +70,7 @@ FORECAST_SEVERITY = "warning"        # a prediction is never critical
 LOCAL_UTC_OFFSET = timedelta(hours=5)   # message times in Pakistan Standard Time, like the advisory
 URGENCY = {
     "good": "info",                 # only reachable through a spike
-    "moderate": "info",             # only reachable through a spike
-    "satisfactory": "info",
+    "satisfactory": "info",         # only reachable through a spike
     "moderate": "info",
     "poor": "warning",
     "very_poor": "critical",
