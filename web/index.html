@@ -162,6 +162,15 @@
           <p id="urdu-scope" class="advice__scope" hidden>
             Urdu covers advice for the general public. The groups beside it are shown in English.
           </p>
+          <form id="ask" class="ask" autocomplete="off">
+            <label for="ask-input">Ask about today's air</label>
+            <div class="ask__row">
+              <input id="ask-input" type="text" maxlength="300" dir="auto" required
+                     placeholder="Can my kids play outside this evening?">
+              <button id="ask-button" class="btn btn--primary" type="submit">Ask</button>
+            </div>
+            <p id="ask-answer" class="ask__answer" dir="auto" aria-live="polite" hidden></p>
+          </form>
           <p id="advice-disclaimer" class="advice__disclaimer">General guidance, not medical advice.</p>
         </div>
 

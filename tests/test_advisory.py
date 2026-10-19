@@ -251,6 +251,54 @@ class GroqAdvisoryTest(unittest.TestCase):
         post.assert_called_once()
 
 
+class AskTest(unittest.TestCase):
+    """Ask SmogShield: answers come only from the pipeline state, and every failure is a calm message."""
+    STATE = {
+        "readings": [{"location": "Lahore", "source": "mock", "pm25": 190.0, "pm10": 300.0}],
+        "analysis": make_analysis("poor", trend="rising"),
+        "advisory": {"audiences": {"children": ["Schools: move PE, sports and assemblies indoors."]}},
+        "forecast": {"next_6h": {"peak_level": "very_poor", "peak_aqi": 330, "peak_time": "2026-10-19T12:00:00+00:00"}},
+    }
+
+    def setUp(self):
+        env = mock.patch.dict(os.environ, {"LLM_ADVISORY_ENABLED": "true", "GROQ_API_KEY": "test-key"}, clear=False)
+        env.start()
+        self.addCleanup(env.stop)
+
+    def _reply(self, text, status=200):
+        return mock.Mock(status_code=status, raise_for_status=mock.Mock(),
+                         json=mock.Mock(return_value={"choices": [{"message": {"content": text}}]}))
+
+    def test_switched_off_never_calls_groq(self):
+        os.environ["LLM_ADVISORY_ENABLED"] = "false"
+        with mock.patch.object(advisory.requests, "post") as post:
+            self.assertEqual(advisory.answer_question("Is it safe?", self.STATE)["source"], "off")
+        post.assert_not_called()
+
+    def test_answer_is_grounded_in_the_current_state(self):
+        with mock.patch.object(advisory.requests, "post", return_value=self._reply("**Poor**: PE andar karein.")) as post:
+            result = advisory.answer_question("کیا بچے باہر کھیل سکتے ہیں؟", self.STATE)
+        # simulated data is labelled by code (in the question's language), and markdown is stripped
+        self.assertEqual(result, {"answer": advisory.SIMULATED_NOTE[1] + "Poor: PE andar karein.", "source": "ai"})
+        sent = json.loads(post.call_args.kwargs["json"]["messages"][1]["content"])
+        self.assertEqual(sent["question"], "کیا بچے باہر کھیل سکتے ہیں؟")          # Urdu reaches the model intact
+        self.assertEqual(sent["reply_language"], "Urdu")
+        self.assertEqual(sent["context"]["category"], "Poor")
+        self.assertEqual(sent["context"]["next_6h_peak"], {"category": "Very Poor", "aqi": 330, "at": "17:00"})  # PKT
+
+    def test_rate_limit_is_a_calm_busy_message(self):
+        with mock.patch.object(advisory.requests, "post", return_value=self._reply("", status=429)):
+            self.assertEqual(advisory.answer_question("Is it safe?", self.STATE)["source"], "busy")
+
+    def test_network_failure_is_handled(self):
+        with mock.patch.object(advisory.requests, "post", side_effect=advisory.requests.ConnectionError("offline")):
+            self.assertEqual(advisory.answer_question("Is it safe?", self.STATE)["source"], "down")
+
+    def test_other_scales_words_are_not_shown(self):
+        with mock.patch.object(advisory.requests, "post", return_value=self._reply("The air is Very Unhealthy.")):
+            self.assertEqual(advisory.answer_question("Is it safe?", self.STATE)["source"], "fallback")
+
+
 class ContractTest(unittest.TestCase):
     def setUp(self):
         # The alert agent remembers past alerts in a file; use a fresh temp one per test
