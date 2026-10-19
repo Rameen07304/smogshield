@@ -25,6 +25,7 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - It writes advice for five groups: the public, children and schools, the elderly, people with heart or lung conditions, and outdoor workers.
 - It sends alerts that escalate with the air (info → warning → critical) without spamming, including predictive `[FORECAST]` alerts.
 - People can ask questions in plain English or Urdu ("Can my kids play outside this evening?") and get an answer grounded in the current reading.
+- A blog of practical smog guides, in English and Urdu, explains what each group should do and how everyone can help clean the air.
 
 ## Features
 
@@ -39,6 +40,7 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - **Read aloud:** the browser's built-in speech reads the plain answers and today's advice, for people who find reading hard. It uses an Urdu voice when the device has one, and otherwise reads the English advice and says so.
 - **Last 7 days for every city:** seven small squares beside each city, coloured by each day's 24-hour average PM2.5 (the basis NCAP categories are defined on). Always real data, even during a demo scenario.
 - **Alert feed and history**, with optional Telegram delivery.
+- **Smog guides (blog):** six short articles in English and Urdu: precautions for everyone (with what to do at each NCAP level), children and schools, older people, asthma and heart and lung conditions, what to avoid so you don't add to the smog, and how to improve the air at home and outside.
 - **The whole site in English or اردو:** right-to-left layout and the Nastaliq font.
 - **Demo scenarios** (always labelled SIMULATED) to show a smog emergency on stage.
 
@@ -50,6 +52,8 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 
 ![How it works page](docs/screenshots/how-it-works.png)
 
+![Smog guides blog](docs/screenshots/blog.png)
+
 ## Tech stack
 
 - **Backend:** Python 3.11+, [LangGraph](https://github.com/langchain-ai/langgraph) (agent orchestration), FastAPI + uvicorn, requests.
@@ -57,7 +61,7 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - **Data:** [Open-Meteo](https://open-meteo.com) air-quality API (CAMS model data, no key needed).
 - **AI:** [Groq](https://groq.com) API running `openai/gpt-oss-20b` (configurable).
 - **Alerts:** dashboard feed, plus Telegram Bot API (optional).
-- **Tests:** Python `unittest` (243 tests, no network needed).
+- **Tests:** Python `unittest` (246 tests, no network needed).
 
 ## AI methodology
 
@@ -109,7 +113,7 @@ Where each kind of intelligence is used:
 
 ## AI tools used in development
 
-The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (243 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
+The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (246 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
 
 ## Quick start
 
@@ -119,7 +123,7 @@ Requires Python 3.11+.
 python -m venv .venv
 # Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env                  # optional, see Configuration (Windows: copy .env.example .env)
+cp .env.example .env                  # optional, see Configuration (Windows: copy .env.example .env); never commit real keys
 python -m unittest discover tests -v  # all tests, no network needed
 python graph.py                       # self-check, should print OK
 uvicorn app:app --reload              # open http://localhost:8000
@@ -167,7 +171,7 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 | `agents/alert.py` | Decides whether to alert, how loudly, and delivers it, including predictive `[FORECAST]` alerts |
 | `graph.py` | LangGraph orchestrator + self-check |
 | `app.py` | FastAPI server: dashboard and API (below) |
-| `web/` | Dashboard: `index.html`, `styles.css`, `app.js` (plain HTML/CSS/JS, no build step, no CDNs) and `fonts/` (Noto Nastaliq Urdu, SIL Open Font License) |
+| `web/` | The site (plain HTML/CSS/JS, no build step, no CDNs): `index.html` + `app.js` (dashboard), `how.html` + `how.js`, `history.html` + `history.js`, `blog.html` (smog guides), shared `common.js` (English/Urdu text) and `styles.css`, and `fonts/` (Noto Nastaliq Urdu, SIL Open Font License) |
 | `data/mock_readings.json` | Demo scenarios |
 | `data/mock_forecasts.json` | Scripted forecast curve per demo scenario (multipliers of the current PM2.5 by hours ahead) |
 | `tests/` | Unit and end-to-end tests |
@@ -268,6 +272,21 @@ The rule-based health guidance is informed by Pakistan's [National Clean Air Pol
 ## Data attribution
 
 Air quality data from [Open-Meteo](https://open-meteo.com) (free, no key, non-commercial use), based on CAMS ENSEMBLE data from the Copernicus Atmosphere Monitoring Service. If a live call fails or takes more than 10 s, the monitor falls back to mock data. The forecast uses the same API's hourly `pm2_5` and `pm10` forecast (`forecast_days=4`) and falls back to the scripted mock forecast the same way.
+
+## Open-source acknowledgements
+
+SmogShield is built on these open-source projects and open data, used under their licenses:
+
+| Project | Used for | License |
+|---|---|---|
+| [LangGraph](https://github.com/langchain-ai/langgraph) | Orchestrating the five agents | MIT |
+| [FastAPI](https://fastapi.tiangolo.com) and [Pydantic](https://docs.pydantic.dev) | Web server and API validation | MIT |
+| [Uvicorn](https://www.uvicorn.org) | Running the server | BSD-3-Clause |
+| [Requests](https://requests.readthedocs.io) | Calls to Open-Meteo, Groq and Telegram | Apache-2.0 |
+| [python-dotenv](https://github.com/theskumar/python-dotenv) | Loading `.env` settings | BSD-3-Clause |
+| [Noto Nastaliq Urdu](https://fonts.google.com/noto/specimen/Noto+Nastaliq+Urdu) | Urdu text on the site (bundled in `web/fonts/`) | SIL Open Font License 1.1 |
+| [Open-Meteo](https://open-meteo.com) Air Quality API | Hourly readings and forecasts | Data CC BY 4.0 |
+| [CAMS](https://atmosphere.copernicus.eu) (Copernicus Atmosphere Monitoring Service) | The atmospheric model behind Open-Meteo's air quality data | Copernicus licence |
 
 ## Adding an agent
 
