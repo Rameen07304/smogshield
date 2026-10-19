@@ -59,11 +59,11 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 ## Tech stack
 
 - **Backend:** Python 3.11+, [LangGraph](https://github.com/langchain-ai/langgraph) (agent orchestration), FastAPI + uvicorn, requests.
-- **Frontend:** plain HTML, CSS and JavaScript (no framework, no build step, no CDNs), with the Noto Nastaliq Urdu font.
+- **Frontend:** plain HTML, CSS and JavaScript (no framework, no build step, no CDNs), with the Noto Nastaliq Urdu and Newsreader fonts.
 - **Data:** [Open-Meteo](https://open-meteo.com) air-quality API (CAMS model data, no key needed).
 - **AI:** [Groq](https://groq.com) API running `openai/gpt-oss-20b` (configurable).
 - **Alerts:** dashboard feed, plus Telegram Bot API (optional).
-- **Tests:** Python `unittest` (248 tests, no network needed).
+- **Tests:** Python `unittest` (250 tests, no network needed).
 
 ## AI methodology
 
@@ -115,7 +115,7 @@ Where each kind of intelligence is used:
 
 ## AI tools used in development
 
-The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (248 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
+The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (250 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
 
 ## Quick start
 
@@ -265,7 +265,7 @@ The rule-based health guidance is informed by Pakistan's [National Clean Air Pol
 
 ## Demo tips
 
-- **Switch scenarios from the dashboard's "Demo scenario" menu.** It takes effect on the next poll, clears the alert memory so the new scenario alerts at once, and "Live data" switches back. Nothing to restart.
+- **Switch scenarios from the dashboard:** click **Demo** in the header and pick one under "Demo scenario". It takes effect on the next poll, clears the alert memory so the new scenario alerts at once, and "Live data" switches back. Nothing to restart.
 - **Force a smog emergency:** pick `severe` (or set `MOCK_SCENARIO=severe` in `.env` and restart). Use `spike` to show air building from clean to severe and back, about one step every 5 seconds, with a "Sudden spike" badge and escalating alerts (info → warning → critical).
 - **Mock data is always labelled:** the dashboard shows a SIMULATED DATA banner, and every alert from mock data starts with `[SIMULATION]` and is not sent to Telegram unless you allow it.
 - **Rehearsals don't swallow the demo alert:** restarting with mock data forced, or switching scenario in the menu, clears the alert memory. To also start with an empty feed, stop the server and delete `var/alerts.json`.
