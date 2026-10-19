@@ -96,9 +96,9 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 |----------|---------|--------------|
 | `LLM_ADVISORY_ENABLED` | `false` | Opt in to Groq-generated English advice. The validated rule-based advice remains the fallback. |
 | `GROQ_API_KEY` | placeholder | Groq API key. Keep the real key in local `.env` only; never commit or share it publicly. |
-| `GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model used for optional advisory generation. |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` | Groq model used for optional advisory generation. Fast and light on tokens; each Groq model has its own daily token quota (free tier: 200k/day for gpt-oss-120b). |
 
-When enabled, Groq receives the AQI, level, trend, spike state, and audience names. The response must be JSON with a headline, actions, and advice for all five audiences. Missing configuration, API failures, timeouts, invalid JSON, or an invalid response shape use the deterministic rule-based advice instead.
+When enabled, Groq receives the AQI, the NCAP category name and its NCAP health impact, the trend, the spike state, and the rule-based advice to build on. It returns JSON with general actions and advice for all five audiences; the headline always stays the NCAP one. Answers are cached per level, trend and spike for 10 minutes. Missing configuration, API failures, timeouts, invalid JSON, an invalid response shape, or a reply using another scale's category names (such as "unhealthy" or "hazardous") use the deterministic rule-based advice instead.
 
 The rule-based health guidance is informed by Pakistan's [National Clean Air Policy (NCAP)](http://faolex.fao.org/docs/pdf/pak233407.pdf), especially its discussion of PM2.5-related respiratory and cardiovascular impacts and vulnerable groups. It is general information, not medical advice.
 

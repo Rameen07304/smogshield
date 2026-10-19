@@ -200,21 +200,34 @@ class GroqAdvisoryTest(unittest.TestCase):
         advisory._llm_cache.clear()
         self.addCleanup(advisory._llm_cache.clear)
 
-    def _response(self, payload):
-        audiences = {audience: [f"LLM advice for {audience}"] for audience in AUDIENCES}
-        body = {"headline": "LLM headline", "actions": ["LLM action"], "audiences": audiences}
+    def _response(self, payload, advice="LLM advice"):
+        audiences = {audience: [f"{advice} for {audience}"] for audience in AUDIENCES}
+        body = {"actions": ["LLM action"], "audiences": audiences}
         return mock.Mock(
             json=mock.Mock(return_value={"choices": [{"message": {"content": json.dumps(body)}}]}),
             raise_for_status=mock.Mock(),
         )
 
-    def test_valid_response_replaces_templates_and_preserves_time_note(self):
+    def test_valid_response_replaces_advice_but_keeps_ncap_headline(self):
         with mock.patch.object(advisory.requests, "post", return_value=self._response(None)) as post:
             result = advisory.build_advisory(make_analysis("poor", trend="rising"))
-        self.assertEqual(result["headline"], "LLM headline")
+        self.assertEqual(result["headline"], advisory.GUIDANCE["poor"]["headline"])  # always the NCAP one
         self.assertEqual(result["audiences"]["outdoor_workers"], ["LLM advice for outdoor_workers"])
         self.assertEqual(result["actions"][0], advisory.RISING_NOTE[0])
         post.assert_called_once()
+
+    def test_model_is_told_the_ncap_category_and_health_impact(self):
+        with mock.patch.object(advisory.requests, "post", return_value=self._response(None)) as post:
+            advisory.build_advisory(make_analysis("very_poor"))
+        prompt = json.loads(post.call_args.kwargs["json"]["messages"][1]["content"])
+        self.assertEqual(prompt["category"], "Very Poor")
+        self.assertEqual(prompt["ncap_health_impact"], advisory.NCAP_HEALTH_IMPACT["very_poor"])
+
+    def test_other_scales_category_names_fall_back_to_rule_based(self):
+        reply = self._response(None, advice="Very Unhealthy air, limit exposure")
+        with mock.patch.object(advisory.requests, "post", return_value=reply):
+            result = advisory.build_advisory(make_analysis("poor"))
+        self.assertEqual(result["audiences"]["general"], advisory.GUIDANCE["poor"]["general"])
 
     def test_api_failure_uses_rule_based_advice(self):
         with mock.patch.object(advisory.requests, "post", side_effect=advisory.requests.RequestException("offline")):

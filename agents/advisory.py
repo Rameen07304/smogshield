@@ -11,6 +11,7 @@ import copy
 import logging
 import json
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -21,13 +22,30 @@ from schemas import Advisory, SmogState
 log = logging.getLogger(__name__)
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
 GROQ_TIMEOUT_SECONDS = 8
 # The dashboard polls every 5 s, but advice only changes with level/trend/spike: reuse a Groq answer this
 # long, and after a failure wait a minute before calling again, so polls never stall on the API.
 LLM_CACHE_SECONDS = 600
 LLM_RETRY_SECONDS = 60
 _llm_cache: dict[tuple, tuple[float, dict | None]] = {}  # key -> (expires at, monotonic; result or None)
+
+# NCAP 2023, Table 1 "Associated Health Impacts", given to the model so its advice matches the official wording
+NCAP_HEALTH_IMPACT = {
+    "good": "Minimal impact.",
+    "satisfactory": "May cause minor breathing discomfort to sensitive people.",
+    "moderate": "May cause breathing discomfort to people with lung disease such as asthma, "
+                "and discomfort to people with heart disease, children and older adults.",
+    "poor": "May cause breathing discomfort to people on prolonged exposure, "
+            "and discomfort to people with heart disease with short exposure.",
+    "very_poor": "May cause respiratory illness on prolonged exposure; "
+                 "effects may be more pronounced in people with lung and heart diseases.",
+    "severe": "May cause respiratory effects even on healthy people and serious health impacts on people "
+              "with lung/heart diseases; impacts may be felt even during light physical activity.",
+}
+# Category words from other AQI scales (US EPA). The model must use NCAP names only, so a reply that
+# uses these is rejected and the rule-based advice is shown instead.
+FOREIGN_SCALE_WORDS = re.compile(r"\b(unhealthy|hazardous)\b", re.IGNORECASE)
 
 HEALTH_BASIS = "Health-impact guidance is informed by Pakistan's National Clean Air Policy (NCAP)."
 DISCLAIMER = (
@@ -329,9 +347,8 @@ def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advis
             "forecast_note": f_note_ur,
         },
     }
-    llm_result = _llm_advisory(analysis, result)
-    if llm_result:
-        result["headline"] = llm_result["headline"]
+    llm_result = _llm_advisory(analysis, result) if known else None
+    if llm_result:  # the headline stays the NCAP one, so it always matches the level shown beside it
         result["actions"] = lead + llm_result["actions"]
         result["audiences"] = llm_result["audiences"]
     return result
@@ -358,16 +375,25 @@ def _llm_advisory(analysis: dict, fallback: Advisory) -> dict | None:
 
 def _ask_groq(analysis: dict, fallback: Advisory, api_key: str) -> dict | None:
     """One Groq call; the validated advice, or None on any failure."""
+    level = analysis.get("level")
+    category = LEVEL_NAMES[level][0]
     prompt = {
         "aqi": analysis.get("aqi"),
-        "level": analysis.get("level"),
+        "category": category,
+        "scale": "Pakistan National Clean Air Policy 2023 (NCAP), Table 1: Good, Satisfactory, Moderate, "
+                 "Poor, Very Poor, Severe",
+        "ncap_health_impact": NCAP_HEALTH_IMPACT[level],
         "trend": analysis.get("trend"),
         "is_spike": bool(analysis.get("is_spike")),
-        "audiences": list(fallback["audiences"]),
+        "vetted_advice": fallback["audiences"],
         "instruction": (
-            "Return JSON only with headline, actions, and audiences. Keep advice concise, "
-            "practical, non-diagnostic, and consistent with the pollution level. "
-            "The audiences object must contain exactly the supplied audience keys, each with a list of strings."
+            f"The air quality category is {category} on Pakistan's NCAP scale. If you name the category, call it "
+            f"exactly {category}. Never use category names from other scales, such as unhealthy, very unhealthy, "
+            "unhealthy for sensitive groups or hazardous. Base the advice on ncap_health_impact and keep it at "
+            "least as protective as vetted_advice; you may rephrase it for a general audience in Pakistan. "
+            "Return JSON only with two keys: actions (a list of strings for the general public) and audiences "
+            "(an object with exactly the keys of vetted_advice, each a list of strings). Keep advice concise, "
+            "practical and non-diagnostic."
         ),
     }
     try:
@@ -397,7 +423,10 @@ def _ask_groq(analysis: dict, fallback: Advisory, api_key: str) -> dict | None:
 
 
 def _valid_llm_advisory(candidate: object, audiences: dict) -> bool:
-    if not isinstance(candidate, dict) or not isinstance(candidate.get("headline"), str):
+    if not isinstance(candidate, dict):
+        return False
+    if FOREIGN_SCALE_WORDS.search(json.dumps(candidate)):
+        log.warning("Groq advice used another AQI scale's category names; using rule-based advice")
         return False
     if not isinstance(candidate.get("actions"), list) or not candidate["actions"]:
         return False
