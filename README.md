@@ -57,7 +57,7 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - **Data:** [Open-Meteo](https://open-meteo.com) air-quality API (CAMS model data, no key needed).
 - **AI:** [Groq](https://groq.com) API running `openai/gpt-oss-20b` (configurable).
 - **Alerts:** dashboard feed, plus Telegram Bot API (optional).
-- **Tests:** Python `unittest` (241 tests, no network needed).
+- **Tests:** Python `unittest` (243 tests, no network needed).
 
 ## AI methodology
 
@@ -95,7 +95,7 @@ Where each kind of intelligence is used:
 - **The forecast is CAMS's.** We haven't trained our own model yet.
 - **AI advice is English only.** The Urdu advice is rule-based and machine-drafted, and still needs review by a native speaker.
 - **The Groq free tier has rate limits.** When they are hit, the app falls back to the rules.
-- **It's a single demo server with no login.** It runs on 127.0.0.1 only, and the city and scenario are shared by everyone using it.
+- **It's a single demo server with no login.** The city and demo scenario are shared by everyone using it; on a public link, changes go back to live Lahore after 10 minutes.
 - **Read aloud depends on the device.** Few devices have an Urdu voice, so in Urdu mode it usually reads the English advice (and says so).
 - **Not medical advice.** It is general guidance only.
 
@@ -109,7 +109,7 @@ Where each kind of intelligence is used:
 
 ## AI tools used in development
 
-The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (241 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
+The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (243 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
 
 ## Quick start
 
@@ -129,9 +129,23 @@ By default the app uses live data for Lahore. If the network is down, it falls b
 
 ## Running the server safely
 
-- **Run uvicorn on 127.0.0.1 only** (its default, as in the command above). **Never use `--host 0.0.0.0`**: the API has no login, so anyone on the same Wi-Fi could switch the demo scenario or trigger the pipeline.
+- **On your own computer, run uvicorn on 127.0.0.1 only** (its default, as in the command above), not `--host 0.0.0.0`: the API has no login, so anyone on the same Wi-Fi could switch the demo scenario. A hosting service needs `0.0.0.0` behind its proxy; see [Deploy](#deploy-live-demo-link) for the guards that apply there.
 - **Use a single worker** (the default; never pass `--workers`). Alert memory and the feed live in one file, `var/alerts.json`, guarded by an in-process lock, and the demo scenario control changes the running process. Several workers would each keep their own state and could send duplicate alerts.
 - Restart the server after editing `.env`; it is only read at startup.
+
+## Deploy (live demo link)
+
+The repo includes [`render.yaml`](render.yaml) for [Render](https://render.com)'s free plan:
+
+1. Sign in to Render with GitHub, then **New → Blueprint** and pick this repository.
+2. When it asks for `GROQ_API_KEY`, paste your key. It's stored on Render, never in the repo.
+3. Wait for the build (a few minutes). Your link looks like `https://smogshield.onrender.com`.
+
+On a public link everyone shares one server, so two guards are on:
+- **Demo changes expire.** A visitor's scenario or city change goes back to live Lahore after 10 minutes (`DEMO_RESET_MINUTES`).
+- **Ask is limited** to 6 questions per minute per visitor, so nobody can use up the Groq quota.
+
+The free plan sleeps after 15 minutes without visitors; the first visit after that takes about a minute to wake it. The alert history resets on every deploy.
 
 ## Tests
 
@@ -209,6 +223,7 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 |----------|---------|--------------|
 | `USE_MOCK` | `false` | `true` skips the network and always uses `data/mock_readings.json`. |
 | `MOCK_SCENARIO` | unset | Forces mock data for one scenario: `good`, `satisfactory`, `moderate`, `poor`, `very_poor`, `severe`, `spike`. |
+| `DEMO_RESET_MINUTES` | `0` | On a shared public server: a demo scenario or city change goes back to live data for the starting city after this many minutes. `0` = never. `render.yaml` sets 10. |
 | `MONITOR_CITY` | `Lahore` | City to watch: Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Multan, Peshawar, Quetta, Gujranwala, Sialkot, Sheikhupura, Kasur, Sahiwal, Sargodha, Bahawalpur (any case). |
 | `LIVE_CACHE_MINUTES` | `10` | Reuse a city's live data this long before asking Open-Meteo again (it updates hourly). `0` = no cache. |
 | `FORECAST_CACHE_MINUTES` | `30` | Reuse a city's live forecast this long before asking Open-Meteo again. `0` = no cache. The forecast follows the same `USE_MOCK`, `MOCK_SCENARIO` and dashboard scenario switch as the monitor. |

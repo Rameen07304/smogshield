@@ -119,3 +119,41 @@ class ControlEndpointTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(importlib.util.find_spec("langgraph"), "langgraph not installed (pip install -r requirements.txt)")
+class PublicLinkTest(unittest.TestCase):
+    """Guards for a shared public server: demo changes expire, and Ask is limited per visitor."""
+
+    def setUp(self):
+        drop = {"MONITOR_CITY", "MOCK_SCENARIO", "DEMO_RESET_MINUTES"}
+        env_patch = mock.patch.dict(os.environ, {k: v for k, v in os.environ.items() if k not in drop}, clear=True)
+        env_patch.start()
+        self.addCleanup(env_patch.stop)
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        store_patch = mock.patch.object(app.alert, "STORE_FILE", Path(tmp.name) / "alerts.json")
+        store_patch.start()
+        self.addCleanup(store_patch.stop)
+        app._asked.clear()
+
+    def test_demo_change_expires_only_when_configured(self):
+        app.set_scenario("severe")
+        app.set_city("Quetta")
+        app._demo_changed_at -= 11 * 60  # eleven minutes ago
+        app._expire_demo()
+        self.assertEqual(os.environ["MOCK_SCENARIO"], "severe")  # DEMO_RESET_MINUTES unset: never resets
+        os.environ["DEMO_RESET_MINUTES"] = "10"
+        app._expire_demo()
+        self.assertNotIn("MOCK_SCENARIO", os.environ)
+        self.assertEqual(os.environ["MONITOR_CITY"], app.START_CITY)
+
+    def test_ask_is_limited_per_visitor(self):
+        request = mock.Mock(headers={"x-forwarded-for": "203.0.113.7, 10.0.0.1"}, client=None)
+        self.assertEqual(app._visitor(request), "203.0.113.7")
+        with mock.patch.object(app.advisory, "answer_question", return_value={"answer": "ok", "source": "ai"}), \
+                mock.patch.object(app, "run_once", return_value={}):
+            replies = [app.ask(app.Question(question="Is it safe?"), request)["source"] for _ in range(app.ASK_PER_MINUTE + 1)]
+            other = mock.Mock(headers={}, client=mock.Mock(host="198.51.100.2"))
+            self.assertEqual(app.ask(app.Question(question="Is it safe?"), other)["source"], "ai")
+        self.assertEqual(replies, ["ai"] * app.ASK_PER_MINUTE + ["busy"])

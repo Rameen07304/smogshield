@@ -1,0 +1,19 @@
+# Render blueprint: New > Blueprint on render.com, pick this repo. Free plan.
+services:
+  - type: web
+    name: smogshield
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Hosts need 0.0.0.0 behind their proxy. One worker only: alerts and demo state live in one process.
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/scenario
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: DEMO_RESET_MINUTES      # a visitor's demo scenario or city goes back to live Lahore after 10 min
+        value: "10"
+      - key: LLM_ADVISORY_ENABLED
+        value: "true"
+      - key: GROQ_API_KEY            # Render asks for it when you create the service; it is never in the repo
+        sync: false

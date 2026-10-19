@@ -5,6 +5,8 @@ Then open http://localhost:8000
 """
 import logging
 import os
+import time
+from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -14,7 +16,7 @@ load_dotenv()  # must run before agents read env vars
 # Show agents' INFO logs (e.g. every "ALERT ..." line) next to uvicorn's own output
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(message)s")
 
-from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi import FastAPI, HTTPException, Request  # noqa: E402
 from fastapi.responses import FileResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
@@ -26,6 +28,14 @@ app = FastAPI(title="SmogShield")
 WEB = Path(__file__).parent / "web"
 INDEX = WEB / "index.html"
 app.mount("/static", StaticFiles(directory=WEB), name="static")  # dashboard CSS, JS and fonts
+
+# On a public link everyone shares one server, so a demo change (scenario or city) goes back to live data for
+# the starting city after DEMO_RESET_MINUTES. 0 or unset = never (the default, for a laptop demo).
+START_CITY = os.getenv("MONITOR_CITY", monitor.DEFAULT_CITY)
+_demo_changed_at: float | None = None
+# Ask SmogShield: at most ASK_PER_MINUTE questions per visitor, so one visitor can't use up the Groq quota
+ASK_PER_MINUTE = 6
+_asked: dict[str, deque] = defaultdict(deque)
 
 
 @app.middleware("http")
@@ -58,6 +68,7 @@ def alert_history():
 @app.get("/api/status")
 def status():
     """One full pass through all agents. The dashboard polls this."""
+    _expire_demo()
     return run_once()
 
 
@@ -66,11 +77,13 @@ class Question(BaseModel):
 
 
 @app.post("/api/ask")
-def ask(body: Question):
+def ask(body: Question, request: Request = None):
     """Ask SmogShield: one question, answered by Groq from a fresh pipeline run (off unless LLM is enabled)."""
     question = body.question.strip()
     if not question:
         raise HTTPException(422, "Ask a question about the air")
+    if request is not None and _too_many_questions(_visitor(request)):
+        return {"answer": advisory.ASK_BUSY[bool(advisory.URDU_SCRIPT.search(question))], "source": "busy"}
     return advisory.answer_question(question, run_once())
 
 
@@ -83,6 +96,7 @@ def alert_feed(limit: int = 20):
 @app.get("/api/scenario")
 def get_scenario():
     """The forced mock scenario ("live" = none) and the options for the dashboard's demo control."""
+    _expire_demo()
     return {"current": os.getenv("MOCK_SCENARIO") or "live", "options": ["live", *_mock_scenarios()]}
 
 
@@ -96,6 +110,7 @@ def set_scenario(name: str):
     else:
         raise HTTPException(404, f"Unknown scenario {name!r}")
     alert.reset_memory()  # so the new scenario's alerts show up right away
+    _demo_changed()
     return get_scenario()
 
 
@@ -113,6 +128,7 @@ def set_city(name: str):
     if city is None:
         raise HTTPException(404, f"Unknown city {name!r}")
     os.environ["MONITOR_CITY"] = city
+    _demo_changed()
     return get_city()
 
 
@@ -137,6 +153,42 @@ def cities_summary():
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         return {"current": current, "cities": list(pool.map(one, monitor.CITIES))}
+
+
+def _demo_changed() -> None:
+    global _demo_changed_at
+    _demo_changed_at = time.monotonic()
+
+
+def _expire_demo() -> None:
+    """Back to live data for the starting city once a demo change is DEMO_RESET_MINUTES old."""
+    global _demo_changed_at
+    minutes = monitor.env_minutes("DEMO_RESET_MINUTES", 0)
+    if not minutes or _demo_changed_at is None or time.monotonic() - _demo_changed_at < minutes * 60:
+        return
+    _demo_changed_at = None
+    os.environ.pop("MOCK_SCENARIO", None)
+    os.environ["MONITOR_CITY"] = START_CITY
+    alert.reset_memory()
+    logging.getLogger(__name__).info("Demo reset: back to live data for %s", START_CITY)
+
+
+def _visitor(request: Request) -> str:
+    """The visitor's address. Behind a host's proxy it's the first X-Forwarded-For entry."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    return forwarded.split(",")[0].strip() or (request.client.host if request.client else "?")
+
+
+def _too_many_questions(visitor: str) -> bool:
+    """True when this visitor already asked ASK_PER_MINUTE questions in the last minute."""
+    # ponytail: in-memory and per process, fine for one worker; a shared store if this ever scales out
+    now, asked = time.monotonic(), _asked[visitor]
+    while asked and now - asked[0] > 60:
+        asked.popleft()
+    if len(asked) >= ASK_PER_MINUTE:
+        return True
+    asked.append(now)
+    return False
 
 
 def _known_city(name: str) -> str | None:
