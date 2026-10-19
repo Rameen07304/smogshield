@@ -27,20 +27,28 @@
       <a href="/history" data-i18n>History</a>
       <a href="/blog" data-i18n>Blog</a>
     </nav>
-    <div class="lang-switch" role="group" aria-label="Language / زبان">
-      <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
-      <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
-    </div>
-    <div class="topbar__controls">
-      <div class="field">
+    <div class="topbar__tools">
+      <div class="field field--city">
         <label for="city" data-i18n>City</label>
         <select id="city" disabled><option>Lahore</option></select>
       </div>
+      <button id="demo-toggle" class="btn demo-toggle" type="button" aria-expanded="false" aria-controls="demo-tray">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" /><circle cx="5" cy="4" r="1.6"/><circle cx="11" cy="8" r="1.6"/><circle cx="7" cy="12" r="1.6"/></svg>
+        <span data-i18n>Demo</span>
+      </button>
+      <div class="lang-switch" role="group" aria-label="Language / زبان">
+        <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
+        <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
+      </div>
+    </div>
+    <!-- Presenter controls: one click away, out of the way for everyone else -->
+    <div id="demo-tray" class="demo-tray" hidden>
       <div class="field">
         <label for="scenario" data-i18n>Demo scenario</label>
         <select id="scenario" disabled><option value="live">Live data</option></select>
       </div>
       <button id="emergency" class="btn btn--danger" type="button" disabled data-i18n>Trigger smog emergency</button>
+      <p class="demo-tray__note" data-i18n>Demo scenarios are simulated and always labelled.</p>
     </div>
     <p id="control-status" class="topbar__status" role="status"></p>
   </header>
@@ -53,55 +61,69 @@
   <div id="offline" class="banner banner--offline" role="status" hidden></div>
 
   <main id="content" class="page">
-    <div class="overview">
-      <!-- The claim: the air right now -->
+    <!-- 1. Now: the reading, what it means for you, and anything you must act on -->
+    <div class="now">
       <section id="hero" class="hero" data-level="loading" aria-labelledby="hero-label">
-        <div class="hero__level">
-          <p id="hero-label" class="hero__label" data-i18n>Air quality now (AQI)</p>
-          <p id="hero-aqi" class="hero__aqi">—</p>
-          <p id="hero-category" class="hero__category" data-i18n-init>Loading…</p>
-        </div>
-        <div class="hero__body">
-          <p id="hero-place" class="hero__place" data-i18n-init>Loading live air quality…</p>
-          <p id="hero-summary" class="hero__summary" data-i18n-init>Fetching the latest readings.</p>
-          <dl class="answers">
-            <div class="answer">
-              <dt data-i18n>Can I go outside?</dt>
-              <dd id="hero-answer" data-i18n-init>Checking…</dd>
-            </div>
-            <div id="school" class="answer" hidden>
-              <dt><span id="school-day"></span> <span id="school-level" class="level-tag"></span></dt>
-              <dd id="school-advice"></dd>
-              <dd class="answer__note" data-i18n>From the forecast for 7 AM to 2 PM. A suggestion, not an official notice: follow the Punjab School Education Department.</dd>
-            </div>
-          </dl>
-          <div class="advice__actions hero__actions">
-            <a id="share-wa" class="btn" target="_blank" rel="noopener" hidden data-i18n>Share on WhatsApp</a>
-            <button id="read-aloud" class="btn" type="button" hidden data-i18n>Read aloud</button>
+        <p id="hero-place" class="hero__place" data-i18n-init>Loading live air quality…</p>
+        <div class="hero__reading">
+          <div class="hero__level">
+            <p id="hero-label" class="hero__label" data-i18n>Air quality now (AQI)</p>
+            <p id="hero-aqi" class="hero__aqi">—</p>
+            <p id="hero-category" class="hero__category" data-i18n-init>Loading…</p>
           </div>
-          <div class="scale" aria-hidden="true">
-            <div class="scale__bar">
-              <span style="--w: 50" data-level="good"></span>
-              <span style="--w: 50" data-level="satisfactory"></span>
-              <span style="--w: 100" data-level="moderate"></span>
-              <span style="--w: 100" data-level="poor"></span>
-              <span style="--w: 100" data-level="very_poor"></span>
-              <span style="--w: 100" data-level="severe"></span>
-              <i id="scale-marker" class="scale__marker" hidden></i>
+          <div class="hero__body">
+            <p id="hero-summary" class="hero__summary" data-i18n-init>Fetching the latest readings.</p>
+            <div class="scale" aria-hidden="true">
+              <div class="scale__bar">
+                <span style="--w: 50" data-level="good"></span>
+                <span style="--w: 50" data-level="satisfactory"></span>
+                <span style="--w: 100" data-level="moderate"></span>
+                <span style="--w: 100" data-level="poor"></span>
+                <span style="--w: 100" data-level="very_poor"></span>
+                <span style="--w: 100" data-level="severe"></span>
+                <i id="scale-marker" class="scale__marker" hidden></i>
+              </div>
+              <div class="scale__labels">
+                <span style="--w: 50" data-i18n>Good</span><span style="--w: 50" data-i18n>Satisf.</span><span style="--w: 100" data-i18n>Moderate</span>
+                <span style="--w: 100" data-i18n>Poor</span><span style="--w: 100" data-i18n>Very poor</span><span style="--w: 100" data-i18n>Severe</span>
+              </div>
             </div>
-            <div class="scale__labels">
-              <span style="--w: 50" data-i18n>Good</span><span style="--w: 50" data-i18n>Satisf.</span><span style="--w: 100" data-i18n>Moderate</span>
-              <span style="--w: 100" data-i18n>Poor</span><span style="--w: 100" data-i18n>Very poor</span><span style="--w: 100" data-i18n>Severe</span>
-            </div>
+            <p id="hero-facts" class="hero__facts"></p>
           </div>
-          <p id="hero-facts" class="hero__facts"></p>
         </div>
+        <dl class="answers">
+          <div class="answer">
+            <dt data-i18n>Can I go outside?</dt>
+            <dd id="hero-answer" data-i18n-init>Checking…</dd>
+          </div>
+          <div id="school" class="answer" hidden>
+            <dt><span id="school-day"></span> <span id="school-level" class="level-tag"></span></dt>
+            <dd id="school-advice"></dd>
+            <dd class="answer__note" data-i18n>From the forecast for 7 AM to 2 PM. A suggestion, not an official notice: follow the Punjab School Education Department.</dd>
+          </div>
+        </dl>
+        <div class="advice__actions hero__actions">
+          <a id="share-wa" class="btn btn--whatsapp" target="_blank" rel="noopener" hidden data-i18n>Share on WhatsApp</a>
+          <button id="read-aloud" class="btn" type="button" hidden data-i18n>Read aloud</button>
+        </div>
+      </section>
+
+      <section class="panel--feed now__alerts" aria-labelledby="feed-title">
+        <div class="panel__head">
+          <h2 id="feed-title" data-i18n>Active alerts</h2>
+          <span id="feed-count" class="chip" hidden></span>
+        </div>
+        <p id="feed-empty" class="empty" data-i18n-init>Loading alerts…</p>
+        <ol id="feed" class="feed" role="list"></ol><!-- role: Safari drops list semantics with list-style: none -->
+        <a class="feed__more" href="/history" data-i18n>All alerts in History</a>
+        <p id="feed-error" class="feed__error" hidden data-i18n>Couldn't refresh alerts. Showing the last ones received.</p>
       </section>
 
       <!-- The proof: what each agent produced on this run, confirmed in pipeline order -->
       <section class="pipeline" aria-labelledby="pipeline-title">
         <div class="pipeline__head">
           <h2 id="pipeline-title" data-i18n>How SmogShield worked this out</h2>
+          <p id="pipeline-run" class="pipeline__run" data-i18n-init>Waiting for the first run…</p>
         </div>
         <ol class="pipeline__steps" role="list">
           <li class="node" data-step="monitor">
@@ -130,42 +152,65 @@
             <span class="node__out" id="out-alert" data-i18n-init>Waiting…</span>
           </li>
         </ol>
-        <p id="pipeline-run" class="pipeline__run" data-i18n-init>Waiting for the first run…</p>
       </section>
     </div>
 
-    <section class="cities" aria-labelledby="cities-title">
-      <div class="panel__head">
-        <h2 id="cities-title" data-i18n>Air across Pakistan</h2>
-        <p class="cities__note" data-i18n>Choose a city to see it in detail.</p>
+    <!-- 2. What to do: advice for everyone, then for each group, and questions in your own words -->
+    <section class="section advice panel--advisory" aria-labelledby="advice-title">
+      <div class="advice__main">
+        <h2 id="advice-title" class="section__title" data-i18n>What to do</h2>
+        <p id="advice-headline" class="advice__headline" data-i18n-init>Loading advice…</p>
+        <p id="advice-source" class="ask__basis" hidden></p>
+        <p id="advice-note" class="advice__note" hidden></p>
+        <p id="advice-forecast" class="advice__note" hidden></p>
+        <form id="ask" class="ask" autocomplete="off">
+          <label for="ask-input" data-i18n>Ask about today's air</label>
+          <div class="ask__row">
+            <input id="ask-input" type="text" maxlength="300" dir="auto" required
+                   data-i18n-placeholder="Can my kids play outside this evening?">
+            <button id="ask-button" class="btn btn--primary" type="submit" data-i18n>Ask</button>
+          </div>
+          <p id="ask-answer" class="ask__answer" dir="auto" aria-live="polite" hidden></p>
+          <p id="ask-basis" class="ask__basis" hidden></p>
+        </form>
+        <p id="advice-disclaimer" class="advice__disclaimer" data-i18n-init>General guidance, not medical advice.</p>
       </div>
-      <p id="cities-empty" class="empty" data-i18n-init>Loading all cities…</p>
-      <div class="cities__body">
-        <div id="city-map" class="city-map" role="group" aria-labelledby="cities-title"></div>
-        <div>
-          <ol id="city-list" class="city-list" role="list"></ol>
-          <p id="days-note" class="cities__days-note" data-i18n hidden>Squares: the last 7 days, oldest first, coloured by each day's 24-hour average. Always real data.</p>
+
+      <div class="audiences">
+        <div class="audience-tabs" role="group" aria-labelledby="group-label">
+          <p id="group-label" class="audience-tabs__label" data-i18n>Advice for</p>
+          <button type="button" data-audience="general" aria-pressed="true" data-i18n>General public</button>
+          <button type="button" data-audience="children" aria-pressed="false" data-i18n>Children &amp; schools</button>
+          <button type="button" data-audience="elderly" aria-pressed="false" data-i18n>Elderly</button>
+          <button type="button" data-audience="respiratory_heart" aria-pressed="false" data-i18n>Heart &amp; lung conditions</button>
+          <button type="button" data-audience="outdoor_workers" aria-pressed="false" data-i18n>Outdoor workers</button>
         </div>
+        <article class="audience" data-audience="general">
+          <h3 data-i18n>General public</h3>
+          <ul id="aud-general"><li data-i18n-init>Loading…</li></ul>
+        </article>
+        <article class="audience" data-audience="children">
+          <h3 data-i18n>Children &amp; schools</h3>
+          <ul id="aud-children"><li data-i18n-init>Loading…</li></ul>
+        </article>
+        <article class="audience" data-audience="elderly">
+          <h3 data-i18n>Elderly</h3>
+          <ul id="aud-elderly"><li data-i18n-init>Loading…</li></ul>
+        </article>
+        <article class="audience" data-audience="respiratory_heart">
+          <h3 data-i18n>Heart &amp; lung conditions</h3>
+          <ul id="aud-respiratory_heart"><li data-i18n-init>Loading…</li></ul>
+        </article>
+        <article class="audience" data-audience="outdoor_workers">
+          <h3 data-i18n>Outdoor workers</h3>
+          <ul id="aud-outdoor_workers"><li data-i18n-init>Loading…</li></ul>
+        </article>
       </div>
     </section>
 
-    <div class="panels">
-      <section class="panel panel--chart" aria-labelledby="chart-title">
-        <div class="panel__head">
-          <h2 id="chart-title" data-i18n>Pollution in the last 6 hours</h2>
-          <div class="chips">
-            <span id="trend-chip" class="chip" hidden></span>
-            <span id="spike-chip" class="chip chip--spike" hidden data-i18n>Sudden spike</span>
-          </div>
-        </div>
-        <figure class="chart">
-          <svg id="chart" role="img" aria-labelledby="chart-title chart-summary" hidden></svg>
-          <p id="chart-empty" class="empty" data-i18n-init>Loading the recent readings…</p>
-          <figcaption id="chart-summary" class="chart__summary"></figcaption>
-        </figure>
-      </section>
-
-      <section class="panel panel--forecast" aria-labelledby="forecast-title">
+    <!-- 3. The trend: where the air is heading, and where it has been -->
+    <div class="section panels">
+      <section class="panel--forecast" aria-labelledby="forecast-title">
         <div class="panel__head">
           <h2 id="forecast-title" data-i18n>Next 24 hours</h2>
           <div class="chips">
@@ -182,63 +227,38 @@
         <ol id="outlook" class="outlook" role="list"></ol>
       </section>
 
-      <section class="panel panel--feed" aria-labelledby="feed-title">
+      <section class="panel--chart" aria-labelledby="chart-title">
         <div class="panel__head">
-          <h2 id="feed-title" data-i18n>Active alerts</h2>
-          <span id="feed-count" class="chip" hidden></span>
-        </div>
-        <p id="feed-empty" class="empty" data-i18n-init>Loading alerts…</p>
-        <ol id="feed" class="feed" role="list"></ol><!-- role: Safari drops list semantics with list-style: none -->
-        <a class="feed__more" href="/history" data-i18n>All alerts in History</a>
-        <p id="feed-error" class="feed__error" hidden data-i18n>Couldn't refresh alerts. Showing the last ones received.</p>
-      </section>
-
-      <section class="panel panel--advisory advice" aria-labelledby="advice-title">
-        <div class="advice__main">
-          <div class="panel__head">
-            <h2 id="advice-title" data-i18n>What to do</h2>
+          <h2 id="chart-title" data-i18n>Pollution in the last 6 hours</h2>
+          <div class="chips">
+            <span id="trend-chip" class="chip" hidden></span>
+            <span id="spike-chip" class="chip chip--spike" hidden data-i18n>Sudden spike</span>
           </div>
-          <p id="advice-headline" class="advice__headline" data-i18n-init>Loading advice…</p>
-          <p id="advice-source" class="ask__basis" hidden></p>
-          <p id="advice-note" class="advice__note" hidden></p>
-          <p id="advice-forecast" class="advice__note" hidden></p>
-          <form id="ask" class="ask" autocomplete="off">
-            <label for="ask-input" data-i18n>Ask about today's air</label>
-            <div class="ask__row">
-              <input id="ask-input" type="text" maxlength="300" dir="auto" required
-                     data-i18n-placeholder="Can my kids play outside this evening?">
-              <button id="ask-button" class="btn btn--primary" type="submit" data-i18n>Ask</button>
-            </div>
-            <p id="ask-answer" class="ask__answer" dir="auto" aria-live="polite" hidden></p>
-            <p id="ask-basis" class="ask__basis" hidden></p>
-          </form>
-          <p id="advice-disclaimer" class="advice__disclaimer" data-i18n-init>General guidance, not medical advice.</p>
         </div>
-
-        <div class="audiences">
-          <article class="audience" data-audience="general">
-            <h3 data-i18n>General public</h3>
-            <ul id="aud-general"><li data-i18n-init>Loading…</li></ul>
-          </article>
-          <article class="audience" data-audience="children">
-            <h3 data-i18n>Children &amp; schools</h3>
-            <ul id="aud-children"><li data-i18n-init>Loading…</li></ul>
-          </article>
-          <article class="audience" data-audience="elderly">
-            <h3 data-i18n>Elderly</h3>
-            <ul id="aud-elderly"><li data-i18n-init>Loading…</li></ul>
-          </article>
-          <article class="audience" data-audience="respiratory_heart">
-            <h3 data-i18n>Heart &amp; lung conditions</h3>
-            <ul id="aud-respiratory_heart"><li data-i18n-init>Loading…</li></ul>
-          </article>
-          <article class="audience" data-audience="outdoor_workers">
-            <h3 data-i18n>Outdoor workers</h3>
-            <ul id="aud-outdoor_workers"><li data-i18n-init>Loading…</li></ul>
-          </article>
-        </div>
+        <figure class="chart">
+          <svg id="chart" role="img" aria-labelledby="chart-title chart-summary" hidden></svg>
+          <p id="chart-empty" class="empty" data-i18n-init>Loading the recent readings…</p>
+          <figcaption id="chart-summary" class="chart__summary"></figcaption>
+        </figure>
       </section>
     </div>
+
+    <!-- 4. Elsewhere: every city at a glance; choosing one switches the dashboard -->
+    <section class="section cities" aria-labelledby="cities-title">
+      <div class="panel__head">
+        <h2 id="cities-title" data-i18n>Air across Pakistan</h2>
+        <p class="cities__note" data-i18n>Choose a city to see it in detail.</p>
+      </div>
+      <p id="cities-empty" class="empty" data-i18n-init>Loading all cities…</p>
+      <div class="cities__body">
+        <div>
+          <ol id="city-list" class="city-list" role="list"></ol>
+          <button id="cities-more" class="btn btn--plain cities__more" type="button" aria-expanded="false" aria-controls="city-list" data-i18n>Show all cities</button>
+          <p id="days-note" class="cities__days-note" data-i18n hidden>Squares: the last 7 days, oldest first, coloured by each day's 24-hour average. Always real data.</p>
+        </div>
+        <div id="city-map" class="city-map" role="group" aria-labelledby="cities-title"></div>
+      </div>
+    </section>
   </main>
 
   <!-- One polite announcer: screen readers hear new alerts once, never every poll -->

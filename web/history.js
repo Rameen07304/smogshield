@@ -4,7 +4,9 @@
 // Every visible string goes through t() so the page works in Urdu.
 "use strict";
 
-const HISTORY_LIMIT = 100;  // the alert store keeps the newest 100 (FEED_SIZE in agents/alert.py)
+const HISTORY_LIMIT = 1000;  // everything the alert store keeps: 7 days, at most 1000 (agents/alert.py)
+const PAGE_SIZE = 25;        // rows shown at first; "Show more" adds this many
+const DAY_MS = 24 * 3600 * 1000;
 const SIM_PREFIX = "[SIMULATION] ";
 const URGENCY = {  // the shape beside each word is drawn in CSS, so colour is never the only cue
   info: { label: "Info" },
@@ -42,6 +44,7 @@ function buildRow(a) {
   const tr = document.createElement("tr");
   const simulated = isSimulated(a);
   if (simulated) tr.dataset.simulated = "";
+  tr.dataset.severity = a.severity;  // critical rows are tinted
   const when = new Date(a.created_at);
 
   // Time: date on one line, time on the next
@@ -95,10 +98,13 @@ function buildRow(a) {
 
 // ---------- filters (kept in the URL, e.g. ?urgency=critical&source=simulated&city=Lahore) ----------
 
-const FILTER_VALUES = { urgency: ["all", "info", "warning", "critical"], source: ["all", "real", "simulated"],
-  kind: ["all", "current", "forecast"] };
-const filters = { urgency: "all", source: "all", kind: "all", city: "all" };
+// The first value of each list is the default (left out of the URL)
+const FILTER_VALUES = { period: ["day", "week"], urgency: ["all", "info", "warning", "critical"],
+  source: ["all", "real", "simulated"], kind: ["all", "current", "forecast"] };
+const filters = { period: "day", urgency: "all", source: "all", kind: "all", city: "all" };
+const defaultOf = (name) => FILTER_VALUES[name]?.[0] ?? "all";
 const MATCHERS = {
+  period: (a, v) => Date.now() - Date.parse(a.created_at) <= (v === "day" ? DAY_MS : 7 * DAY_MS),
   urgency: (a, v) => v === "all" || a.severity === v,
   source: (a, v) => v === "all" || (v === "simulated") === isSimulated(a),
   kind: (a, v) => v === "all" || (a.kind || "current") === v,  // old alerts have no kind: they were current
@@ -111,7 +117,7 @@ function readFiltersFromUrl() {
   const params = new URLSearchParams(location.search);
   for (const [name, allowed] of Object.entries(FILTER_VALUES)) {
     const value = params.get(name);
-    filters[name] = allowed.includes(value) ? value : "all";
+    filters[name] = allowed.includes(value) ? value : allowed[0];
     const radio = document.querySelector(`input[name="${name}"][value="${filters[name]}"]`);
     if (radio) radio.checked = true;
   }
@@ -120,7 +126,7 @@ function readFiltersFromUrl() {
 
 function writeFiltersToUrl() {
   const params = new URLSearchParams();
-  for (const [name, value] of Object.entries(filters)) if (value !== "all") params.set(name, value);
+  for (const [name, value] of Object.entries(filters)) if (value !== defaultOf(name)) params.set(name, value);
   const lang = new URLSearchParams(location.search).get("lang");
   if (lang) params.set("lang", lang);
   const query = params.toString();
@@ -155,21 +161,64 @@ function renderCityOptions() {
 $("filters").addEventListener("change", (event) => {
   if (!(event.target.name in filters)) return;
   filters[event.target.name] = event.target.value;
+  visible = PAGE_SIZE;
   writeFiltersToUrl();
   renderHistory();
 });
 
 $("clear-filters").addEventListener("click", () => {
-  for (const name of Object.keys(filters)) filters[name] = "all";
-  for (const radio of document.querySelectorAll('#filters input[value="all"]')) radio.checked = true;
+  for (const name of Object.keys(filters)) filters[name] = defaultOf(name);
+  filters.period = "week";  // "show all" means everything kept, not just today
+  for (const [name, value] of Object.entries(filters)) {
+    const radio = document.querySelector(`#filters input[name="${name}"][value="${value}"]`);
+    if (radio) radio.checked = true;
+  }
+  visible = PAGE_SIZE;
   writeFiltersToUrl();
   renderHistory();
 });
 
+let visible = PAGE_SIZE;
+$("history-more").addEventListener("click", () => { visible += PAGE_SIZE; renderHistory(); });
+
+/** "Today", "Yesterday" or "Fri 17 Oct", for the Pakistan calendar day of an alert */
+function dayLabel(iso) {
+  const key = (time) => new Date(time).toLocaleDateString("en-CA", PKT);  // YYYY-MM-DD in Pakistan
+  const day = key(iso);
+  if (day === key(Date.now())) return t("Today");
+  if (day === key(Date.now() - DAY_MS)) return t("Yesterday");
+  return isolate(new Date(iso).toLocaleDateString([], { ...PKT, weekday: "short", day: "numeric", month: "short" }));
+}
+
+/** The rows, with a heading row wherever a new day starts */
+function rowsByDay(list) {
+  const rows = [];
+  let current = null;
+  for (const a of list) {
+    const label = dayLabel(a.created_at);
+    if (label !== current) {
+      current = label;
+      const tr = document.createElement("tr");
+      tr.className = "history__day";
+      const th = document.createElement("th");
+      th.scope = "colgroup";
+      th.colSpan = 7;
+      th.textContent = label;
+      tr.append(th);
+      rows.push(tr);
+    }
+    rows.push(buildRow(a));
+  }
+  return rows;
+}
+
 function renderHistory() {
   renderCityOptions();
   const shown = alerts.filter((a) => matches(a));
-  $("history-rows").replaceChildren(...shown.map(buildRow));
+  $("history-rows").replaceChildren(...rowsByDay(shown.slice(0, visible)));
+  const more = shown.length - visible;
+  $("history-more").hidden = more <= 0;
+  $("history-more").textContent = t("Show {n} more", { n: Math.min(more, PAGE_SIZE) });
   const none = alerts.length === 0;
   $("filters").hidden = none;
   $("history-table").hidden = shown.length === 0;

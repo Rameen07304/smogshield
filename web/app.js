@@ -337,6 +337,23 @@ for (const figure of document.querySelectorAll(".chart")) redraw.observe(figure)
 
 const AUDIENCES = ["general", "children", "elderly", "respiratory_heart", "outdoor_workers"];
 
+// Advice for one group at a time: fewer words on screen, and the group a visitor cares about stays chosen
+const GROUP_KEY = "smogshield.group";
+function showGroup(who) {
+  for (const b of document.querySelectorAll(".audience-tabs button")) {
+    b.setAttribute("aria-pressed", String(b.dataset.audience === who));
+  }
+  for (const a of document.querySelectorAll(".audience")) a.hidden = a.dataset.audience !== who;
+  try { localStorage.setItem(GROUP_KEY, who); } catch { /* fine: just not remembered */ }
+}
+document.querySelector(".audience-tabs").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-audience]");
+  if (button) showGroup(button.dataset.audience);
+});
+let savedGroup = null;
+try { savedGroup = localStorage.getItem(GROUP_KEY); } catch { /* storage blocked: general public */ }
+showGroup(AUDIENCES.includes(savedGroup) ? savedGroup : "general");
+
 /** The advisory in the site language: the backend sends English plus an Urdu version (adv.urdu) */
 function adviceInLanguage(adv = {}) {
   if (LANG !== "ur" || !adv.urdu) return adv;
@@ -429,7 +446,7 @@ const shortModel = (model) => model.split("/").pop();
 // ---------- alert feed ----------
 
 // The dashboard shows only alerts that need attention now; History has every one
-const FEED_LIMIT = 100;  // everything the alert store keeps, filtered below
+const FEED_LIMIT = 100;  // the newest 100 of the 7 days the store keeps; the panel only looks at the last 3 hours
 const ACTIVE_HOURS = 3;  // same as the alert agent's memory (ALERT_MEMORY_HOURS): it re-alerts after this
 const SIM_PREFIX = "[SIMULATION] ";
 const SEVERITY = {  // the shape beside each word is drawn in CSS, so colour is never the only cue
@@ -667,6 +684,7 @@ function renderMode(s) {
   badge.dataset.mode = simulated ? "simulated" : "live";
   badge.textContent = t(simulated ? "Simulated" : "Live");
   $("simulated").hidden = !simulated;
+  $("demo-toggle").toggleAttribute("data-active", simulated);  // a dot on Demo while a scenario runs
   // Explain why: a chosen demo scenario, or live data failing and the backend falling back to mock
   const liveChosen = controlsLoaded && $("scenario").value === "live";
   $("simulated-why").textContent = t(liveChosen
@@ -844,7 +862,27 @@ async function pollCities() {
 
 new ResizeObserver(() => { if (lastCities) renderCities(lastCities); }).observe($("city-map"));
 
+// The city list shows the six worst (the map shows them all); one click lists every city
+$("cities-more").addEventListener("click", () => {
+  const all = !$("city-list").hasAttribute("data-all");
+  $("city-list").toggleAttribute("data-all", all);
+  $("cities-more").setAttribute("aria-expanded", String(all));
+  $("cities-more").dataset.en = all ? "Show fewer cities" : "Show all cities";  // kept when the language changes
+  $("cities-more").textContent = t(all ? "Show fewer cities" : "Show all cities");
+});
+
 // ---------- demo controls (city, scenario, emergency button) ----------
+
+// The scenario menu and emergency button live in a tray: one click for a presenter, out of the way for
+// everyone else. Its open state is remembered per browser, so a rehearsed demo opens ready.
+const DEMO_KEY = "smogshield.demo";
+function setDemoTray(open) {
+  $("demo-tray").hidden = !open;
+  $("demo-toggle").setAttribute("aria-expanded", String(open));
+  try { localStorage.setItem(DEMO_KEY, open ? "open" : "closed"); } catch { /* fine: just not remembered */ }
+}
+$("demo-toggle").addEventListener("click", () => setDemoTray($("demo-tray").hidden));
+try { if (localStorage.getItem(DEMO_KEY) === "open") setDemoTray(true); } catch { /* storage blocked: closed */ }
 
 let controlsLoaded = false;
 let linkedCity = new URLSearchParams(location.search).get("city");  // ?city=Kasur opens that city, once

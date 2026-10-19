@@ -56,7 +56,8 @@ _urllib3_log.setLevel(logging.CRITICAL + 1)
 _urllib3_log.propagate = False
 
 STORE_FILE = Path(__file__).parent.parent / "var" / "alerts.json"
-FEED_SIZE = 100                 # keep the newest N alerts in the feed
+FEED_MAX_AGE = timedelta(days=7)  # alerts older than this leave the feed (and the History page)
+FEED_CAP = 1000                 # and never more than this many, so the file stays small
 DEFAULT_COOLDOWN_MINUTES = 30   # override with ALERT_COOLDOWN_MINUTES
 DEFAULT_MEMORY_HOURS = 3        # override with ALERT_MEMORY_HOURS
 TELEGRAM_TIMEOUT_SECONDS = 3
@@ -276,9 +277,10 @@ def read_feed(limit: int = 50) -> list[Alert]:
     """Newest alerts first, for the dashboard. Alerts stored before `kind` existed read as "current",
     and before `message_ur` existed show their English message (the file itself is never rewritten)."""
     with _lock:
+        feed = _recent(_load()["feed"], datetime.now(timezone.utc))  # read-only: the file isn't rewritten
         return [{**a, "kind": a.get("kind", "current"), "message_ur": a.get("message_ur", a["message"]),
                  "spike": a.get("spike", False)}
-                for a in _load()["feed"][: max(limit, 0)]]
+                for a in feed[: max(limit, 0)]]
 
 
 def reset_memory() -> None:
@@ -357,8 +359,16 @@ def _record(store: dict, alert: Alert, simulated: bool) -> Alert:
     """Deliver an alert, log it, and put it at the top of the feed."""
     alert = deliver(alert, simulated)
     log.info("ALERT %s", json.dumps(alert, ensure_ascii=False))
-    store["feed"] = [alert, *store["feed"]][:FEED_SIZE]
+    store["feed"] = _recent([alert, *store["feed"]], datetime.now(timezone.utc))
     return alert
+
+
+def _recent(feed: list, now: datetime) -> list:
+    """The feed without alerts older than FEED_MAX_AGE, at most FEED_CAP (newest first).
+    An alert whose time can't be read is kept: there is no way to tell its age."""
+    cutoff = now - FEED_MAX_AGE
+    kept = [a for a in feed if (_parse_time(a.get("created_at")) or now) >= cutoff]
+    return kept[:FEED_CAP]
 
 
 def _onset_clock(forecast: dict) -> str | None:

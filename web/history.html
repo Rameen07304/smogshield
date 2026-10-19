@@ -47,6 +47,11 @@
 
       <form id="filters" class="filters" aria-label="Filter alerts">
         <fieldset class="segmented">
+          <legend data-i18n>Time</legend>
+          <label><input type="radio" name="period" value="day" checked><span><b data-i18n>Last 24 hours</b> <i data-count="period-day"></i></span></label>
+          <label><input type="radio" name="period" value="week"><span><b data-i18n>Last 7 days</b> <i data-count="period-week"></i></span></label>
+        </fieldset>
+        <fieldset class="segmented">
           <legend data-i18n>Urgency</legend>
           <label><input type="radio" name="urgency" value="all" checked><span><b data-i18n>All</b> <i data-count="urgency-all"></i></span></label>
           <label data-sev="info"><input type="radio" name="urgency" value="info"><span><b data-i18n>Info</b> <i data-count="urgency-info"></i></span></label>
@@ -93,7 +98,8 @@
           <tbody id="history-rows"></tbody>
         </table>
       </div>
-      <p class="history__note" data-i18n>Shows the newest 100 alerts, which is everything the alert store keeps.</p>
+      <button id="history-more" class="btn history__more" type="button" hidden></button>
+      <p class="history__note" data-i18n>Alerts are kept for 7 days, then cleared automatically.</p>
     </section>
   </main>
 

@@ -1,3 +1,4 @@
+Newsreader: Copyright 2020 The Newsreader Project Authors (https://github.com/productiontype/Newsreader)
 Copyright 2022 The Noto Project Authors (https://github.com/notofonts/nastaliq)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.

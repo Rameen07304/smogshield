@@ -171,11 +171,11 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 | `agents/alert.py` | Decides whether to alert, how loudly, and delivers it, including predictive `[FORECAST]` alerts |
 | `graph.py` | LangGraph orchestrator + self-check |
 | `app.py` | FastAPI server: dashboard and API (below) |
-| `web/` | The site (plain HTML/CSS/JS, no build step, no CDNs): `index.html` + `app.js` (dashboard), `how.html` + `how.js`, `history.html` + `history.js`, `blog.html` (smog guides), shared `common.js` (English/Urdu text) and `styles.css`, and `fonts/` (Noto Nastaliq Urdu, SIL Open Font License) |
+| `web/` | The site (plain HTML/CSS/JS, no build step, no CDNs): `index.html` + `app.js` (dashboard), `how.html` + `how.js`, `history.html` + `history.js`, `blog.html` (smog guides), shared `common.js` (English/Urdu text) and `styles.css`, and `fonts/` (Noto Nastaliq Urdu and Newsreader, SIL Open Font License) |
 | `data/mock_readings.json` | Demo scenarios |
 | `data/mock_forecasts.json` | Scripted forecast curve per demo scenario (multipliers of the current PM2.5 by hours ahead) |
 | `tests/` | Unit and end-to-end tests |
-| `var/` | Runtime data, created on first alert, gitignored: `var/alerts.json` holds the alert feed and alert memory. Delete it to start with an empty feed. |
+| `var/` | Runtime data, created on first alert, gitignored: `var/alerts.json` holds the alert feed and alert memory. Alerts are kept for 7 days (at most 1,000), then cleared automatically. Delete it to start with an empty feed. |
 
 ## How the AQI is calculated
 
@@ -204,11 +204,11 @@ The code is in [`agents/analysis.py`](agents/analysis.py).
 |-----------------|--------------|
 | `GET /` | The live dashboard (Screen 1) |
 | `GET /how` | How it works (Screen 2): the agent pipeline, a live example, data honesty and safeguards |
-| `GET /history` | Alert history (Screen 3): every stored alert, filterable by urgency, real or simulated, type (now or forecast) and city |
+| `GET /history` | Alert history (Screen 3): the last 24 hours by default, or the last 7 days, grouped by day, 25 rows at a time; filterable by urgency, real or simulated, type (now or forecast) and city |
 | `GET /blog` | Blog (Screen 4): smog guides in English and Urdu, for everyone, children and schools, older people, and people with asthma or heart and lung conditions; what to avoid; how to improve the air |
 | `GET /api/status` | Runs the whole pipeline once and returns `readings`, `forecast`, `analysis`, `advisory`, `alerts` (new alerts from this run). The dashboard polls it every 5 s. |
 | `POST /api/ask` | "Ask SmogShield": body `{"question": "..."}` (1–300 characters, English or Urdu). Runs the pipeline once and asks Groq to answer only from the current reading, forecast, NCAP category and vetted advice. Returns `{"answer", "source", "model", "based_on"}`; `source` is `ai`, or `off` / `busy` / `down` / `fallback` with a calm message. Needs `LLM_ADVISORY_ENABLED=true` and a Groq key. |
-| `GET /api/alerts?limit=20` | The alert feed, newest first |
+| `GET /api/alerts?limit=20` | The alert feed, newest first: alerts from the last 7 days only |
 | `GET /api/scenario` | The forced mock scenario (`live` = none) and the list of options |
 | `POST /api/scenario/{name}` | Demo control: force a scenario, or `live` to go back. Also clears the alert memory so the new scenario alerts right away. Lasts until the server restarts. |
 | `GET /api/city` | The monitored city and the list of known cities |
@@ -287,6 +287,7 @@ SmogShield is built on these open-source projects and open data, used under thei
 | [Requests](https://requests.readthedocs.io) | Calls to Open-Meteo, Groq and Telegram | Apache-2.0 |
 | [python-dotenv](https://github.com/theskumar/python-dotenv) | Loading `.env` settings | BSD-3-Clause |
 | [Noto Nastaliq Urdu](https://fonts.google.com/noto/specimen/Noto+Nastaliq+Urdu) | Urdu text on the site (bundled in `web/fonts/`) | SIL Open Font License 1.1 |
+| [Newsreader](https://github.com/productiontype/Newsreader) | Editorial headlines on the site (bundled in `web/fonts/`) | SIL Open Font License 1.1 |
 | [Open-Meteo](https://open-meteo.com) Air Quality API | Hourly readings and forecasts | Data CC BY 4.0 |
 | [CAMS](https://atmosphere.copernicus.eu) (Copernicus Atmosphere Monitoring Service) | The atmospheric model behind Open-Meteo's air quality data | Copernicus licence |
 

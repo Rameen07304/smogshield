@@ -536,7 +536,7 @@ class ForecastAlertRunTest(AlertTestCase):
 
 class KindCompatibilityTest(AlertTestCase):
     def test_old_stored_alerts_read_as_current_without_rewriting_the_file(self):
-        old = {"severity": "critical", "message": "Lahore: AQI 300 (Hazardous).", "created_at": NOW.isoformat(),
+        old = {"severity": "critical", "message": "Lahore: AQI 300 (Hazardous).", "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                "location": "Lahore", "level": "severe", "channel": "feed", "status": "sent"}
         alert.STORE_FILE.write_text(json.dumps({"memory": {}, "feed": [old]}), encoding="utf-8")
         before = alert.STORE_FILE.read_bytes()
@@ -547,6 +547,27 @@ class KindCompatibilityTest(AlertTestCase):
 
     def test_new_current_alerts_have_kind_current(self):
         self.assertEqual(alert.run(state_for([300] * 6))["alerts"][0]["kind"], "current")
+
+    def test_alerts_older_than_7_days_leave_the_feed(self):
+        now = datetime.now(timezone.utc)
+        stored = [{"severity": "warning", "message": f"Lahore: alert {days} days ago.", "location": "Lahore",
+                   "level": "poor", "channel": "feed", "status": "sent",
+                   "created_at": (now - timedelta(days=days)).isoformat(timespec="seconds")} for days in (1, 6, 8)]
+        alert.STORE_FILE.write_text(json.dumps({"memory": {}, "feed": stored}), encoding="utf-8")
+        before = alert.STORE_FILE.read_bytes()
+        self.assertEqual([a["message"] for a in alert.read_feed(10)],
+                         ["Lahore: alert 1 days ago.", "Lahore: alert 6 days ago."])  # gone from screen at once
+        self.assertEqual(alert.STORE_FILE.read_bytes(), before)                       # reading never rewrites
+        alert.run(state_for([300] * 6))                                                 # the next alert prunes the file
+        saved = json.loads(alert.STORE_FILE.read_text(encoding="utf-8"))["feed"]
+        self.assertEqual(len(saved), 3)
+        self.assertNotIn("Lahore: alert 8 days ago.", [a["message"] for a in saved])
+
+    def test_feed_is_capped(self):
+        with mock.patch.object(alert, "FEED_CAP", 3):
+            for level_values in ([50] * 6, [150] * 6, [300] * 6, [400] * 6):
+                alert.run(state_for(level_values))
+        self.assertEqual(len(json.loads(alert.STORE_FILE.read_text(encoding="utf-8"))["feed"]), 3)
 
     def test_spike_alerts_are_marked(self):
         state = state_for([8, 8, 8, 8, 8, 40])
