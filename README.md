@@ -201,6 +201,7 @@ The code is in [`agents/analysis.py`](agents/analysis.py).
 | `GET /` | The live dashboard (Screen 1) |
 | `GET /how` | How it works (Screen 2): the agent pipeline, a live example, data honesty and safeguards |
 | `GET /history` | Alert history (Screen 3): every stored alert, filterable by urgency, real or simulated, type (now or forecast) and city |
+| `GET /blog` | Blog (Screen 4): smog guides in English and Urdu, for everyone, children and schools, older people, and people with asthma or heart and lung conditions; what to avoid; how to improve the air |
 | `GET /api/status` | Runs the whole pipeline once and returns `readings`, `forecast`, `analysis`, `advisory`, `alerts` (new alerts from this run). The dashboard polls it every 5 s. |
 | `POST /api/ask` | "Ask SmogShield": body `{"question": "..."}` (1–300 characters, English or Urdu). Runs the pipeline once and asks Groq to answer only from the current reading, forecast, NCAP category and vetted advice. Returns `{"answer", "source", "model", "based_on"}`; `source` is `ai`, or `off` / `busy` / `down` / `fallback` with a calm message. Needs `LLM_ADVISORY_ENABLED=true` and a Groq key. |
 | `GET /api/alerts?limit=20` | The alert feed, newest first |

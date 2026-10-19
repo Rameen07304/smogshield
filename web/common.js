@@ -52,6 +52,7 @@ let CITY_UR = {};  // filled from /api/city (one list, kept in agents/monitor.py
 const UR = {
   // header, navigation, controls
   "Live dashboard": "لائیو ڈیش بورڈ", "How it works": "یہ کیسے کام کرتا ہے", "History": "ہسٹری",
+  "Blog": "بلاگ", "In this guide": "اس رہنمائی میں",
   "City": "شہر", "Demo scenario": "ڈیمو منظرنامہ", "Trigger smog emergency": "اسموگ ایمرجنسی چلائیں",
   "Connecting…": "رابطہ ہو رہا ہے…", "Live": "لائیو", "Simulated": "نقلی", "Offline": "آف لائن",
   "No data": "ڈیٹا نہیں", "Simulated data": "نقلی ڈیٹا", "Live data": "لائیو ڈیٹا", "Language": "زبان",

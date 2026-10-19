@@ -91,8 +91,8 @@ class ControlEndpointTest(unittest.TestCase):
         os.environ["MONITOR_CITY"] = "Atlantis"
         self.assertEqual(app.get_city()["current"], "Lahore")
 
-    def test_both_pages_are_served(self):
-        for page in (app.dashboard(), app.how_it_works(), app.alert_history()):
+    def test_every_page_is_served(self):
+        for page in (app.dashboard(), app.how_it_works(), app.alert_history(), app.blog()):
             with self.subTest(path=page.path):
                 self.assertTrue(Path(page.path).is_file())
 

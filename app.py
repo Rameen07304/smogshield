@@ -65,6 +65,12 @@ def alert_history():
     return FileResponse(WEB / "history.html")
 
 
+@app.get("/blog")
+def blog():
+    """Screen 4: smog guides for each group, what to avoid and how to improve the air (static, English and Urdu)."""
+    return FileResponse(WEB / "blog.html")
+
+
 @app.get("/api/status")
 def status():
     """One full pass through all agents. The dashboard polls this."""

@@ -71,5 +71,30 @@ class UrduCoverageTest(unittest.TestCase):
         self.assertGreater(len(page_strings()[0]), 60)
 
 
+class BlogTest(unittest.TestCase):
+    """The blog's reading text is written out in both languages (data-only="en" / "ur"), not through t()."""
+
+    def setUp(self):
+        self.markup = (WEB / "blog.html").read_text(encoding="utf-8")
+
+    def test_every_english_block_has_an_urdu_one(self):
+        self.assertEqual(self.markup.count('data-only="en"'), self.markup.count('data-only="ur"'))
+        self.assertGreater(self.markup.count('data-only="en"'), 10)
+
+    def test_every_article_is_in_both_languages_and_in_the_contents(self):
+        articles = re.findall(r'<article id="([\w-]+)".*?</article>', self.markup, re.S)
+        self.assertEqual(len(articles), 6)
+        for name, body in zip(articles, re.findall(r"<article .*?</article>", self.markup, re.S)):
+            with self.subTest(article=name):
+                self.assertIn('data-only="en"', body)
+                self.assertRegex(body, r'data-only="ur" lang="ur">\s*<p[^>]*>[؀-ۿ]')  # Urdu script
+                self.assertIn(f'href="#{name}"', self.markup)
+
+    def test_every_page_links_to_the_blog(self):
+        for page in WEB.glob("*.html"):
+            with self.subTest(page=page.name):
+                self.assertIn('<a href="/blog"', page.read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

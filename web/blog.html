@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Blog | SmogShield</title>
+  <meta name="description" content="Practical smog guides: precautions for everyone, children, older people and people with asthma or heart and lung conditions, what to avoid, and how to improve the air.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z' fill='%230e6f68'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/common.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 2 4 7v8c0 7.4 5.1 13.4 12 15 6.9-1.6 12-7.6 12-15V7z" fill="currentColor"/>
+        <path d="M9 14c2-2 4-2 6 0s4 2 6 0M9 19c2-2 4-2 6 0s4 2 6 0" stroke="var(--surface)" stroke-width="2.2"
+              fill="none" stroke-linecap="round"/>
+      </svg>
+      <span>SmogShield</span>
+    </div>
+    <nav class="site-nav" aria-label="Pages">
+      <a href="/" data-i18n>Live dashboard</a>
+      <a href="/how" data-i18n>How it works</a>
+      <a href="/history" data-i18n>History</a>
+      <a href="/blog" aria-current="page" data-i18n>Blog</a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Language / زبان">
+      <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
+      <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
+    </div>
+  </header>
+
+  <!-- Each block of reading text comes in both languages; the page's lang (set by common.js) shows one.
+       Urdu is machine-drafted, like the rest of the site: it needs a native speaker's review. -->
+  <main id="content" class="page">
+    <section class="intro">
+      <div data-only="en">
+        <h1>Living with smog</h1>
+        <p class="intro__pitch">Plain, practical guides for smog season: how to protect yourself, your children, older
+          relatives and anyone with asthma or a heart or lung condition, and what each of us can do to make the air
+          cleaner.</p>
+      </div>
+      <div data-only="ur" lang="ur">
+        <h1>اسموگ کے ساتھ زندگی</h1>
+        <p class="intro__pitch">اسموگ کے موسم کے لیے آسان اور عملی رہنمائی: اپنی، اپنے بچوں، بزرگوں اور دمے یا دل اور
+          پھیپھڑوں کے مریضوں کی حفاظت کیسے کریں، اور ہم میں سے ہر ایک ہوا کو صاف کرنے کے لیے کیا کر سکتا ہے۔</p>
+      </div>
+    </section>
+
+    <div class="blog">
+      <nav class="blog__toc" aria-labelledby="toc-title">
+        <h2 id="toc-title" class="blog__toc-title" data-i18n>In this guide</h2>
+        <ol role="list">
+          <li><a href="#everyone"><span data-only="en">Smog precautions for everyone</span><span data-only="ur" lang="ur">سب کے لیے احتیاطی تدابیر</span></a></li>
+          <li><a href="#children"><span data-only="en">Children and schools</span><span data-only="ur" lang="ur">بچے اور اسکول</span></a></li>
+          <li><a href="#older-people"><span data-only="en">Older people</span><span data-only="ur" lang="ur">بزرگ افراد</span></a></li>
+          <li><a href="#asthma"><span data-only="en">Asthma, heart and lung conditions</span><span data-only="ur" lang="ur">دمہ، دل اور پھیپھڑوں کے امراض</span></a></li>
+          <li><a href="#avoid"><span data-only="en">What to avoid: don't add to the smog</span><span data-only="ur" lang="ur">کن چیزوں سے بچیں: اسموگ میں اضافہ نہ کریں</span></a></li>
+          <li><a href="#improve"><span data-only="en">How to improve the air</span><span data-only="ur" lang="ur">ہوا کو بہتر کیسے بنائیں</span></a></li>
+        </ol>
+        <a class="blog__check" href="/"><span data-only="en">Check today's air in your city →</span><span data-only="ur" lang="ur">اپنے شہر کی آج کی ہوا دیکھیں ←</span></a>
+      </nav>
+
+      <div class="blog__posts">
+
+        <!-- 1. Everyone -->
+        <article id="everyone" class="post">
+          <div data-only="en">
+            <p class="post__meta">For everyone · 4 min read</p>
+            <h2 class="post__title">Smog precautions for everyone</h2>
+            <p class="post__lead">Smog is mostly tiny particles (PM2.5) small enough to travel deep into the lungs and
+              into the blood. On bad days, the best protection is simple: breathe less of it.</p>
+            <h3>Check the air before you plan your day</h3>
+            <p>Look at the AQI for your city in the morning and again before going out in the evening. Smog is often
+              worst early in the morning and late at night, when cold, still air traps it near the ground.</p>
+            <table class="post__levels">
+              <caption>What to do at each level (Pakistan NCAP categories)</caption>
+              <thead><tr><th scope="col">Level</th><th scope="col">Going outside</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><span class="level-dot" data-level="good"></span>Good</th><td>Yes. The air is clean today.</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="satisfactory"></span>Satisfactory</th><td>Yes. People with asthma or heart problems should take it easy.</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="moderate"></span>Moderate</th><td>Yes, for short times. Children, older people and the sick should avoid long or hard exercise outside.</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="poor"></span>Poor</th><td>Only if you need to. Children, older people and the sick should stay indoors.</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="very_poor"></span>Very Poor</th><td>Stay indoors if you can. If you must go out, wear an N95 mask.</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="severe"></span>Severe</th><td>No. Stay indoors with windows closed. Go out only if you must, with an N95 mask.</td></tr>
+              </tbody>
+            </table>
+            <h3>Do</h3>
+            <ul>
+              <li><strong>Keep windows and doors closed</strong> when the air is Poor or worse. Air the house briefly
+                in the afternoon if the AQI drops.</li>
+              <li><strong>Wear a well-fitted N95 or KN95 mask</strong> outdoors on bad days. Cloth and loose surgical
+                masks block very little of the fine particles.</li>
+              <li><strong>Move exercise indoors</strong>, or do it when the air is at its cleanest. Hard exercise makes
+                you breathe in much more air.</li>
+              <li><strong>Keep the car's windows up</strong> and set the air to recirculate in heavy traffic.</li>
+              <li><strong>Drink plenty of water</strong> and wash your face and hands after being outside.</li>
+            </ul>
+            <h3>Watch for symptoms</h3>
+            <p>Itchy or watery eyes, a sore throat, coughing and headaches are common on smoggy days. Go indoors and rest.
+              If you have chest pain, trouble breathing or feel faint, get medical help straight away: call Rescue 1122
+              or go to the nearest emergency department.</p>
+          </div>
+          <div data-only="ur" lang="ur">
+            <p class="post__meta">سب کے لیے · 4 منٹ کی پڑھائی</p>
+            <h2 class="post__title">سب کے لیے احتیاطی تدابیر</h2>
+            <p class="post__lead">اسموگ زیادہ تر انتہائی باریک ذرات (PM2.5) پر مشتمل ہوتی ہے جو پھیپھڑوں کی گہرائی اور خون
+              تک پہنچ جاتے ہیں۔ خراب دنوں میں بہترین حفاظت آسان ہے: اسے کم سے کم سانس میں لیں۔</p>
+            <h3>دن کی منصوبہ بندی سے پہلے ہوا دیکھیں</h3>
+            <p>صبح اور شام باہر جانے سے پہلے اپنے شہر کا اے کیو آئی دیکھیں۔ اسموگ اکثر صبح سویرے اور رات کو سب سے زیادہ ہوتی
+              ہے، جب ٹھنڈی اور رکی ہوئی ہوا اسے زمین کے قریب روک لیتی ہے۔</p>
+            <table class="post__levels">
+              <caption>ہر سطح پر کیا کریں (پاکستان NCAP زمرے)</caption>
+              <thead><tr><th scope="col">سطح</th><th scope="col">باہر جانا</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><span class="level-dot" data-level="good"></span>اچھا</th><td>جی ہاں۔ آج ہوا صاف ہے۔</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="satisfactory"></span>قابلِ قبول</th><td>جی ہاں۔ دمے یا دل کے مریض احتیاط کریں۔</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="moderate"></span>درمیانہ</th><td>جی ہاں، تھوڑی دیر کے لیے۔ بچے، بزرگ اور بیمار باہر لمبی یا سخت ورزش نہ کریں۔</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="poor"></span>خراب</th><td>صرف ضرورت ہو تو۔ بچے، بزرگ اور بیمار گھر کے اندر رہیں۔</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="very_poor"></span>بہت خراب</th><td>ہو سکے تو گھر کے اندر رہیں۔ باہر جانا ضروری ہو تو N95 ماسک پہنیں۔</td></tr>
+                <tr><th scope="row"><span class="level-dot" data-level="severe"></span>شدید</th><td>نہیں۔ کھڑکیاں بند کر کے اندر رہیں۔ صرف مجبوری میں N95 ماسک پہن کر باہر جائیں۔</td></tr>
+              </tbody>
+            </table>
+            <h3>کیا کریں</h3>
+            <ul>
+              <li><strong>کھڑکیاں اور دروازے بند رکھیں</strong> جب ہوا خراب یا اس سے بدتر ہو۔ اگر دوپہر کو اے کیو آئی کم ہو
+                تو تھوڑی دیر کے لیے گھر کو ہوا دیں۔</li>
+              <li><strong>اچھی طرح فٹ ہونے والا N95 یا KN95 ماسک پہنیں</strong> خراب دنوں میں باہر جاتے وقت۔ کپڑے اور ڈھیلے
+                سرجیکل ماسک باریک ذرات کو بہت کم روکتے ہیں۔</li>
+              <li><strong>ورزش گھر کے اندر کریں</strong>، یا اس وقت کریں جب ہوا سب سے صاف ہو۔ سخت ورزش میں سانس کے ساتھ کہیں
+                زیادہ ہوا اندر جاتی ہے۔</li>
+              <li><strong>گاڑی کے شیشے بند رکھیں</strong> اور زیادہ ٹریفک میں اے سی کو ری سرکولیٹ پر رکھیں۔</li>
+              <li><strong>پانی زیادہ پئیں</strong> اور باہر سے آ کر منہ اور ہاتھ دھوئیں۔</li>
+            </ul>
+            <h3>علامات پر نظر رکھیں</h3>
+            <p>آنکھوں میں خارش یا پانی، گلے میں خراش، کھانسی اور سر درد اسموگ والے دنوں میں عام ہیں۔ اندر جا کر آرام کریں۔
+              اگر سینے میں درد ہو، سانس لینے میں دشواری ہو یا بے ہوشی محسوس ہو تو فوراً طبی مدد لیں: ریسکیو 1122 پر کال کریں
+              یا قریبی ایمرجنسی میں جائیں۔</p>
+          </div>
+        </article>
+
+        <!-- 2. Children -->
+        <article id="children" class="post">
+          <div data-only="en">
+            <p class="post__meta">For parents and schools · 4 min read</p>
+            <h2 class="post__title">Children and schools</h2>
+            <p class="post__lead">Children breathe faster than adults and take in more air for their size, their lungs
+              are still growing, and they spend more time running around outside. Smog affects them more.</p>
+            <h3>At home</h3>
+            <ul>
+              <li><strong>Plan play around the AQI.</strong> On Poor days or worse, swap outdoor games for indoor ones.</li>
+              <li><strong>Keep babies and toddlers in the cleanest room</strong>, with windows closed. Masks are not
+                safe for children under 2: keeping them indoors is the protection.</li>
+              <li><strong>Older children can wear a child-size N95 or KN95</strong> if they must go out. It only helps
+                if it fits snugly over the nose and under the chin.</li>
+              <li><strong>Walk to school by quieter streets</strong>, away from heavy traffic, when you can.</li>
+            </ul>
+            <h3>At school</h3>
+            <ul>
+              <li><strong>Moderate:</strong> school as normal, but shorten long or intense outdoor PE and sports.</li>
+              <li><strong>Poor:</strong> move PE, sports and the morning assembly indoors, and keep windows closed.</li>
+              <li><strong>Very Poor:</strong> all activities indoors. Pupils with asthma or heart conditions may be
+                safer at home.</li>
+              <li><strong>Severe:</strong> emergency air. Closing schools or moving classes online is advisable. Always
+                follow your provincial School Education Department.</li>
+            </ul>
+            <h3>Children with asthma</h3>
+            <p>Make sure they carry their reliever inhaler to school, and that teachers know how to use it. Keep giving any
+              preventer medicine exactly as the doctor prescribed, even when they seem well.</p>
+            <h3>Stop and rest if you notice</h3>
+            <p>Coughing that won't stop, wheezing, a tight chest, fast breathing or unusual tiredness. Bring the child
+              indoors to rest. If breathing is hard, the lips look blue or grey, or they can't speak in full sentences,
+              get emergency help at once.</p>
+          </div>
+          <div data-only="ur" lang="ur">
+            <p class="post__meta">والدین اور اسکولوں کے لیے · 4 منٹ کی پڑھائی</p>
+            <h2 class="post__title">بچے اور اسکول</h2>
+            <p class="post__lead">بچے بڑوں سے تیز سانس لیتے ہیں اور اپنے جسم کے لحاظ سے زیادہ ہوا اندر لیتے ہیں، ان کے
+              پھیپھڑے ابھی بڑھ رہے ہوتے ہیں، اور وہ باہر زیادہ وقت کھیلتے ہیں۔ اسموگ ان پر زیادہ اثر کرتی ہے۔</p>
+            <h3>گھر پر</h3>
+            <ul>
+              <li><strong>کھیل کا وقت اے کیو آئی دیکھ کر طے کریں۔</strong> خراب یا اس سے بدتر دنوں میں باہر کے کھیل کی جگہ
+                اندر کے کھیل کھلائیں۔</li>
+              <li><strong>شیر خوار اور چھوٹے بچوں کو سب سے صاف کمرے میں رکھیں</strong>، کھڑکیاں بند کر کے۔ 2 سال سے کم عمر
+                بچوں کے لیے ماسک محفوظ نہیں: انہیں اندر رکھنا ہی ان کی حفاظت ہے۔</li>
+              <li><strong>بڑے بچے بچوں کے سائز کا N95 یا KN95 ماسک پہن سکتے ہیں</strong> اگر باہر جانا ضروری ہو۔ یہ تبھی
+                فائدہ دیتا ہے جب ناک اور ٹھوڑی پر اچھی طرح فٹ ہو۔</li>
+              <li><strong>اسکول جاتے ہوئے پرسکون گلیوں سے جائیں</strong>، جہاں تک ہو سکے زیادہ ٹریفک سے دور۔</li>
+            </ul>
+            <h3>اسکول میں</h3>
+            <ul>
+              <li><strong>درمیانہ:</strong> اسکول معمول کے مطابق، لیکن باہر لمبی یا سخت ورزش اور کھیل کم کریں۔</li>
+              <li><strong>خراب:</strong> ورزش، کھیل اور صبح کی اسمبلی اندر کریں، اور کھڑکیاں بند رکھیں۔</li>
+              <li><strong>بہت خراب:</strong> تمام سرگرمیاں اندر۔ دمے یا دل کے مرض والے طلبہ کے لیے گھر پر رہنا زیادہ محفوظ
+                ہو سکتا ہے۔</li>
+              <li><strong>شدید:</strong> ہنگامی فضا۔ اسکول بند کرنا یا کلاسیں آن لائن کرنا مناسب ہے۔ ہمیشہ اپنے صوبائی اسکول
+                ایجوکیشن ڈیپارٹمنٹ کی ہدایات پر عمل کریں۔</li>
+            </ul>
+            <h3>دمے کے شکار بچے</h3>
+            <p>یقینی بنائیں کہ وہ اپنا ریلیور انہیلر اسکول ساتھ لے جائیں، اور اساتذہ کو اس کا استعمال معلوم ہو۔ بچاؤ کی دوا
+              بالکل ڈاکٹر کی ہدایت کے مطابق دیتے رہیں، چاہے بچہ ٹھیک لگ رہا ہو۔</p>
+            <h3>اگر یہ علامات دیکھیں تو رک کر آرام کرائیں</h3>
+            <p>نہ رکنے والی کھانسی، سانس میں سیٹی کی آواز، سینے میں جکڑن، تیز سانس یا غیر معمولی تھکن۔ بچے کو اندر لا کر آرام
+              کرائیں۔ اگر سانس لینا مشکل ہو، ہونٹ نیلے یا سرمئی لگیں، یا بچہ پورا جملہ نہ بول سکے تو فوراً ایمرجنسی مدد لیں۔</p>
+          </div>
+        </article>
+
+        <!-- 3. Older people -->
+        <article id="older-people" class="post">
+          <div data-only="en">
+            <p class="post__meta">For older people and their families · 3 min read</p>
+            <h2 class="post__title">Older people</h2>
+            <p class="post__lead">With age, the heart and lungs have less in reserve, and many older people already live
+              with high blood pressure, heart disease, diabetes or COPD. Smog can make these worse, sometimes within hours.</p>
+            <h3>Do</h3>
+            <ul>
+              <li><strong>Move the morning walk indoors</strong> on smoggy days: walk around the house, a corridor, the
+                mosque or a shopping centre, or walk in the afternoon if the air is cleaner then.</li>
+              <li><strong>Keep a week's supply of regular medicines</strong> at home during smog season, so nobody has to
+                go out in the worst air to buy them.</li>
+              <li><strong>Take medicines as prescribed</strong> and don't skip doses. If you use an inhaler, keep it close.</li>
+              <li><strong>Stay warm indoors safely.</strong> Never run a gas heater or coal angithi in a closed room
+                without ventilation: it can cause carbon monoxide poisoning.</li>
+            </ul>
+            <h3>For families and neighbours</h3>
+            <p>Call or visit older relatives and neighbours who live alone on bad days. Offer to do their shopping, and
+              make sure they know the day's AQI.</p>
+            <h3>Get medical help if</h3>
+            <p>There is chest pain or pressure, a racing or irregular heartbeat, breathlessness that is worse than usual,
+              sudden dizziness or confusion. Don't wait for it to pass: call Rescue 1122.</p>
+          </div>
+          <div data-only="ur" lang="ur">
+            <p class="post__meta">بزرگوں اور ان کے اہلِ خانہ کے لیے · 3 منٹ کی پڑھائی</p>
+            <h2 class="post__title">بزرگ افراد</h2>
+            <p class="post__lead">عمر کے ساتھ دل اور پھیپھڑوں کی برداشت کم ہو جاتی ہے، اور بہت سے بزرگ پہلے ہی بلڈ پریشر، دل
+              کے مرض، شوگر یا COPD کے ساتھ زندگی گزار رہے ہوتے ہیں۔ اسموگ ان بیماریوں کو بڑھا سکتی ہے، بعض اوقات چند گھنٹوں میں۔</p>
+            <h3>کیا کریں</h3>
+            <ul>
+              <li><strong>اسموگ والے دنوں میں صبح کی سیر اندر کریں</strong>: گھر میں، برآمدے میں، مسجد یا شاپنگ سینٹر میں،
+                یا دوپہر کو اگر اس وقت ہوا صاف ہو۔</li>
+              <li><strong>اسموگ کے موسم میں ایک ہفتے کی باقاعدہ دوائیں گھر پر رکھیں</strong>، تاکہ کسی کو بدترین ہوا میں دوا
+                لینے باہر نہ جانا پڑے۔</li>
+              <li><strong>دوائیں ڈاکٹر کی ہدایت کے مطابق لیں</strong> اور کوئی خوراک نہ چھوڑیں۔ انہیلر استعمال کرتے ہیں تو
+                اسے پاس رکھیں۔</li>
+              <li><strong>گھر کے اندر محفوظ طریقے سے گرم رہیں۔</strong> بند کمرے میں ہوا کے راستے کے بغیر گیس ہیٹر یا کوئلے
+                کی انگیٹھی کبھی نہ جلائیں: اس سے کاربن مونو آکسائیڈ کا زہر پھیل سکتا ہے۔</li>
+            </ul>
+            <h3>اہلِ خانہ اور پڑوسیوں کے لیے</h3>
+            <p>خراب دنوں میں اکیلے رہنے والے بزرگ رشتہ داروں اور پڑوسیوں کو فون کریں یا ان سے ملیں۔ ان کا سودا لا دیں، اور
+              یقینی بنائیں کہ انہیں دن کا اے کیو آئی معلوم ہو۔</p>
+            <h3>طبی مدد لیں اگر</h3>
+            <p>سینے میں درد یا دباؤ ہو، دل کی دھڑکن بہت تیز یا بے ترتیب ہو، سانس معمول سے زیادہ پھولے، اچانک چکر آئیں یا
+              ذہنی الجھن ہو۔ اس کے ٹلنے کا انتظار نہ کریں: ریسکیو 1122 پر کال کریں۔</p>
+          </div>
+        </article>
+
+        <!-- 4. Asthma, heart and lung conditions -->
+        <article id="asthma" class="post">
+          <div data-only="en">
+            <p class="post__meta">For people with asthma, COPD or heart disease · 4 min read</p>
+            <h2 class="post__title">Asthma, heart and lung conditions</h2>
+            <p class="post__lead">If you live with asthma, COPD, bronchitis, heart disease or another long-term heart or
+              lung condition, smog can trigger attacks and flare-ups. A little planning before the season makes a big
+              difference.</p>
+            <h3>Before smog season</h3>
+            <ul>
+              <li><strong>See your doctor</strong> and ask for a written action plan: what to take every day, what to do
+                when symptoms get worse, and when to get urgent help.</li>
+              <li><strong>Check your inhaler technique</strong> and its expiry date. Ask whether a spacer would help.</li>
+              <li><strong>Get your flu vaccine</strong> if your doctor recommends it: chest infections and smog together
+                are especially hard on the lungs.</li>
+            </ul>
+            <h3>On smoggy days</h3>
+            <ul>
+              <li><strong>Keep taking your preventer medicines</strong> exactly as prescribed. Never stop or change them
+                without talking to your doctor.</li>
+              <li><strong>Carry your reliever inhaler</strong> everywhere, and keep a spare at home or work.</li>
+              <li><strong>Stay indoors from Poor upwards</strong>, in a room with windows closed and, if you have one, an
+                air purifier with a HEPA filter running.</li>
+              <li><strong>Avoid other triggers</strong> at the same time: cigarette smoke, incense, mosquito coils,
+                strong sprays and dusty cleaning.</li>
+              <li><strong>Use an N95 mask outdoors</strong> if it doesn't make breathing harder for you. If it does, it is
+                better to limit time outside instead.</li>
+            </ul>
+            <h3>Emergency signs</h3>
+            <p>Your reliever isn't helping or you need it more often than every 4 hours, you're too breathless to speak,
+              your lips or fingertips turn blue or grey, or you have chest pain. Follow your action plan and get emergency
+              help: call Rescue 1122 or go to the nearest emergency department.</p>
+          </div>
+          <div data-only="ur" lang="ur">
+            <p class="post__meta">دمہ، COPD یا دل کے مریضوں کے لیے · 4 منٹ کی پڑھائی</p>
+            <h2 class="post__title">دمہ، دل اور پھیپھڑوں کے امراض</h2>
+            <p class="post__lead">اگر آپ کو دمہ، COPD، برونکائٹس، دل کا مرض یا دل یا پھیپھڑوں کی کوئی اور دیرینہ بیماری ہے تو
+              اسموگ دورے اور تکلیف بڑھا سکتی ہے۔ موسم سے پہلے تھوڑی سی تیاری بڑا فرق ڈالتی ہے۔</p>
+            <h3>اسموگ کے موسم سے پہلے</h3>
+            <ul>
+              <li><strong>اپنے ڈاکٹر سے ملیں</strong> اور تحریری ایکشن پلان مانگیں: روزانہ کیا لینا ہے، علامات بڑھنے پر کیا
+                کرنا ہے، اور فوری مدد کب لینی ہے۔</li>
+              <li><strong>انہیلر استعمال کرنے کا طریقہ</strong> اور اس کی میعاد چیک کریں۔ پوچھیں کہ کیا اسپیسر مددگار ہوگا۔</li>
+              <li><strong>فلو کی ویکسین لگوائیں</strong> اگر ڈاکٹر مشورہ دے: سینے کا انفیکشن اور اسموگ مل کر پھیپھڑوں پر
+                خاص طور پر بھاری پڑتے ہیں۔</li>
+            </ul>
+            <h3>اسموگ والے دنوں میں</h3>
+            <ul>
+              <li><strong>بچاؤ کی دوائیں</strong> بالکل ڈاکٹر کی ہدایت کے مطابق لیتے رہیں۔ ڈاکٹر سے بات کیے بغیر انہیں کبھی
+                بند یا تبدیل نہ کریں۔</li>
+              <li><strong>ریلیور انہیلر ہر جگہ ساتھ رکھیں</strong>، اور ایک اضافی گھر یا دفتر میں رکھیں۔</li>
+              <li><strong>ہوا خراب یا اس سے بدتر ہو تو اندر رہیں</strong>، کھڑکیاں بند کمرے میں، اور اگر ہو تو HEPA فلٹر والا
+                ایئر پیوریفائر چلائیں۔</li>
+              <li><strong>ساتھ ہی دوسری محرک چیزوں سے بچیں</strong>: سگریٹ کا دھواں، اگربتی، مچھر مار کوائل، تیز اسپرے اور
+                گرد اڑانے والی صفائی۔</li>
+              <li><strong>باہر N95 ماسک استعمال کریں</strong> اگر اس سے آپ کو سانس لینے میں مشکل نہ ہو۔ اگر مشکل ہو تو بہتر
+                ہے کہ باہر کم وقت گزاریں۔</li>
+            </ul>
+            <h3>ہنگامی علامات</h3>
+            <p>ریلیور سے آرام نہ آئے یا ہر 4 گھنٹے سے پہلے اس کی ضرورت پڑے، سانس اتنی پھولے کہ بول نہ سکیں، ہونٹ یا انگلیوں
+              کے سرے نیلے یا سرمئی ہو جائیں، یا سینے میں درد ہو۔ اپنے ایکشن پلان پر عمل کریں اور ایمرجنسی مدد لیں: ریسکیو 1122
+              پر کال کریں یا قریبی ایمرجنسی میں جائیں۔</p>
+          </div>
+        </article>
+
+        <!-- 5. What to avoid -->
+        <article id="avoid" class="post">
+          <div data-only="en">
+            <p class="post__meta">Prevention · 3 min read</p>
+            <h2 class="post__title">What to avoid: don't add to the smog</h2>
+            <p class="post__lead">Smog in Pakistan comes from vehicles, industry and brick kilns, and from burning crop
+              stubble and rubbish, made worse when winter air stops moving. Some of the biggest sources are things
+              people do every day.</p>
+            <h3>Avoid</h3>
+            <ul>
+              <li><strong>Burning rubbish, leaves or plastic.</strong> Burning plastic also releases toxic fumes. Use
+                waste collection instead.</li>
+              <li><strong>Burning crop stubble.</strong> Mulching, mixing the residue into the soil or selling it for fodder
+                or fuel are cleaner options; ask your local agriculture office about machines and support.</li>
+              <li><strong>Leaving the engine running</strong> while waiting. Switch it off when parked.</li>
+              <li><strong>Driving a smoky vehicle.</strong> If your car, bike or rickshaw gives off visible smoke, get it
+                serviced and tuned.</li>
+              <li><strong>Firecrackers</strong> and bonfires during smog season.</li>
+              <li><strong>Running diesel generators</strong> when you don't need to.</li>
+              <li><strong>Leaving sand, soil or debris uncovered</strong> on building sites. Cover it and sprinkle water
+                to keep dust down.</li>
+            </ul>
+            <h3>Speak up</h3>
+            <p>If you see open burning of rubbish, tyres or crop waste, report it to your provincial Environmental
+              Protection Agency (EPA) or local administration.</p>
+          </div>
+          <div data-only="ur" lang="ur">
+            <p class="post__meta">روک تھام · 3 منٹ کی پڑھائی</p>
+            <h2 class="post__title">کن چیزوں سے بچیں: اسموگ میں اضافہ نہ کریں</h2>
+            <p class="post__lead">پاکستان میں اسموگ گاڑیوں، صنعتوں اور اینٹوں کے بھٹوں سے، اور فصلوں کی باقیات اور کوڑا
+              جلانے سے آتی ہے، اور سردیوں میں ہوا رکنے سے بڑھ جاتی ہے۔ اس کے کئی بڑے ذرائع وہ کام ہیں جو لوگ روزانہ کرتے ہیں۔</p>
+            <h3>ان سے بچیں</h3>
+            <ul>
+              <li><strong>کوڑا، پتے یا پلاسٹک جلانا۔</strong> پلاسٹک جلانے سے زہریلا دھواں بھی نکلتا ہے۔ اس کے بجائے کوڑا
+                اٹھانے کی سروس استعمال کریں۔</li>
+              <li><strong>فصلوں کی باقیات جلانا۔</strong> ملچنگ، باقیات کو مٹی میں ملانا یا چارے یا ایندھن کے لیے بیچنا صاف
+                طریقے ہیں؛ مشینوں اور مدد کے بارے میں اپنے مقامی محکمہ زراعت سے پوچھیں۔</li>
+              <li><strong>انتظار کرتے ہوئے انجن چلتا چھوڑنا۔</strong> گاڑی کھڑی ہو تو انجن بند کریں۔</li>
+              <li><strong>دھواں چھوڑنے والی گاڑی چلانا۔</strong> اگر آپ کی گاڑی، موٹر سائیکل یا رکشہ نظر آنے والا دھواں
+                چھوڑتا ہے تو اس کی سروس اور ٹیوننگ کروائیں۔</li>
+              <li><strong>آتش بازی</strong> اور اسموگ کے موسم میں الاؤ جلانا۔</li>
+              <li><strong>بلا ضرورت ڈیزل جنریٹر چلانا۔</strong></li>
+              <li><strong>تعمیراتی جگہوں پر ریت، مٹی یا ملبہ کھلا چھوڑنا۔</strong> اسے ڈھانپیں اور گرد کم رکھنے کے لیے پانی
+                چھڑکیں۔</li>
+            </ul>
+            <h3>آواز اٹھائیں</h3>
+            <p>اگر آپ کوڑا، ٹائر یا فصلوں کی باقیات کھلے عام جلتے دیکھیں تو اپنے صوبائی ماحولیاتی تحفظ کے ادارے (EPA) یا
+              مقامی انتظامیہ کو اطلاع دیں۔</p>
+          </div>
+        </article>
+
+        <!-- 6. Improve the air -->
+        <article id="improve" class="post">
+          <div data-only="en">
+            <p class="post__meta">At home and in your community · 4 min read</p>
+            <h2 class="post__title">How to improve the air</h2>
+            <p class="post__lead">You can't clear a city's smog alone, but you can make the air in your home much
+              cleaner, and small changes add up across a whole neighbourhood.</p>
+            <h3>Cleaner air at home</h3>
+            <ul>
+              <li><strong>Use an air purifier with a true HEPA filter</strong> in the room where you spend the most time,
+                sized for that room. Change the filter as the maker recommends.</li>
+              <li><strong>A low-cost option:</strong> a box fan with a good furnace filter (MERV 13) strapped to the back
+                can clean the air in a small room.</li>
+              <li><strong>Avoid "purifiers" that make ozone</strong> or "ionisers" that do: ozone irritates the lungs.</li>
+              <li><strong>Don't smoke indoors</strong>, and cut down on incense, mosquito coils and candles.</li>
+              <li><strong>Cook with the kitchen fan on</strong> or a window open a little, and keep lids on pans.</li>
+              <li><strong>Clean with a damp cloth or mop</strong> instead of sweeping, which stirs dust back into the air.</li>
+            </ul>
+            <h3>Cleaner air outside</h3>
+            <ul>
+              <li><strong>Share rides, use public transport,</strong> or walk and cycle on clean-air days.</li>
+              <li><strong>Keep your vehicle tuned</strong>, with tyres at the right pressure, and use good-quality fuel.</li>
+              <li><strong>Plant and look after trees</strong> and green spaces. They don't remove smog quickly, but they
+                trap dust and cool the streets over time.</li>
+              <li><strong>Choose cleaner energy</strong> where you can: solar instead of a generator, and gas or electric
+                cooking instead of wood or dung.</li>
+              <li><strong>Talk about it.</strong> Share the AQI with family and neighbours, and support cleaner kilns,
+                waste collection and public transport in your area.</li>
+            </ul>
+          </div>
+          <div data-only="ur" lang="ur">
+            <p class="post__meta">گھر اور محلے میں · 4 منٹ کی پڑھائی</p>
+            <h2 class="post__title">ہوا کو بہتر کیسے بنائیں</h2>
+            <p class="post__lead">آپ اکیلے پورے شہر کی اسموگ ختم نہیں کر سکتے، لیکن اپنے گھر کی ہوا کو کہیں زیادہ صاف کر سکتے
+              ہیں، اور چھوٹی تبدیلیاں پورے محلے میں مل کر بڑا فرق ڈالتی ہیں۔</p>
+            <h3>گھر میں صاف ہوا</h3>
+            <ul>
+              <li><strong>اصل HEPA فلٹر والا ایئر پیوریفائر استعمال کریں</strong> اس کمرے میں جہاں آپ سب سے زیادہ وقت گزارتے
+                ہیں، اور کمرے کے سائز کے مطابق۔ فلٹر بنانے والے کی ہدایت کے مطابق بدلیں۔</li>
+              <li><strong>کم خرچ طریقہ:</strong> ایک باکس پنکھا جس کی پشت پر اچھا فرنس فلٹر (MERV 13) باندھ دیا جائے، چھوٹے
+                کمرے کی ہوا صاف کر سکتا ہے۔</li>
+              <li><strong>اوزون بنانے والے "پیوریفائر" یا "آیونائزر" سے بچیں</strong>: اوزون پھیپھڑوں میں جلن پیدا کرتی ہے۔</li>
+              <li><strong>گھر کے اندر سگریٹ نہ پئیں</strong>، اور اگربتی، مچھر مار کوائل اور موم بتیاں کم کریں۔</li>
+              <li><strong>کھانا پکاتے وقت کچن کا پنکھا چلائیں</strong> یا کھڑکی تھوڑی کھلی رکھیں، اور برتنوں پر ڈھکن رکھیں۔</li>
+              <li><strong>جھاڑو کے بجائے گیلے کپڑے یا پوچے سے صفائی کریں</strong>، کیونکہ جھاڑو گرد کو دوبارہ ہوا میں اڑاتا ہے۔</li>
+            </ul>
+            <h3>باہر صاف ہوا</h3>
+            <ul>
+              <li><strong>مل کر سفر کریں، پبلک ٹرانسپورٹ استعمال کریں،</strong> یا صاف ہوا والے دنوں میں پیدل چلیں اور سائیکل
+                چلائیں۔</li>
+              <li><strong>اپنی گاڑی کی ٹیوننگ کروائیں</strong>، ٹائروں میں صحیح ہوا رکھیں، اور اچھے معیار کا ایندھن استعمال کریں۔</li>
+              <li><strong>درخت لگائیں اور ان کی دیکھ بھال کریں</strong> اور سبزہ بڑھائیں۔ یہ اسموگ کو جلدی ختم نہیں کرتے،
+                لیکن وقت کے ساتھ گرد روکتے اور گلیوں کو ٹھنڈا رکھتے ہیں۔</li>
+              <li><strong>جہاں ہو سکے صاف توانائی چنیں</strong>: جنریٹر کی جگہ سولر، اور لکڑی یا اپلوں کی جگہ گیس یا بجلی پر
+                کھانا پکانا۔</li>
+              <li><strong>بات کریں۔</strong> اہلِ خانہ اور پڑوسیوں کو اے کیو آئی بتائیں، اور اپنے علاقے میں صاف بھٹوں، کوڑا
+                اٹھانے اور پبلک ٹرانسپورٹ کی حمایت کریں۔</li>
+            </ul>
+          </div>
+        </article>
+
+        <p class="blog__disclaimer">
+          <span data-only="en">General guidance, not medical advice. If you have symptoms or a health condition, follow
+            your doctor's advice. In an emergency, call Rescue 1122.</span>
+          <span data-only="ur" lang="ur">یہ عمومی رہنمائی ہے، طبی مشورہ نہیں۔ اگر آپ کو علامات ہوں یا کوئی بیماری ہو تو اپنے
+            ڈاکٹر کے مشورے پر عمل کریں۔ ایمرجنسی میں ریسکیو 1122 پر کال کریں۔</span>
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer" data-i18n-html="footer">
+    Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
+    (Copernicus Atmosphere Monitoring Service). Categories: Pakistan National Clean Air Policy 2023.
+  </footer>
+</body>
+</html>
