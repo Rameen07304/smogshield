@@ -58,6 +58,16 @@
           <label><input type="radio" name="source" value="real"><span><b data-i18n>Real</b> <i data-count="source-real"></i></span></label>
           <label><input type="radio" name="source" value="simulated"><span><b data-i18n>Simulated</b> <i data-count="source-simulated"></i></span></label>
         </fieldset>
+        <fieldset class="segmented">
+          <legend data-i18n>Type</legend>
+          <label><input type="radio" name="kind" value="all" checked><span><b data-i18n>All</b> <i data-count="kind-all"></i></span></label>
+          <label><input type="radio" name="kind" value="current"><span><b data-i18n>Now</b> <i data-count="kind-current"></i></span></label>
+          <label><input type="radio" name="kind" value="forecast"><span><b data-i18n>Forecast</b> <i data-count="kind-forecast"></i></span></label>
+        </fieldset>
+        <div class="segmented">
+          <label class="filters__label" for="city-filter" data-i18n>City</label>
+          <select id="city-filter" name="city"><option value="all">All cities</option></select>
+        </div>
       </form>
 
       <p id="history-empty" class="empty" data-i18n-init>Loading alerts…</p>

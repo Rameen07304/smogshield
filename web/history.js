@@ -93,14 +93,19 @@ function buildRow(a) {
   return tr;
 }
 
-// ---------- filters (kept in the URL, e.g. ?urgency=critical&source=simulated) ----------
+// ---------- filters (kept in the URL, e.g. ?urgency=critical&source=simulated&city=Lahore) ----------
 
-const FILTER_VALUES = { urgency: ["all", "info", "warning", "critical"], source: ["all", "real", "simulated"] };
-const filters = { urgency: "all", source: "all" };
-
-const matchesUrgency = (a, urgency) => urgency === "all" || a.severity === urgency;
-const matchesSource = (a, source) => source === "all" || (source === "simulated") === isSimulated(a);
-const matches = (a) => matchesUrgency(a, filters.urgency) && matchesSource(a, filters.source);
+const FILTER_VALUES = { urgency: ["all", "info", "warning", "critical"], source: ["all", "real", "simulated"],
+  kind: ["all", "current", "forecast"] };
+const filters = { urgency: "all", source: "all", kind: "all", city: "all" };
+const MATCHERS = {
+  urgency: (a, v) => v === "all" || a.severity === v,
+  source: (a, v) => v === "all" || (v === "simulated") === isSimulated(a),
+  kind: (a, v) => v === "all" || (a.kind || "current") === v,  // old alerts have no kind: they were current
+  city: (a, v) => v === "all" || a.location === v,
+};
+/** Every filter matches, except the one named (so each option's count assumes the other filters) */
+const matches = (a, except) => Object.keys(filters).every((name) => name === except || MATCHERS[name](a, filters[name]));
 
 function readFiltersFromUrl() {
   const params = new URLSearchParams(location.search);
@@ -110,25 +115,41 @@ function readFiltersFromUrl() {
     const radio = document.querySelector(`input[name="${name}"][value="${filters[name]}"]`);
     if (radio) radio.checked = true;
   }
+  filters.city = params.get("city") || "all";  // checked against the alerts' cities once they load
 }
 
 function writeFiltersToUrl() {
   const params = new URLSearchParams();
   for (const [name, value] of Object.entries(filters)) if (value !== "all") params.set(name, value);
+  const lang = new URLSearchParams(location.search).get("lang");
+  if (lang) params.set("lang", lang);
   const query = params.toString();
   history.replaceState(null, "", query ? `?${query}` : location.pathname);
 }
 
-/** How many alerts each option would show, given the other filter (so the numbers always add up) */
+/** How many alerts each option would show, given the other filters (so the numbers always add up) */
 function updateCounts() {
-  for (const urgency of FILTER_VALUES.urgency) {
-    const n = alerts.filter((a) => matchesUrgency(a, urgency) && matchesSource(a, filters.source)).length;
-    document.querySelector(`[data-count="urgency-${urgency}"]`).textContent = n;
+  for (const [name, values] of Object.entries(FILTER_VALUES)) {
+    for (const value of values) {
+      const n = alerts.filter((a) => MATCHERS[name](a, value) && matches(a, name)).length;
+      document.querySelector(`[data-count="${name}-${value}"]`).textContent = n;
+    }
   }
-  for (const source of FILTER_VALUES.source) {
-    const n = alerts.filter((a) => matchesSource(a, source) && matchesUrgency(a, filters.urgency)).length;
-    document.querySelector(`[data-count="source-${source}"]`).textContent = n;
-  }
+}
+
+/** City options: the cities that have alerts, A to Z, each with its count */
+function renderCityOptions() {
+  const cities = [...new Set(alerts.map((a) => a.location))].sort();
+  if (!cities.includes(filters.city)) filters.city = "all";
+  const option = (value, label) => {
+    const o = document.createElement("option");
+    o.value = value;
+    o.textContent = `${label} (${alerts.filter((a) => MATCHERS.city(a, value) && matches(a, "city")).length})`;
+    return o;
+  };
+  const select = $("city-filter");
+  select.replaceChildren(option("all", t("All cities")), ...cities.map((c) => option(c, cityName(c))));
+  select.value = filters.city;
 }
 
 $("filters").addEventListener("change", (event) => {
@@ -139,15 +160,15 @@ $("filters").addEventListener("change", (event) => {
 });
 
 $("clear-filters").addEventListener("click", () => {
-  filters.urgency = "all";
-  filters.source = "all";
+  for (const name of Object.keys(filters)) filters[name] = "all";
   for (const radio of document.querySelectorAll('#filters input[value="all"]')) radio.checked = true;
   writeFiltersToUrl();
   renderHistory();
 });
 
 function renderHistory() {
-  const shown = alerts.filter(matches);
+  renderCityOptions();
+  const shown = alerts.filter((a) => matches(a));
   $("history-rows").replaceChildren(...shown.map(buildRow));
   const none = alerts.length === 0;
   $("filters").hidden = none;

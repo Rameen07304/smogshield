@@ -549,6 +549,7 @@ html[lang="ur"] .scale__labels span { white-space: normal; overflow: visible; li
 
 .filters { display: flex; flex-wrap: wrap; gap: var(--s5); margin-bottom: var(--s5); }
 .segmented { display: flex; flex-wrap: wrap; align-items: center; gap: 0; margin: 0; padding: 0; border: 0; }
+.filters__label { margin-inline-end: var(--s3); color: var(--text-3); font-size: 13px; font-weight: 600; }
 .segmented legend { float: inline-start; margin-inline-end: var(--s3); color: var(--text-3); font-size: 13px; font-weight: 600; line-height: 32px; }
 .segmented > div { display: inline-flex; }
 .segmented label { position: relative; display: inline-flex; }

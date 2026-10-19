@@ -117,6 +117,7 @@ const UR = {
   "Spike · {v}": "اچانک اضافہ · {v}", "The chart appears once the server responds.": "سرور کے جواب دینے پر چارٹ ظاہر ہوگا۔",
   // all cities
   "Based on": "بنیاد",
+  "Type": "قسم", "Now": "ابھی", "All cities": "تمام شہر",
   "Advice written by AI ({model} on Groq), checked against the NCAP categories.":
     "یہ مشورہ AI ‏({model}، Groq) نے لکھا اور NCAP زمروں سے جانچا گیا۔",
   "Advice from SmogShield's NCAP rules.": "یہ مشورہ SmogShield کے NCAP اصولوں سے ہے۔",
