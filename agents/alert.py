@@ -43,7 +43,7 @@ from pathlib import Path
 import requests
 
 from agents.advisory import LEVEL_NAMES  # (English, Urdu) level names
-from agents.monitor import CITIES_UR
+from agents.monitor import CITIES_UR, _mock_requested
 from schemas import Alert, SmogState
 
 log = logging.getLogger(__name__)
@@ -78,10 +78,6 @@ URGENCY = {
     "poor": "warning",
     "very_poor": "critical",
     "severe": "critical",
-}
-LEVEL_LABELS = {
-    "good": "Good", "satisfactory": "Satisfactory", "moderate": "Moderate",
-    "poor": "Poor", "very_poor": "Very Poor", "severe": "Severe",
 }
 
 _lock = threading.Lock()  # several dashboard tabs can poll at the same time
@@ -374,9 +370,9 @@ def _forecast_message(location: str, analysis: dict, forecast: dict) -> str:
     """'Lahore: forecast to reach Poor (AQI 214) around 19:00, within 6 hours (now AQI 142, Moderate). ...'"""
     six, at = forecast["next_6h"], _onset_clock(forecast)
     when = f"around {at}, " if at else ""
-    return (f"{location}: forecast to reach {LEVEL_LABELS[six['peak_level']]} (AQI {six.get('peak_aqi', '?')}) "
+    return (f"{location}: forecast to reach {LEVEL_NAMES[six['peak_level']][0]} (AQI {six.get('peak_aqi', '?')}) "
             f"{when}within {FORECAST_HORIZON_HOURS} hours (now AQI {analysis.get('aqi', '?')}, "
-            f"{LEVEL_LABELS.get(analysis.get('level'), '?')}). Plan indoor activities.")
+            f"{LEVEL_NAMES.get(analysis.get('level'), ('?',))[0]}). Plan indoor activities.")
 
 
 def _forecast_message_ur(location: str, analysis: dict, forecast: dict) -> str:
@@ -389,7 +385,7 @@ def _forecast_message_ur(location: str, analysis: dict, forecast: dict) -> str:
 
 
 def _message(location: str, level: str, analysis: dict, advisory: dict) -> str:
-    parts = [f"{location}: AQI {analysis.get('aqi', '?')} ({LEVEL_LABELS[level]})."]
+    parts = [f"{location}: AQI {analysis.get('aqi', '?')} ({LEVEL_NAMES[level][0]})."]
     if advisory.get("headline"):
         parts.append(advisory["headline"])
     if advisory.get("time_note"):
@@ -432,15 +428,9 @@ def _clear_memory_on_startup(store: dict) -> None:
     if _startup_done:
         return
     _startup_done = True
-    if _mock_forced() and store["memory"]:
+    if _mock_requested() and store["memory"]:
         log.info("Mock data is forced, clearing alert memory so the demo scenario alerts")
         store["memory"] = {}
-
-
-def _mock_forced() -> bool:
-    """Same rule as the monitor: USE_MOCK=true or any MOCK_SCENARIO forces mock data."""
-    use_mock = os.getenv("USE_MOCK", "").strip().lower() in {"1", "true", "yes"}
-    return use_mock or bool(os.getenv("MOCK_SCENARIO", "").strip())
 
 
 def _cooldown() -> timedelta:

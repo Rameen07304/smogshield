@@ -340,12 +340,4 @@ def _city_of(readings) -> str:
 
 
 def _cache_seconds() -> float:
-    raw = os.getenv("FORECAST_CACHE_MINUTES", "").strip()
-    try:
-        minutes = float(raw) if raw else DEFAULT_CACHE_MINUTES
-        if minutes < 0:
-            raise ValueError
-    except ValueError:
-        log.warning("Bad FORECAST_CACHE_MINUTES %r, using %d", raw, DEFAULT_CACHE_MINUTES)
-        minutes = DEFAULT_CACHE_MINUTES
-    return minutes * 60
+    return monitor.env_minutes("FORECAST_CACHE_MINUTES", DEFAULT_CACHE_MINUTES) * 60

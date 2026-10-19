@@ -21,6 +21,17 @@ const STALE_HOURS = 2;  // a live reading older than this gets a "may be delayed
 
 // ---------- panels ----------
 
+/** The plain answer at the top of the page, for each level */
+const OUTSIDE = {
+  good: "Yes. The air is clean today.",
+  satisfactory: "Yes. People with asthma or heart problems should take it easy.",
+  moderate: "Yes, for short times. Children, older people and the sick should avoid long or hard exercise outside.",
+  poor: "Only if you need to. Children, older people and the sick should stay indoors.",
+  very_poor: "Stay indoors if you can. If you must go out, wear an N95 mask.",
+  severe: "No. Stay indoors with windows closed. Go out only if you must, with an N95 mask.",
+  unknown: "We can't tell right now. Be careful outdoors until the data is back.",
+};
+
 function renderHero(s) {
   const a = s.analysis || {};
   const level = levelOf(a);
@@ -44,6 +55,8 @@ function renderHero(s) {
   $("hero-summary").textContent = known
     ? adviceInLanguage(s.advisory).headline || levelLabel(level)
     : t("No valid readings right now. Take precautions until data is back.");
+
+  $("hero-answer").textContent = t(OUTSIDE[level] ?? OUTSIDE.unknown);
 
   const marker = $("scale-marker");
   marker.hidden = !known;
@@ -226,10 +239,10 @@ function renderSchoolDay(day, dayName) {
   $("school").hidden = !day || !(day.peak_level in SCHOOL_ADVICE);
   if ($("school").hidden) return;
   const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString("en-CA", PKT);  // YYYY-MM-DD in Pakistan
-  $("school-day").textContent = day.date === tomorrow ? t("Tomorrow") : dayName(day.date);
+  $("school-day").textContent = day.date === tomorrow ? t("Schools tomorrow?") : t("Schools on {day}?", { day: dayName(day.date) });
   $("school-level").dataset.level = day.peak_level;
   $("school-level").textContent = levelLabel(day.peak_level);
-  $("school-aqi").textContent = t("peak AQI {aqi}", { aqi: day.peak_aqi });
+  $("school-level").title = t("peak AQI {aqi}", { aqi: day.peak_aqi });
   $("school-advice").textContent = t(SCHOOL_ADVICE[day.peak_level]);
 }
 

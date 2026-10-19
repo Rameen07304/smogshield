@@ -78,7 +78,7 @@ const UR = {
     "اسموگ شیلڈ سرور سے رابطہ نہیں۔ {at} کا ڈیٹا دکھایا جا رہا ہے؛ دوبارہ کوشش…",
   "the last refresh": "آخری ریفریش",
   // hero
-  "AQI (hourly estimate)": "اے کیو آئی (گھنٹہ وار اندازہ)", "AQI": "اے کیو آئی", "Loading…": "لوڈ ہو رہا ہے…",
+  "Air quality now (AQI)": "ابھی ہوا کا معیار (اے کیو آئی)", "AQI": "اے کیو آئی", "Loading…": "لوڈ ہو رہا ہے…",
   "Loading live air quality…": "ہوا کا لائیو معیار لوڈ ہو رہا ہے…",
   "Fetching the latest readings.": "تازہ ترین ریڈنگز حاصل کی جا رہی ہیں۔",
   "reading for {time}": "{time} کی ریڈنگ", "No current readings": "کوئی موجودہ ریڈنگ نہیں",
@@ -91,7 +91,7 @@ const UR = {
   "Not connected": "رابطہ نہیں", "Waiting for the server": "سرور کا انتظار",
   "Start it with: uvicorn app:app": "اسے شروع کریں: uvicorn app:app",
   // pipeline
-  "How the agents got there": "ایجنٹس اس نتیجے تک کیسے پہنچے", "Monitor": "مانیٹر", "Forecast": "پیش گوئی",
+  "How SmogShield worked this out": "SmogShield نے یہ کیسے معلوم کیا", "Monitor": "مانیٹر", "Forecast": "پیش گوئی",
   "Analysis": "تجزیہ", "Advisory": "مشورہ", "Alert": "الرٹ",
   "Collects air readings": "ہوا کی ریڈنگز جمع کرتا ہے", "Looks ahead 24 hours": "اگلے 24 گھنٹے دیکھتا ہے",
   "Scores AQI, trend, spikes": "اے کیو آئی، رجحان اور اچانک اضافہ جانچتا ہے",
@@ -106,7 +106,7 @@ const UR = {
   "Last run {at} · refreshes every {s} s": "آخری رن {at} · ہر {s} سیکنڈ میں تازہ",
   "Pipeline unreachable: waiting for the server…": "پائپ لائن تک رسائی نہیں: سرور کا انتظار…",
   // chart
-  "PM2.5 over the recent window": "حالیہ گھنٹوں میں PM2.5", "Steady": "مستحکم",
+  "Pollution in the last 6 hours": "پچھلے 6 گھنٹوں میں آلودگی", "Steady": "مستحکم",
   "Rising {rate} µg/m³ per hour": "{rate} µg/m³ فی گھنٹہ بڑھ رہا ہے",
   "Falling {rate} µg/m³ per hour": "{rate} µg/m³ فی گھنٹہ کم ہو رہا ہے", "Sudden spike": "اچانک اضافہ",
   "Loading the recent readings…": "حالیہ ریڈنگز لوڈ ہو رہی ہیں…",
@@ -117,9 +117,6 @@ const UR = {
   "Spike · {v}": "اچانک اضافہ · {v}", "The chart appears once the server responds.": "سرور کے جواب دینے پر چارٹ ظاہر ہوگا۔",
   // all cities
   "Based on": "بنیاد",
-  "Next school day": "اگلا اسکول کا دن", "Tomorrow": "کل",
-  "Worst forecast hour from 7 AM to 2 PM. A suggestion, not an official notice: follow the Punjab School Education Department.":
-    "صبح 7 سے دوپہر 2 بجے تک کا بدترین متوقع گھنٹہ۔ یہ ایک تجویز ہے، سرکاری اعلان نہیں: پنجاب اسکول ایجوکیشن ڈیپارٹمنٹ کی ہدایات پر عمل کریں۔",
   "A normal school day.": "اسکول کا عام دن۔",
   "A normal school day. Children with asthma should keep their inhalers with them.":
     "اسکول کا عام دن۔ دمے کے شکار بچے اپنا انہیلر ساتھ رکھیں۔",
@@ -136,6 +133,22 @@ const UR = {
   "{bad} of the last {n} days Poor or worse": "پچھلے {n} دنوں میں سے {bad} دن خراب یا اس سے بدتر",
   "Share on WhatsApp": "واٹس ایپ پر بھیجیں", "Read aloud": "سن کر پڑھیں", "Stop reading": "پڑھنا بند کریں",
   "Stop (reading in English: no Urdu voice)": "بند کریں (اردو آواز نہیں، انگریزی میں پڑھ رہا ہے)",
+  "Can I go outside?": "کیا میں باہر جا سکتا ہوں؟", "Checking…": "جانچ ہو رہی ہے…",
+  "Schools tomorrow?": "کل اسکول؟", "Schools on {day}?": "{day} کو اسکول؟",
+  "From the forecast for 7 AM to 2 PM. A suggestion, not an official notice: follow the Punjab School Education Department.":
+    "صبح 7 سے دوپہر 2 بجے تک کی پیش گوئی سے۔ یہ ایک تجویز ہے، سرکاری اعلان نہیں: پنجاب اسکول ایجوکیشن ڈیپارٹمنٹ کی ہدایات پر عمل کریں۔",
+  "Yes. The air is clean today.": "جی ہاں۔ آج ہوا صاف ہے۔",
+  "Yes. People with asthma or heart problems should take it easy.": "جی ہاں۔ دمے یا دل کے مریض احتیاط کریں۔",
+  "Yes, for short times. Children, older people and the sick should avoid long or hard exercise outside.":
+    "جی ہاں، تھوڑی دیر کے لیے۔ بچے، بزرگ اور بیمار باہر لمبی یا سخت ورزش نہ کریں۔",
+  "Only if you need to. Children, older people and the sick should stay indoors.":
+    "صرف ضرورت ہو تو۔ بچے، بزرگ اور بیمار گھر کے اندر رہیں۔",
+  "Stay indoors if you can. If you must go out, wear an N95 mask.":
+    "ہو سکے تو گھر کے اندر رہیں۔ باہر جانا ضروری ہو تو N95 ماسک پہنیں۔",
+  "No. Stay indoors with windows closed. Go out only if you must, with an N95 mask.":
+    "نہیں۔ کھڑکیاں بند کر کے اندر رہیں۔ صرف مجبوری میں N95 ماسک پہن کر باہر جائیں۔",
+  "We can't tell right now. Be careful outdoors until the data is back.":
+    "ابھی معلوم نہیں ہو سکا۔ ڈیٹا واپس آنے تک باہر احتیاط کریں۔",
   "Type": "قسم", "Now": "ابھی", "All cities": "تمام شہر",
   "Advice written by AI ({model} on Groq), checked against the NCAP categories.":
     "یہ مشورہ AI ‏({model}، Groq) نے لکھا اور NCAP زمروں سے جانچا گیا۔",
@@ -153,7 +166,7 @@ const UR = {
   "Coming days": "آنے والے دن", "Today": "آج", "peak AQI {aqi}": "زیادہ سے زیادہ اے کیو آئی {aqi}",
   "Simulated forecast": "نقلی پیش گوئی", "The forecast appears once the server responds.": "سرور کے جواب دینے پر پیش گوئی ظاہر ہوگی۔",
   // alert feed
-  "Alert feed": "الرٹ فیڈ", "Loading alerts…": "الرٹس لوڈ ہو رہے ہیں…", "All alerts in History": "تمام الرٹس ہسٹری میں",
+  "Alerts": "الرٹس", "Loading alerts…": "الرٹس لوڈ ہو رہے ہیں…", "All alerts in History": "تمام الرٹس ہسٹری میں",
   "Couldn't refresh alerts. Showing the last ones received.": "الرٹس تازہ نہیں ہو سکے۔ آخری موصول شدہ دکھائے جا رہے ہیں۔",
   "No alerts yet. They appear here when air quality crosses a threshold or spikes.":
     "ابھی کوئی الرٹ نہیں۔ جب ہوا کا معیار حد سے بڑھے یا اچانک بگڑے تو یہاں ظاہر ہوں گے۔",

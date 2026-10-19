@@ -203,15 +203,20 @@ def _fetch_live_cached(city: str, lat: float | None = None, lon: float | None = 
 
 
 def _cache_seconds() -> float:
-    raw = os.getenv("LIVE_CACHE_MINUTES", "").strip()
+    return env_minutes("LIVE_CACHE_MINUTES", DEFAULT_CACHE_MINUTES) * 60
+
+
+def env_minutes(name: str, default: float) -> float:
+    """A non-negative number of minutes from the environment, or the default (with a warning) if it's bad."""
+    raw = os.getenv(name, "").strip()
     try:
-        minutes = float(raw) if raw else DEFAULT_CACHE_MINUTES
+        minutes = float(raw) if raw else default
         if minutes < 0:
             raise ValueError
     except ValueError:
-        log.warning("Bad LIVE_CACHE_MINUTES %r, using %d", raw, DEFAULT_CACHE_MINUTES)
-        minutes = DEFAULT_CACHE_MINUTES
-    return minutes * 60
+        log.warning("Bad %s %r, using %s", name, raw, default)
+        minutes = default
+    return minutes
 
 
 PAST_DAYS = 7                    # the "last 7 days" strip on the city list
@@ -223,7 +228,7 @@ def past_days(city: str) -> list[dict] | None:
     """The last 7 full local days, oldest first: [{"date", "pm25", "aqi", "level"}] from the 24-hour average
     PM2.5 (NCAP categories are defined on 24-hour averages). Live data only; None when it can't be fetched."""
     from agents import analysis  # imported here: the monitor needs analysis for nothing else
-    if os.getenv("USE_MOCK", "").strip().lower() in {"1", "true", "yes"}:
+    if _use_mock():
         return None  # offline mode: no network at all
     cached = _past_days_cache.get(city)
     if cached and time.monotonic() - cached[0] < PAST_DAYS_CACHE_SECONDS:
@@ -336,9 +341,13 @@ def _to_utc_iso(local_time: str | None, utc_offset_seconds: int) -> str:
     return utc.replace(tzinfo=timezone.utc).isoformat()
 
 
+def _use_mock() -> bool:
+    return os.getenv("USE_MOCK", "").strip().lower() in {"1", "true", "yes"}
+
+
 def _mock_requested() -> bool:
-    use_mock = os.getenv("USE_MOCK", "").strip().lower() in {"1", "true", "yes"}
-    return use_mock or bool(os.getenv("MOCK_SCENARIO", "").strip())
+    """USE_MOCK=true or any MOCK_SCENARIO forces mock data (the alert agent uses the same rule)."""
+    return _use_mock() or bool(os.getenv("MOCK_SCENARIO", "").strip())
 
 
 def _pick_scenario(data: dict, city: str, scenario: str | None) -> str:

@@ -31,7 +31,7 @@ def used_strings() -> set[str]:
         used |= set(re.findall(r"\bt\(\s*" + STRING, js))                                     # t("literal")
         for a, b in re.findall(r"\bt\([^()]*?\?\s*" + STRING + r"\s*:\s*" + STRING, js):  # t(c ? "a" : "b")
             used |= {a, b}
-        for table in ("LEVELS", "TREND_WORDS", "SEVERITY", "SEVERITY_LABELS", "URGENCY", "SCENARIO_LABELS", "SCHOOL_ADVICE"):
+        for table in ("LEVELS", "TREND_WORDS", "SEVERITY", "SEVERITY_LABELS", "URGENCY", "SCENARIO_LABELS", "SCHOOL_ADVICE", "OUTSIDE"):
             match = re.search(rf"const {table} = \{{(.*?)\}};", js, re.S)  # first "};" ends the table
             if match:
                 used |= set(re.findall(r":\s*(?:\{\s*label:\s*)?" + STRING, match.group(1)))

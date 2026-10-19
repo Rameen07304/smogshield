@@ -56,13 +56,24 @@
       <!-- The claim: the air right now -->
       <section id="hero" class="hero" data-level="loading" aria-labelledby="hero-label">
         <div class="hero__level">
-          <p id="hero-label" class="hero__label" data-i18n>AQI (hourly estimate)</p>
+          <p id="hero-label" class="hero__label" data-i18n>Air quality now (AQI)</p>
           <p id="hero-aqi" class="hero__aqi">—</p>
           <p id="hero-category" class="hero__category" data-i18n-init>Loading…</p>
         </div>
         <div class="hero__body">
           <p id="hero-place" class="hero__place" data-i18n-init>Loading live air quality…</p>
           <p id="hero-summary" class="hero__summary" data-i18n-init>Fetching the latest readings.</p>
+          <dl class="answers">
+            <div class="answer">
+              <dt data-i18n>Can I go outside?</dt>
+              <dd id="hero-answer" data-i18n-init>Checking…</dd>
+            </div>
+            <div id="school" class="answer" hidden>
+              <dt><span id="school-day"></span> <span id="school-level" class="level-tag"></span></dt>
+              <dd id="school-advice"></dd>
+              <dd class="answer__note" data-i18n>From the forecast for 7 AM to 2 PM. A suggestion, not an official notice: follow the Punjab School Education Department.</dd>
+            </div>
+          </dl>
           <div class="scale" aria-hidden="true">
             <div class="scale__bar">
               <span style="--w: 50" data-level="good"></span>
@@ -85,7 +96,7 @@
       <!-- The proof: what each agent produced on this run, confirmed in pipeline order -->
       <section class="pipeline" aria-labelledby="pipeline-title">
         <div class="pipeline__head">
-          <h2 id="pipeline-title" data-i18n>How the agents got there</h2>
+          <h2 id="pipeline-title" data-i18n>How SmogShield worked this out</h2>
         </div>
         <ol class="pipeline__steps" role="list">
           <li class="node" data-step="monitor">
@@ -136,7 +147,7 @@
     <div class="panels">
       <section class="panel panel--chart" aria-labelledby="chart-title">
         <div class="panel__head">
-          <h2 id="chart-title" data-i18n>PM2.5 over the recent window</h2>
+          <h2 id="chart-title" data-i18n>Pollution in the last 6 hours</h2>
           <div class="chips">
             <span id="trend-chip" class="chip" hidden></span>
             <span id="spike-chip" class="chip chip--spike" hidden data-i18n>Sudden spike</span>
@@ -164,21 +175,11 @@
         </figure>
         <h3 class="outlook__title" data-i18n>Coming days</h3>
         <ol id="outlook" class="outlook" role="list"></ol>
-        <div id="school" class="school" hidden>
-          <h3 class="outlook__title" data-i18n>Next school day</h3>
-          <p class="school__head">
-            <span id="school-day" class="outlook__day"></span>
-            <span id="school-level" class="level-tag"></span>
-            <span id="school-aqi" class="outlook__aqi"></span>
-          </p>
-          <p id="school-advice" class="school__advice"></p>
-          <p class="school__note" data-i18n>Worst forecast hour from 7 AM to 2 PM. A suggestion, not an official notice: follow the Punjab School Education Department.</p>
-        </div>
       </section>
 
       <section class="panel panel--feed" aria-labelledby="feed-title">
         <div class="panel__head">
-          <h2 id="feed-title" data-i18n>Alert feed</h2>
+          <h2 id="feed-title" data-i18n>Alerts</h2>
           <span id="feed-count" class="chip" hidden></span>
         </div>
         <p id="feed-empty" class="empty" data-i18n-init>Loading alerts…</p>
