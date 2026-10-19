@@ -21,7 +21,7 @@ from pathlib import Path
 import requests
 
 from agents import analysis, monitor
-from schemas import BestTime, Confidence, DayOutlook, Forecast, ForecastPoint, ForecastWindow, SmogState
+from schemas import BestTime, Confidence, DayOutlook, Forecast, ForecastPoint, ForecastWindow, SchoolDay, SmogState
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +35,8 @@ MOCK_BASE_PM25 = 25.0        # used only when there is no current reading to anc
 BUILTIN_CURVE = [[0, 1.0], [96, 1.0]]   # last resort if data/mock_forecasts.json is missing or broken
 MOCK_NOTE = "Simulated demo forecast (scripted for this scenario), not real data."
 BEST_TIME_HOURS = 2          # "best time to go outside" window length
+SCHOOL_HOURS = range(7, 14)  # local hours from arrival (07:00) to home time (14:00) on a school day
+SUNDAY = 6                   # date.weekday(): the one day every school in Pakistan is closed
 # A window's trend compares its first two hours with its last two: it counts as worsening or
 # improving only if PM2.5 moves by more than both of these, otherwise it is stable.
 TREND_MIN_CHANGE = 0.10      # 10% of the starting level...
@@ -275,6 +277,25 @@ def daily_outlook(points: list[dict], offset: int, now: datetime) -> list[DayOut
     return outlook
 
 
+def school_day(points: list[dict], offset: int, now: datetime) -> SchoolDay | None:
+    """The worst school-hours air on the next school day (tomorrow, or Monday if tomorrow is Sunday).
+    None when the forecast doesn't cover that day's school hours."""
+    start = now.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    day = (start + timedelta(seconds=offset)).date() + timedelta(days=1)
+    if day.weekday() == SUNDAY:
+        day += timedelta(days=1)
+    worst = None
+    for p in points:
+        local = datetime.fromisoformat(p["time"]) + timedelta(seconds=offset)
+        if local.date() == day and local.hour in SCHOOL_HOURS and (worst is None or p["pm25"] > worst["pm25"]):
+            worst = p
+    if worst is None:
+        return None
+    aqi, level = analysis.pm25_to_aqi(worst["pm25"])
+    ahead = (datetime.fromisoformat(worst["time"]) - start).total_seconds() / 3600
+    return {"date": day.isoformat(), "peak_aqi": aqi, "peak_level": level, "confidence": confidence_for(ahead)}
+
+
 def _trend(values: list[float]) -> str:
     """improving / worsening / stable: the first two hours against the last two."""
     if len(values) < 2:
@@ -302,6 +323,7 @@ def _forecast_from_series(city: str, series: dict, source: str, now: datetime) -
         "next_24h": summarize_window(hourly, HOURS_AHEAD),
         "best_time": best_time(hourly),
         "outlook": daily_outlook(series["points"], series["offset"], now),
+        "school_day": school_day(series["points"], series["offset"], now),
     }
 
 

@@ -63,6 +63,14 @@ class DayOutlook(TypedDict):
     confidence: Confidence
 
 
+class SchoolDay(TypedDict):
+    """Worst air during school hours (07:00-14:00 local) on the next school day. Owned by: forecast agent."""
+    date: str               # local date, YYYY-MM-DD: tomorrow, or Monday when tomorrow is Sunday
+    peak_aqi: int
+    peak_level: Level
+    confidence: Confidence
+
+
 class Forecast(TypedDict):
     """Short-term forecast for the monitored city. Owned by: forecast agent."""
     location: str
@@ -75,6 +83,7 @@ class Forecast(TypedDict):
     next_24h: ForecastWindow | None
     best_time: BestTime | None
     outlook: list[DayOutlook]            # one entry per local day, today first
+    school_day: SchoolDay | None         # None when the forecast doesn't reach the next school day
 
 
 class Analysis(TypedDict):

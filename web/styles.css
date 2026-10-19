@@ -397,6 +397,10 @@ html[lang="ur"] .city-dot__name { font-family: var(--urdu); font-size: 12px; }
 .outlook li { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(7.5rem, auto); gap: var(--s3); align-items: center;
   padding: var(--s2) 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .outlook__aqi { color: var(--text-3); font-size: 13px; text-align: end; white-space: nowrap; }
+.school__head { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(7.5rem, auto); gap: var(--s3); align-items: center;
+  margin-top: var(--s2); padding: var(--s2) 0; border-top: 1px solid var(--line); font-size: 14px; }
+.school__advice { font-size: 15px; font-weight: 600; }
+.school__note { margin-top: var(--s1); color: var(--text-3); font-size: 12px; }
 .chart svg .chart__value { fill: var(--text-2); font-weight: 600; }
 .chart svg .chart__band-label { fill: var(--text-3); }
 .chart__spike-ring { fill: none; stroke: var(--warning); stroke-width: 3; }

@@ -117,6 +117,20 @@ const UR = {
   "Spike · {v}": "اچانک اضافہ · {v}", "The chart appears once the server responds.": "سرور کے جواب دینے پر چارٹ ظاہر ہوگا۔",
   // all cities
   "Based on": "بنیاد",
+  "Next school day": "اگلا اسکول کا دن", "Tomorrow": "کل",
+  "Worst forecast hour from 7 AM to 2 PM. A suggestion, not an official notice: follow the Punjab School Education Department.":
+    "صبح 7 سے دوپہر 2 بجے تک کا بدترین متوقع گھنٹہ۔ یہ ایک تجویز ہے، سرکاری اعلان نہیں: پنجاب اسکول ایجوکیشن ڈیپارٹمنٹ کی ہدایات پر عمل کریں۔",
+  "A normal school day.": "اسکول کا عام دن۔",
+  "A normal school day. Children with asthma should keep their inhalers with them.":
+    "اسکول کا عام دن۔ دمے کے شکار بچے اپنا انہیلر ساتھ رکھیں۔",
+  "School as normal, but shorten long or intense outdoor PE and sports.":
+    "اسکول معمول کے مطابق، لیکن باہر لمبی یا سخت ورزش اور کھیل کم کریں۔",
+  "Open, but move PE, sports and the morning assembly indoors, and keep windows closed.":
+    "اسکول کھلے، لیکن ورزش، کھیل اور صبح کی اسمبلی اندر کریں، اور کھڑکیاں بند رکھیں۔",
+  "All activities indoors. Pupils with asthma or heart conditions may be safer at home.":
+    "تمام سرگرمیاں اندر۔ دمے یا دل کے مرض والے طلبہ کے لیے گھر پر رہنا زیادہ محفوظ ہو سکتا ہے۔",
+  "Emergency air. Closing schools or moving classes online is advisable.":
+    "ہنگامی فضا۔ اسکول بند کرنا یا کلاسیں آن لائن کرنا مناسب ہے۔",
   "Type": "قسم", "Now": "ابھی", "All cities": "تمام شہر",
   "Advice written by AI ({model} on Groq), checked against the NCAP categories.":
     "یہ مشورہ AI ‏({model}، Groq) نے لکھا اور NCAP زمروں سے جانچا گیا۔",

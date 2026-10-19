@@ -31,6 +31,7 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - **Live dashboard:** AQI, NCAP category, trend and spike detection, and a ledger showing what each agent did.
 - **City map:** all 15 cities at a glance, worst air first. Click one to switch.
 - **24-hour forecast chart:** the peak, the best time to go out, and a daily outlook.
+- **Next school day:** the worst forecast air from 7 AM to 2 PM tomorrow (Monday when tomorrow is Sunday), and what schools should do, from "a normal day" to "move PE and assembly indoors" to "consider closing". Built for Lahore's winter smog season, when Punjab has closed schools for days at a time. It's a suggestion, not an official notice.
 - **Advice for 5 groups**, written by AI when it's switched on and always checked against the rules.
 - **Ask SmogShield:** questions in English or Urdu, answered from the live data.
 - **Alert feed and history**, with optional Telegram delivery.

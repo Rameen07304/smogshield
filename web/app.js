@@ -171,6 +171,7 @@ function renderForecast(s) {
     $("forecast-summary").textContent = "";
     $("best-chip").hidden = true;
     $("outlook").replaceChildren();
+    $("school").hidden = true;
     return;
   }
 
@@ -208,6 +209,28 @@ function renderForecast(s) {
     li.append(name, tag, aqi);
     return li;
   }));
+  renderSchoolDay(f.school_day, dayName);
+}
+
+/** What schools should plan for the next school day, from its worst school-hours forecast */
+const SCHOOL_ADVICE = {
+  good: "A normal school day.",
+  satisfactory: "A normal school day. Children with asthma should keep their inhalers with them.",
+  moderate: "School as normal, but shorten long or intense outdoor PE and sports.",
+  poor: "Open, but move PE, sports and the morning assembly indoors, and keep windows closed.",
+  very_poor: "All activities indoors. Pupils with asthma or heart conditions may be safer at home.",
+  severe: "Emergency air. Closing schools or moving classes online is advisable.",
+};
+
+function renderSchoolDay(day, dayName) {
+  $("school").hidden = !day || !(day.peak_level in SCHOOL_ADVICE);
+  if ($("school").hidden) return;
+  const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString("en-CA", PKT);  // YYYY-MM-DD in Pakistan
+  $("school-day").textContent = day.date === tomorrow ? t("Tomorrow") : dayName(day.date);
+  $("school-level").dataset.level = day.peak_level;
+  $("school-level").textContent = levelLabel(day.peak_level);
+  $("school-aqi").textContent = t("peak AQI {aqi}", { aqi: day.peak_aqi });
+  $("school-advice").textContent = t(SCHOOL_ADVICE[day.peak_level]);
 }
 
 /**

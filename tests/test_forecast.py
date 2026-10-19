@@ -255,6 +255,36 @@ def reading(pm25: float, source: str = "mock", city: str = "Lahore") -> list[dic
     return [{"location": city, "timestamp": NOW.isoformat(), "pm25": pm25, "pm10": None, "source": source}]
 
 
+class SchoolDayTest(unittest.TestCase):
+    """Next school day: worst air from 07:00 to 14:00 local, skipping Sunday."""
+
+    @staticmethod
+    def series(start: datetime, values: dict[int, float], days: int = 3) -> list[dict]:
+        """Hourly UTC points from `start` for `days` days; values keyed by local hour, 10 µg/m³ elsewhere."""
+        points = []
+        for h in range(days * 24):
+            when = start + timedelta(hours=h)
+            local_hour = (when + timedelta(seconds=OFFSET)).hour
+            points.append({"time": when.isoformat(), "pm25": values.get(local_hour, 10.0)})
+        return points
+
+    def test_only_school_hours_tomorrow_count(self):
+        # NOW is Saturday 17 Oct, so the next school day is Monday 19 Oct
+        points = self.series(NOW, {6: 400.0, 9: 120.0, 14: 400.0})  # 06:00 and 14:00 are outside school hours
+        day = forecast.school_day(points, OFFSET, NOW)
+        self.assertEqual(day["date"], "2026-10-19")
+        self.assertEqual((day["peak_aqi"], day["peak_level"]), analysis.pm25_to_aqi(120.0))
+
+    def test_a_weekday_evening_looks_at_tomorrow(self):
+        monday_evening = datetime(2026, 10, 19, 14, 0, tzinfo=timezone.utc)  # 19:00 local
+        day = forecast.school_day(self.series(monday_evening, {}), OFFSET, monday_evening)
+        self.assertEqual(day["date"], "2026-10-20")
+
+    def test_no_data_for_that_day(self):
+        self.assertIsNone(forecast.school_day(self.series(NOW, {}, days=1), OFFSET, NOW))
+        self.assertIsNone(forecast.school_day([], OFFSET, NOW))
+
+
 class MockForecastTest(ForecastTestCase):
     def scenario_forecasts(self, scenario: str):
         """The scripted forecast from every reading this scenario can produce."""
