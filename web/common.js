@@ -116,6 +116,8 @@ const UR = {
   "with a sudden spike in the latest hour": "تازہ ترین گھنٹے میں اچانک اضافے کے ساتھ",
   "Spike · {v}": "اچانک اضافہ · {v}", "The chart appears once the server responds.": "سرور کے جواب دینے پر چارٹ ظاہر ہوگا۔",
   // all cities
+  "Based on": "بنیاد", "Data may be delayed: the latest reading is {h} hours old.":
+    "ڈیٹا میں تاخیر ہو سکتی ہے: تازہ ترین ریڈنگ {h} گھنٹے پرانی ہے۔",
   "Air across Pakistan": "پاکستان بھر میں ہوا", "Choose a city to see it in detail.": "تفصیل دیکھنے کے لیے کوئی شہر منتخب کریں۔",
   "Loading all cities…": "تمام شہر لوڈ ہو رہے ہیں…", "The map appears once the server responds.": "سرور کے جواب دینے پر نقشہ ظاہر ہوگا۔",
   // forecast
@@ -275,6 +277,11 @@ function applyLanguage() {
 function setLanguage(lang) {
   LANG = lang;
   try { localStorage.setItem(LANG_KEY, lang); } catch { /* fine: just not remembered */ }
+  const params = new URLSearchParams(location.search);
+  if (params.has("lang")) {  // ?lang= wins over the stored choice, so keep it in step
+    params.set("lang", lang);
+    history.replaceState(null, "", `?${params}`);
+  }
   applyLanguage();
   document.dispatchEvent(new Event("languagechange"));  // each page re-renders its last data
 }

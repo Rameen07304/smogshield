@@ -286,7 +286,10 @@ class AskTest(unittest.TestCase):
         with mock.patch.object(advisory.requests, "post", return_value=self._reply("**Poor**: PE andar karein.")) as post:
             result = advisory.answer_question("کیا بچے باہر کھیل سکتے ہیں؟", self.STATE)
         # simulated data is labelled by code (in the question's language), and markdown is stripped
-        self.assertEqual(result, {"answer": advisory.SIMULATED_NOTE[1] + "Poor: PE andar karein.", "source": "ai"})
+        self.assertEqual(result["answer"], advisory.SIMULATED_NOTE[1] + "Poor: PE andar karein.")
+        self.assertEqual(result["source"], "ai")
+        self.assertEqual(result["based_on"], {"city": "Lahore", "level": "poor", "aqi": 100,
+                                              "time": None, "data_source": "mock"})
         sent = json.loads(post.call_args.kwargs["json"]["messages"][1]["content"])
         self.assertEqual(sent["question"], "کیا بچے باہر کھیل سکتے ہیں؟")          # Urdu reaches the model intact
         self.assertEqual(sent["reply_language"], "Urdu")

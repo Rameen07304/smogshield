@@ -663,7 +663,10 @@ def answer_question(question: str, state: dict) -> dict:
         return {"answer": ASK_UNSURE[urdu], "source": "fallback"}
     if latest.get("source") != "live":
         answer = SIMULATED_NOTE[urdu] + answer
-    return {"answer": answer[:1200], "source": "ai"}
+    # What the answer was grounded in, shown under it so people can see it is not made up
+    based_on = {"city": latest.get("location"), "level": level, "aqi": analysis.get("aqi"),
+                "time": latest.get("timestamp"), "data_source": latest.get("source")}
+    return {"answer": answer[:1200], "source": "ai", "based_on": based_on}
 
 
 def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:

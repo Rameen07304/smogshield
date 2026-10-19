@@ -296,6 +296,8 @@ select:disabled { opacity: .55; cursor: not-allowed; }
 .scale__labels span { flex: var(--w) 1 0; min-width: 0; color: var(--text-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hero__facts { color: var(--text-2); font-size: 14px; }
 .hero__facts b { color: var(--text); font-weight: 600; }
+.hero__stale { display: block; margin-top: var(--s1); color: var(--warning); font-size: 13px; font-weight: 600; }
+.ask__basis { margin-top: var(--s2); color: var(--text-3); font-size: 12px; }
 .hero__target { display: block; margin-top: var(--s1); color: var(--text-3); font-size: 13px; }
 
 /* proof ledger: the agents that produced the claim, confirmed row by row */

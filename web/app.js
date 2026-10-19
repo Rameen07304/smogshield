@@ -17,6 +17,7 @@ const SCENARIO_LABELS = {
 };
 
 let lastGood = null;  // the last /api/status that rendered fine
+const STALE_HOURS = 2;  // a live reading older than this gets a "may be delayed" note (the source updates hourly)
 
 // ---------- panels ----------
 
@@ -61,6 +62,13 @@ function renderHero(s) {
     }
     facts.append(` · ${trendWord(a.trend)}`);
     if (a.dominant_pollutant === "pm10") facts.append(` · ${t("AQI driven by PM10")}`);
+    const age = Math.floor((Date.now() - Date.parse(latest.timestamp)) / 3.6e6);
+    if (latest.source === "live" && age >= STALE_HOURS) {
+      const stale = document.createElement("small");
+      stale.className = "hero__stale";
+      stale.textContent = t("Data may be delayed: the latest reading is {h} hours old.", { h: age });
+      facts.append(stale);
+    }
     const over = targetNote(latest);
     if (over) {
       const note = document.createElement("small");
@@ -680,6 +688,14 @@ new ResizeObserver(() => { if (lastCities) renderCities(lastCities); }).observe(
 // ---------- demo controls (city, scenario, emergency button) ----------
 
 let controlsLoaded = false;
+let linkedCity = new URLSearchParams(location.search).get("city");  // ?city=Kasur opens that city, once
+
+/** Keeps ?city= in the address in step with the city on screen, so the link can be shared */
+function syncCityInUrl(city) {
+  const params = new URLSearchParams(location.search);
+  params.set("city", city);
+  history.replaceState(null, "", `?${params}`);
+}
 
 function fillSelect(select, options, current, labelFor) {
   select.replaceChildren(...options.map((value) => {
@@ -699,6 +715,13 @@ async function loadControls() {
   fillSelect($("scenario"), scenario.options, scenario.current,
              (name) => t(SCENARIO_LABELS[name] ?? name.replaceAll("_", " ")));
   controlsLoaded = true;
+  const wanted = linkedCity && city.options.find((c) => c.toLowerCase() === linkedCity.trim().toLowerCase());
+  linkedCity = null;
+  if (wanted && wanted !== city.current) {
+    chooseCity(wanted);  // reloads the controls (and the address) once the switch is done
+  } else {
+    syncCityInUrl(city.current);
+  }
   setControlsBusy(false);
 }
 
@@ -761,6 +784,7 @@ $("ask").addEventListener("submit", async (event) => {
   answer.hidden = false;
   answer.dataset.state = "loading";
   answer.textContent = t("Thinking…");  // textContent only: the answer comes from an AI model
+  $("ask-basis").hidden = true;
   $("ask-input").disabled = $("ask-button").disabled = true;
   try {
     const reply = await getJSON("/api/ask", {
@@ -770,6 +794,13 @@ $("ask").addEventListener("submit", async (event) => {
     });
     answer.dataset.state = reply.source === "ai" ? "" : "note";  // off / busy / unsure: calm, not an error
     answer.textContent = reply.answer;
+    const b = reply.based_on;
+    $("ask-basis").hidden = !b;
+    if (b) {
+      $("ask-basis").textContent = `${t("Based on")}: ` + [cityName(b.city), levelLabel(b.level), `${t("AQI")} ${b.aqi}`,
+        b.time && t("reading for {time}", { time: localTime(b.time) }), t(b.data_source === "live" ? "live" : "simulated")]
+        .filter(Boolean).join(" · ");
+    }
   } catch (error) {
     console.error(error);
     answer.dataset.state = "error";
