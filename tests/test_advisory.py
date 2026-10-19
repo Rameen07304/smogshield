@@ -244,6 +244,13 @@ class GroqAdvisoryTest(unittest.TestCase):
         post.assert_called_once()
         self.assertNotIn("mutated", again["audiences"]["general"])
 
+    def test_one_groq_call_per_level_whatever_the_trend(self):  # a spike demo must not drain the rate limit
+        with mock.patch.object(advisory.requests, "post", return_value=self._response(None)) as post:
+            advisory.build_advisory(make_analysis("poor", trend="rising"))
+            advisory.build_advisory(make_analysis("poor", trend="falling", is_spike=True))
+            advisory.build_advisory(make_analysis("severe", trend="rising"))
+        self.assertEqual(post.call_count, 2)
+
     def test_failure_is_not_retried_on_every_poll(self):
         with mock.patch.object(advisory.requests, "post", side_effect=advisory.requests.RequestException("offline")) as post:
             for _ in range(3):

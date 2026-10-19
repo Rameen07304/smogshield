@@ -354,6 +354,12 @@ def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advis
     return result
 
 
+def _low_effort(model: str) -> dict:
+    """Low reasoning for gpt-oss models: far fewer tokens per call, so the free tier's 8k tokens/min lasts.
+    Other models don't accept the parameter."""
+    return {"reasoning_effort": "low"} if model.startswith("openai/gpt-oss") else {}
+
+
 def _groq_key() -> str | None:
     """The Groq API key when LLM features are switched on and a real key is set, else None."""
     if os.getenv("LLM_ADVISORY_ENABLED", "").strip().lower() not in {"1", "true", "yes"}:
@@ -371,8 +377,9 @@ def _llm_advisory(analysis: dict, fallback: Advisory) -> dict | None:
     if not api_key:
         return None
 
-    key = (analysis.get("level"), analysis.get("trend"), bool(analysis.get("is_spike")),
-           os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL))
+    # One answer per level: trend and spike wording come from the rule-based notes put in front of it,
+    # so a spike demo (a new level every few seconds) costs at most 6 calls per 10 min, not one per poll.
+    key = (analysis.get("level"), os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL))
     cached = _llm_cache.get(key)
     if cached and cached[0] > time.monotonic():
         return copy.deepcopy(cached[1])  # a copy, so callers can never change the cached answer
@@ -385,14 +392,11 @@ def _ask_groq(analysis: dict, fallback: Advisory, api_key: str) -> dict | None:
     """One Groq call; the validated advice, or None on any failure."""
     level = analysis.get("level")
     category = LEVEL_NAMES[level][0]
-    prompt = {
-        "aqi": analysis.get("aqi"),
+    prompt = {  # level only (no AQI, trend or spike): the answer is cached per level
         "category": category,
         "scale": "Pakistan National Clean Air Policy 2023 (NCAP), Table 1: Good, Satisfactory, Moderate, "
                  "Poor, Very Poor, Severe",
         "ncap_health_impact": NCAP_HEALTH_IMPACT[level],
-        "trend": analysis.get("trend"),
-        "is_spike": bool(analysis.get("is_spike")),
         "vetted_advice": fallback["audiences"],
         "instruction": (
             f"The air quality category is {category} on Pakistan's NCAP scale. If you name the category, call it "
@@ -410,6 +414,7 @@ def _ask_groq(analysis: dict, fallback: Advisory, api_key: str) -> dict | None:
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL),
+                **_low_effort(os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)),
                 "temperature": 0.2,
                 "response_format": {"type": "json_object"},
                 "messages": [
@@ -509,8 +514,7 @@ def answer_question(question: str, state: dict) -> dict:
                                                     "question": question[:ASK_MAX_CHARS]}, ensure_ascii=False)},
         ],
     }
-    if model.startswith("openai/gpt-oss"):
-        body["reasoning_effort"] = "low"  # far fewer tokens per answer, so the free tier lasts
+    body.update(_low_effort(model))
     try:
         response = requests.post(GROQ_URL, headers={"Authorization": f"Bearer {api_key}"}, json=body,
                                  timeout=ASK_TIMEOUT_SECONDS)
