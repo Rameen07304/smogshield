@@ -74,6 +74,13 @@ CITIES: dict[str, tuple[float, float]] = {
     "Sargodha": (32.08, 72.67),
     "Bahawalpur": (29.40, 71.68),
 }
+# Urdu city names for the Urdu interface and Urdu alert messages
+CITIES_UR: dict[str, str] = {
+    "Lahore": "لاہور", "Karachi": "کراچی", "Islamabad": "اسلام آباد", "Rawalpindi": "راولپنڈی",
+    "Faisalabad": "فیصل آباد", "Multan": "ملتان", "Peshawar": "پشاور", "Quetta": "کوئٹہ",
+    "Gujranwala": "گوجرانوالہ", "Sialkot": "سیالکوٹ", "Sheikhupura": "شیخوپورہ", "Kasur": "قصور",
+    "Sahiwal": "ساہیوال", "Sargodha": "سرگودھا", "Bahawalpur": "بہاولپور",
+}
 
 # (city, lat, lon) -> (time.monotonic() when fetched, window of readings). Only successes are cached.
 _live_cache: dict[tuple[str, float, float], tuple[float, list[Reading]]] = {}

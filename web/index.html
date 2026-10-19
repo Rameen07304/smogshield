@@ -19,31 +19,35 @@
               fill="none" stroke-linecap="round"/>
       </svg>
       <span>SmogShield</span>
-      <span id="mode-badge" class="mode-badge" data-mode="loading">Connecting…</span>
+      <span id="mode-badge" class="mode-badge" data-mode="loading" data-i18n-init>Connecting…</span>
     </div>
     <nav class="site-nav" aria-label="Pages">
-      <a href="/" aria-current="page">Live dashboard</a>
-      <a href="/how">How it works</a>
-      <a href="/history">History</a>
+      <a href="/" aria-current="page" data-i18n>Live dashboard</a>
+      <a href="/how" data-i18n>How it works</a>
+      <a href="/history" data-i18n>History</a>
     </nav>
+    <div class="lang-switch" role="group" aria-label="Language / زبان">
+      <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
+      <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
+    </div>
     <div class="topbar__controls">
       <div class="field">
-        <label for="city">City</label>
+        <label for="city" data-i18n>City</label>
         <select id="city" disabled><option>Lahore</option></select>
       </div>
       <div class="field">
-        <label for="scenario">Demo scenario</label>
+        <label for="scenario" data-i18n>Demo scenario</label>
         <select id="scenario" disabled><option value="live">Live data</option></select>
       </div>
-      <button id="emergency" class="btn btn--danger" type="button" disabled>Trigger smog emergency</button>
+      <button id="emergency" class="btn btn--danger" type="button" disabled data-i18n>Trigger smog emergency</button>
     </div>
     <p id="control-status" class="topbar__status" role="status"></p>
   </header>
 
   <noscript><p class="banner banner--offline">SmogShield needs JavaScript to show live air quality.</p></noscript>
   <div id="simulated" class="banner banner--simulated" role="status" hidden>
-    <strong>Simulated data</strong>
-    <span id="simulated-why">Demo scenario: these are not real air quality readings.</span>
+    <strong data-i18n>Simulated data</strong>
+    <span id="simulated-why"></span>
   </div>
   <div id="offline" class="banner banner--offline" role="status" hidden></div>
 
@@ -52,13 +56,13 @@
       <!-- The claim: the air right now -->
       <section id="hero" class="hero" data-level="loading" aria-labelledby="hero-label">
         <div class="hero__level">
-          <p id="hero-label" class="hero__label">AQI (hourly estimate)</p>
+          <p id="hero-label" class="hero__label" data-i18n>AQI (hourly estimate)</p>
           <p id="hero-aqi" class="hero__aqi">—</p>
-          <p id="hero-category" class="hero__category">Loading…</p>
+          <p id="hero-category" class="hero__category" data-i18n-init>Loading…</p>
         </div>
         <div class="hero__body">
-          <p id="hero-place" class="hero__place">Loading live air quality…</p>
-          <p id="hero-summary" class="hero__summary">Fetching the latest readings.</p>
+          <p id="hero-place" class="hero__place" data-i18n-init>Loading live air quality…</p>
+          <p id="hero-summary" class="hero__summary" data-i18n-init>Fetching the latest readings.</p>
           <div class="scale" aria-hidden="true">
             <div class="scale__bar">
               <span style="--w: 50" data-level="good"></span>
@@ -70,8 +74,8 @@
               <i id="scale-marker" class="scale__marker" hidden></i>
             </div>
             <div class="scale__labels">
-              <span style="--w: 50">Good</span><span style="--w: 50">Satisf.</span><span style="--w: 100">Moderate</span>
-              <span style="--w: 100">Poor</span><span style="--w: 100">Very poor</span><span style="--w: 100">Severe</span>
+              <span style="--w: 50" data-i18n>Good</span><span style="--w: 50" data-i18n>Satisf.</span><span style="--w: 100" data-i18n>Moderate</span>
+              <span style="--w: 100" data-i18n>Poor</span><span style="--w: 100" data-i18n>Very poor</span><span style="--w: 100" data-i18n>Severe</span>
             </div>
           </div>
           <p id="hero-facts" class="hero__facts"></p>
@@ -81,119 +85,106 @@
       <!-- The proof: what each agent produced on this run, confirmed in pipeline order -->
       <section class="pipeline" aria-labelledby="pipeline-title">
         <div class="pipeline__head">
-          <h2 id="pipeline-title">How the agents got there</h2>
+          <h2 id="pipeline-title" data-i18n>How the agents got there</h2>
         </div>
         <ol class="pipeline__steps" role="list">
           <li class="node" data-step="monitor">
             <span class="node__mark" aria-hidden="true"></span>
-            <span class="node__who"><span class="node__name">Monitor</span><span class="node__role">Collects air readings</span></span>
-            <span class="node__out" id="out-monitor">Waiting…</span>
+            <span class="node__who"><span class="node__name" data-i18n>Monitor</span><span class="node__role" data-i18n>Collects air readings</span></span>
+            <span class="node__out" id="out-monitor" data-i18n-init>Waiting…</span>
           </li>
           <li class="node" data-step="forecast">
             <span class="node__mark" aria-hidden="true"></span>
-            <span class="node__who"><span class="node__name">Forecast</span><span class="node__role">Looks ahead 24 hours</span></span>
-            <span class="node__out" id="out-forecast">Waiting…</span>
+            <span class="node__who"><span class="node__name" data-i18n>Forecast</span><span class="node__role" data-i18n>Looks ahead 24 hours</span></span>
+            <span class="node__out" id="out-forecast" data-i18n-init>Waiting…</span>
           </li>
           <li class="node" data-step="analysis">
             <span class="node__mark" aria-hidden="true"></span>
-            <span class="node__who"><span class="node__name">Analysis</span><span class="node__role">Scores AQI, trend, spikes</span></span>
-            <span class="node__out" id="out-analysis">Waiting…</span>
+            <span class="node__who"><span class="node__name" data-i18n>Analysis</span><span class="node__role" data-i18n>Scores AQI, trend, spikes</span></span>
+            <span class="node__out" id="out-analysis" data-i18n-init>Waiting…</span>
           </li>
           <li class="node" data-step="advisory">
             <span class="node__mark" aria-hidden="true"></span>
-            <span class="node__who"><span class="node__name">Advisory</span><span class="node__role">Writes guidance per group</span></span>
-            <span class="node__out" id="out-advisory">Waiting…</span>
+            <span class="node__who"><span class="node__name" data-i18n>Advisory</span><span class="node__role" data-i18n>Writes guidance per group</span></span>
+            <span class="node__out" id="out-advisory" data-i18n-init>Waiting…</span>
           </li>
           <li class="node" data-step="alert">
             <span class="node__mark" aria-hidden="true"></span>
-            <span class="node__who"><span class="node__name">Alert</span><span class="node__role">Decides whether to warn</span></span>
-            <span class="node__out" id="out-alert">Waiting…</span>
+            <span class="node__who"><span class="node__name" data-i18n>Alert</span><span class="node__role" data-i18n>Decides whether to warn</span></span>
+            <span class="node__out" id="out-alert" data-i18n-init>Waiting…</span>
           </li>
         </ol>
-        <p id="pipeline-run" class="pipeline__run">Waiting for the first run…</p>
+        <p id="pipeline-run" class="pipeline__run" data-i18n-init>Waiting for the first run…</p>
       </section>
     </div>
 
     <div class="panels">
       <section class="panel panel--chart" aria-labelledby="chart-title">
         <div class="panel__head">
-          <h2 id="chart-title">PM2.5 over the recent window</h2>
+          <h2 id="chart-title" data-i18n>PM2.5 over the recent window</h2>
           <div class="chips">
             <span id="trend-chip" class="chip" hidden></span>
-            <span id="spike-chip" class="chip chip--spike" hidden>Sudden spike</span>
+            <span id="spike-chip" class="chip chip--spike" hidden data-i18n>Sudden spike</span>
           </div>
         </div>
         <figure class="chart">
           <svg id="chart" role="img" aria-labelledby="chart-title chart-summary" hidden></svg>
-          <p id="chart-empty" class="empty">Loading the recent readings…</p>
+          <p id="chart-empty" class="empty" data-i18n-init>Loading the recent readings…</p>
           <figcaption id="chart-summary" class="chart__summary"></figcaption>
         </figure>
       </section>
 
       <section class="panel panel--feed" aria-labelledby="feed-title">
         <div class="panel__head">
-          <h2 id="feed-title">Alert feed</h2>
+          <h2 id="feed-title" data-i18n>Alert feed</h2>
           <span id="feed-count" class="chip" hidden></span>
         </div>
-        <p id="feed-empty" class="empty">Loading alerts…</p>
+        <p id="feed-empty" class="empty" data-i18n-init>Loading alerts…</p>
         <ol id="feed" class="feed" role="list"></ol><!-- role: Safari drops list semantics with list-style: none -->
-        <a class="feed__more" href="/history">All alerts in History</a>
-        <p id="feed-error" class="feed__error" hidden>Couldn't refresh alerts. Showing the last ones received.</p>
+        <a class="feed__more" href="/history" data-i18n>All alerts in History</a>
+        <p id="feed-error" class="feed__error" hidden data-i18n>Couldn't refresh alerts. Showing the last ones received.</p>
       </section>
 
       <section class="panel panel--advisory advice" aria-labelledby="advice-title">
         <div class="advice__main">
           <div class="panel__head">
-            <h2 id="advice-title">What to do</h2>
-            <div class="lang-toggle" role="group" aria-label="Advice language">
-              <button type="button" data-lang="en" aria-pressed="true">English</button>
-              <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
-            </div>
+            <h2 id="advice-title" data-i18n>What to do</h2>
           </div>
-          <div id="advice-en">
-            <p id="advice-headline" class="advice__headline">Loading advice…</p>
-            <p id="advice-note" class="advice__note" hidden></p>
-            <p id="advice-forecast" class="advice__note" hidden></p>
-          </div>
-          <div id="advice-ur" class="urdu" lang="ur" dir="rtl" hidden>
-            <p id="urdu-headline" class="advice__headline"></p>
-            <ul id="urdu-actions" class="urdu__list"></ul>
-          </div>
-          <p id="urdu-scope" class="advice__scope" hidden>
-            Urdu covers advice for the general public. The groups beside it are shown in English.
-          </p>
+          <p id="advice-headline" class="advice__headline" data-i18n-init>Loading advice…</p>
+          <p id="advice-note" class="advice__note" hidden></p>
+          <p id="advice-forecast" class="advice__note" hidden></p>
           <form id="ask" class="ask" autocomplete="off">
-            <label for="ask-input">Ask about today's air</label>
+            <label for="ask-input" data-i18n>Ask about today's air</label>
             <div class="ask__row">
               <input id="ask-input" type="text" maxlength="300" dir="auto" required
-                     placeholder="Can my kids play outside this evening?">
-              <button id="ask-button" class="btn btn--primary" type="submit">Ask</button>
+                     data-i18n-placeholder="Can my kids play outside this evening?">
+              <button id="ask-button" class="btn btn--primary" type="submit" data-i18n>Ask</button>
             </div>
             <p id="ask-answer" class="ask__answer" dir="auto" aria-live="polite" hidden></p>
           </form>
-          <p id="advice-disclaimer" class="advice__disclaimer">General guidance, not medical advice.</p>
+          <p id="advice-disclaimer" class="advice__disclaimer" data-i18n-init>General guidance, not medical advice.</p>
         </div>
 
         <div class="audiences">
           <article class="audience" data-audience="general">
-            <h3>General public</h3>
-            <ul id="aud-general"><li>Loading…</li></ul>
+            <h3 data-i18n>General public</h3>
+            <ul id="aud-general"><li data-i18n-init>Loading…</li></ul>
           </article>
           <article class="audience" data-audience="children">
-            <h3>Children &amp; schools</h3>
-            <ul id="aud-children"><li>Loading…</li></ul>
+            <h3 data-i18n>Children &amp; schools</h3>
+            <ul id="aud-children"><li data-i18n-init>Loading…</li></ul>
           </article>
           <article class="audience" data-audience="elderly">
-            <h3>Elderly</h3>
-            <ul id="aud-elderly"><li>Loading…</li></ul>
+            <h3 data-i18n>Elderly</h3>
+            <ul id="aud-elderly"><li data-i18n-init>Loading…</li></ul>
           </article>
           <article class="audience" data-audience="respiratory_heart">
-            <h3>Heart &amp; lung conditions</h3>
-            <ul id="aud-respiratory_heart"><li>Loading…</li></ul>
+            <h3 data-i18n>Heart &amp; lung conditions</h3>
+            <ul id="aud-respiratory_heart"><li data-i18n-init>Loading…</li></ul>
           </article>
           <article class="audience" data-audience="outdoor_workers">
-            <h3>Outdoor workers</h3>
-            <ul id="aud-outdoor_workers"><li>Loading…</li></ul>
+            <h3 data-i18n>Outdoor workers</h3>
+            <ul id="aud-outdoor_workers"><li data-i18n-init>Loading…</li></ul>
           </article>
         </div>
       </section>
@@ -203,7 +194,7 @@
   <!-- One polite announcer: screen readers hear new alerts once, never every poll -->
   <div id="announcer" class="visually-hidden" aria-live="polite"></div>
 
-  <footer class="footer">
+  <footer class="footer" data-i18n-html="footer">
     Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
     (Copernicus Atmosphere Monitoring Service). Categories: Pakistan National Clean Air Policy 2023.
   </footer>

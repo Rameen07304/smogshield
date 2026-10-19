@@ -21,67 +21,71 @@
       <span>SmogShield</span>
     </div>
     <nav class="site-nav" aria-label="Pages">
-      <a href="/">Live dashboard</a>
-      <a href="/how" aria-current="page">How it works</a>
-      <a href="/history">History</a>
+      <a href="/" data-i18n>Live dashboard</a>
+      <a href="/how" aria-current="page" data-i18n>How it works</a>
+      <a href="/history" data-i18n>History</a>
     </nav>
+    <div class="lang-switch" role="group" aria-label="Language / زبان">
+      <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
+      <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
+    </div>
   </header>
 
   <main id="content" class="page">
     <section class="intro">
-      <h1>How SmogShield works</h1>
-      <p class="intro__pitch">
+      <h1 data-i18n>How SmogShield works</h1>
+      <p class="intro__pitch" data-i18n-html="pitch">
         <strong>Five cooperating agents</strong> turn raw air quality data into a reading, a forecast, advice for
         each group in English and <span lang="ur" class="urdu-inline">اردو</span>, and alerts, every few seconds.
       </p>
     </section>
 
     <section class="panel" aria-labelledby="flow-title">
-      <h2 id="flow-title" class="how__h2">The pipeline</h2>
+      <h2 id="flow-title" class="how__h2" data-i18n>The pipeline</h2>
       <ol class="flow" role="list">
         <li class="flow__node">
           <p class="flow__num" aria-hidden="true">1</p>
-          <h3>Monitor</h3>
-          <p class="flow__does">Fetches and cleans air quality readings.</p>
+          <h3 data-i18n>Monitor</h3>
+          <p class="flow__does" data-i18n>Fetches and cleans air quality readings.</p>
           <dl class="flow__io">
-            <div><dt>Receives</dt><dd>A city, plus live data from Open-Meteo (or a demo scenario).</dd></div>
-            <div><dt>Produces</dt><dd>The last 6 hourly readings: PM2.5, PM10, the time, and whether they are live or simulated.</dd></div>
+            <div><dt data-i18n>Receives</dt><dd data-i18n>A city, plus live data from Open-Meteo (or a demo scenario).</dd></div>
+            <div><dt data-i18n>Produces</dt><dd data-i18n>The last 6 hourly readings: PM2.5, PM10, the time, and whether they are live or simulated.</dd></div>
           </dl>
         </li>
         <li class="flow__node">
           <p class="flow__num" aria-hidden="true">2</p>
-          <h3>Forecast</h3>
-          <p class="flow__does">Looks ahead at the next 24 hours.</p>
+          <h3 data-i18n>Forecast</h3>
+          <p class="flow__does" data-i18n>Looks ahead at the next 24 hours.</p>
           <dl class="flow__io">
-            <div><dt>Receives</dt><dd>The city and its current reading.</dd></div>
-            <div><dt>Produces</dt><dd>An hourly PM2.5 forecast, 6 and 24 hour summaries, the best time to go outside, and a daily outlook.</dd></div>
+            <div><dt data-i18n>Receives</dt><dd data-i18n>The city and its current reading.</dd></div>
+            <div><dt data-i18n>Produces</dt><dd data-i18n>An hourly PM2.5 forecast, 6 and 24 hour summaries, the best time to go outside, and a daily outlook.</dd></div>
           </dl>
         </li>
         <li class="flow__node">
           <p class="flow__num" aria-hidden="true">3</p>
-          <h3>Analysis</h3>
-          <p class="flow__does">Computes the AQI, the trend and sudden spikes.</p>
+          <h3 data-i18n>Analysis</h3>
+          <p class="flow__does" data-i18n>Computes the AQI, the trend and sudden spikes.</p>
           <dl class="flow__io">
-            <div><dt>Receives</dt><dd>The recent readings.</dd></div>
-            <div><dt>Produces</dt><dd>An AQI number, a category (Good to Severe), the trend per hour, a spike flag and a one-line reason.</dd></div>
+            <div><dt data-i18n>Receives</dt><dd data-i18n>The recent readings.</dd></div>
+            <div><dt data-i18n>Produces</dt><dd data-i18n>An AQI number, a category (Good to Severe), the trend per hour, a spike flag and a one-line reason.</dd></div>
           </dl>
         </li>
         <li class="flow__node">
           <p class="flow__num" aria-hidden="true">4</p>
-          <h3>Advisory</h3>
-          <p class="flow__does">Turns the assessment into guidance for each group, in English and <span lang="ur" class="urdu-inline">اردو</span>.</p>
+          <h3 data-i18n>Advisory</h3>
+          <p class="flow__does" data-i18n-html="advisoryDoes">Turns the assessment into guidance for each group, in English and <span lang="ur" class="urdu-inline">اردو</span>.</p>
           <dl class="flow__io">
-            <div><dt>Receives</dt><dd>The assessment and the forecast.</dd></div>
-            <div><dt>Produces</dt><dd>A headline and advice for the public, children and schools, the elderly, people with heart or lung conditions, and outdoor workers.</dd></div>
+            <div><dt data-i18n>Receives</dt><dd data-i18n>The assessment and the forecast.</dd></div>
+            <div><dt data-i18n>Produces</dt><dd data-i18n>A headline and advice for the public, children and schools, the elderly, people with heart or lung conditions, and outdoor workers.</dd></div>
           </dl>
         </li>
         <li class="flow__node">
           <p class="flow__num" aria-hidden="true">5</p>
-          <h3>Alert</h3>
-          <p class="flow__does">Decides when and how to notify people, without spamming them.</p>
+          <h3 data-i18n>Alert</h3>
+          <p class="flow__does" data-i18n>Decides when and how to notify people, without spamming them.</p>
           <dl class="flow__io">
-            <div><dt>Receives</dt><dd>The assessment, the forecast, the advice and the location.</dd></div>
-            <div><dt>Produces</dt><dd>An info, warning or critical alert in the dashboard feed (and Telegram, if set up), or nothing when nothing changed.</dd></div>
+            <div><dt data-i18n>Receives</dt><dd data-i18n>The assessment, the forecast, the advice and the location.</dd></div>
+            <div><dt data-i18n>Produces</dt><dd data-i18n>An info, warning or critical alert in the dashboard feed (and Telegram, if set up), or nothing when nothing changed.</dd></div>
           </dl>
         </li>
       </ol>
@@ -89,37 +93,37 @@
 
     <section class="panel" aria-labelledby="live-title">
       <div class="panel__head">
-        <h2 id="live-title" class="how__h2 how__h2--inline">What each agent produced just now</h2>
+        <h2 id="live-title" class="how__h2 how__h2--inline" data-i18n>What each agent produced just now</h2>
         <div class="chips">
-          <span id="mode-badge" class="mode-badge" data-mode="loading">Connecting…</span>
+          <span id="mode-badge" class="mode-badge" data-mode="loading" data-i18n-init>Connecting…</span>
           <span id="live-updated" class="live__updated"></span>
         </div>
       </div>
       <p id="live-offline" class="live__offline" role="status" hidden></p>
       <ol class="flow flow--live" role="list">
         <li class="live-cell">
-          <p class="live-cell__agent">Monitor read</p>
-          <p id="live-monitor" class="live-cell__main">Loading…</p>
+          <p class="live-cell__agent" data-i18n>Monitor read</p>
+          <p id="live-monitor" class="live-cell__main" data-i18n-init>Loading…</p>
           <p id="live-monitor-sub" class="live-cell__sub"></p>
         </li>
         <li class="live-cell">
-          <p class="live-cell__agent">Forecast expects</p>
-          <p id="live-forecast" class="live-cell__main">Loading…</p>
+          <p class="live-cell__agent" data-i18n>Forecast expects</p>
+          <p id="live-forecast" class="live-cell__main" data-i18n-init>Loading…</p>
           <p id="live-forecast-sub" class="live-cell__sub"></p>
         </li>
         <li class="live-cell">
-          <p class="live-cell__agent">Analysis scored</p>
+          <p class="live-cell__agent" data-i18n>Analysis scored</p>
           <p class="live-cell__main"><span id="live-aqi" class="level-pill" data-level="loading">—</span></p>
-          <p id="live-analysis-sub" class="live-cell__sub">Loading…</p>
+          <p id="live-analysis-sub" class="live-cell__sub" data-i18n-init>Loading…</p>
         </li>
         <li class="live-cell">
-          <p class="live-cell__agent">Advisory said</p>
-          <p id="live-advice" class="live-cell__main live-cell__quote">Loading…</p>
+          <p class="live-cell__agent" data-i18n>Advisory said</p>
+          <p id="live-advice" class="live-cell__main live-cell__quote" data-i18n-init>Loading…</p>
           <p id="live-advice-sub" class="live-cell__sub"></p>
         </li>
         <li class="live-cell">
-          <p class="live-cell__agent">Alert's latest</p>
-          <div id="live-alert" class="live-cell__main">Loading…</div>
+          <p class="live-cell__agent" data-i18n>Alert's latest</p>
+          <div id="live-alert" class="live-cell__main" data-i18n-init>Loading…</div>
           <p id="live-alert-sub" class="live-cell__sub"></p>
         </li>
       </ol>
@@ -127,14 +131,14 @@
 
     <div class="facts">
       <section class="panel" aria-labelledby="honesty-title">
-        <h2 id="honesty-title" class="how__h2">Data and honesty</h2>
+        <h2 id="honesty-title" class="how__h2" data-i18n>Data and honesty</h2>
         <ul class="fact-list" role="list">
-          <li>
+          <li data-i18n-html="factModel">
             <strong>Model data, not ground sensors.</strong>
             Readings come from Open-Meteo, based on CAMS (Copernicus Atmosphere Monitoring Service) atmospheric
             model forecasts. They estimate the air over the surrounding area, not at one street corner.
           </li>
-          <li>
+          <li data-i18n-html="factAqi">
             <strong>The AQI is an hourly estimate.</strong>
             The number uses the US EPA method for PM2.5 and PM10, and the higher of the two wins. Categories
             (Good to Severe) follow Pakistan's
@@ -142,12 +146,12 @@
             Clean Air Policy 2023</a>, Table 1. We use the latest hour; official AQI uses longer averages, so other
             sites can show different numbers.
           </li>
-          <li>
+          <li data-i18n-html="factSim">
             <strong>Demo scenarios are simulated, and always labelled.</strong>
             A simulated-data banner, a badge on every screen, and a Simulated tag on every alert. Simulated
             alerts are never sent to Telegram unless we switch that on.
           </li>
-          <li>
+          <li data-i18n-html="factMedical">
             <strong>General guidance, not medical advice.</strong>
             Conservative advice in the style of US EPA AQI messaging, with no medical claims, doses or treatments.
           </li>
@@ -155,29 +159,29 @@
       </section>
 
       <section class="panel" aria-labelledby="reliable-title">
-        <h2 id="reliable-title" class="how__h2">Built to be reliable</h2>
+        <h2 id="reliable-title" class="how__h2" data-i18n>Built to be reliable</h2>
         <ul class="fact-list" role="list">
-          <li>
+          <li data-i18n-html="factFallback">
             <strong>Fallback to mock data.</strong>
             If the live source fails or takes over 10 seconds, the Monitor switches to clearly labelled simulated
             data, and to a built-in reading if even that file is missing. The pipeline never stops.
           </li>
-          <li>
+          <li data-i18n-html="factCache">
             <strong>Caching.</strong>
             Each city's live data is reused for 10 minutes (the source updates hourly), so refreshing every
             5 seconds stays fast and within the free API's limits.
           </li>
-          <li>
+          <li data-i18n-html="factCooldown">
             <strong>Alert cooldown, no spam.</strong>
             One alert when air gets worse, never a repeat for the same level; spikes at most once every
             30 minutes; memory resets after 3 hours.
           </li>
-          <li>
+          <li data-i18n-html="factTelegram">
             <strong>Telegram can't break anything.</strong>
             Messages go out in the background with a 3-second timeout. A failure is logged and the alert stays
             in the dashboard feed; the bot token is never written to logs.
           </li>
-          <li>
+          <li data-i18n-html="factUnknown">
             <strong>No data is never "good".</strong>
             If no valid readings arrive, the level is "unknown" and the advice says to take precautions.
           </li>
@@ -186,7 +190,7 @@
     </div>
   </main>
 
-  <footer class="footer">
+  <footer class="footer" data-i18n-html="footer">
     Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
     (Copernicus Atmosphere Monitoring Service). Categories: Pakistan National Clean Air Policy 2023.
   </footer>

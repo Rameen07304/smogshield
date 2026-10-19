@@ -471,6 +471,8 @@ def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advis
             "headline": urdu["headline"] if known else FALLBACK_HEADLINE_UR,
             "actions": lead_ur + urdu["actions"] + [DISCLAIMER_UR],
             "forecast_note": f_note_ur,
+            "time_note": note_ur,
+            "disclaimer": DISCLAIMER_UR,
             "audiences": {a: list(lines) for a, lines in URDU_AUDIENCES[level].items()},
         },
     }
@@ -585,10 +587,15 @@ def _valid_llm_advisory(candidate: object, audiences: dict) -> bool:
 
 ASK_MAX_CHARS = 300
 ASK_TIMEOUT_SECONDS = 15
-ASK_OFF = "The assistant is switched off. The advice above still applies."
-ASK_BUSY = "The assistant is busy right now. Please try again in a minute; the advice above still applies."
-ASK_DOWN = "The assistant can't be reached right now. The advice above still applies."
-ASK_UNSURE = "Sorry, I couldn't give a reliable answer. Please follow the advice above."
+# Canned replies as (English, Urdu), picked by the question's script
+ASK_OFF = ("The assistant is switched off. The advice above still applies.",
+           "اسسٹنٹ بند ہے۔ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
+ASK_BUSY = ("The assistant is busy right now. Please try again in a minute; the advice above still applies.",
+            "اسسٹنٹ اس وقت مصروف ہے۔ ایک منٹ بعد دوبارہ کوشش کریں؛ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
+ASK_DOWN = ("The assistant can't be reached right now. The advice above still applies.",
+            "اسسٹنٹ سے اس وقت رابطہ نہیں ہو سکتا۔ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
+ASK_UNSURE = ("Sorry, I couldn't give a reliable answer. Please follow the advice above.",
+              "معذرت، میں قابلِ اعتماد جواب نہیں دے سکا۔ براہ کرم اوپر دیے گئے مشورے پر عمل کریں۔")
 URDU_SCRIPT = re.compile("[؀-ۿ]")  # Arabic-script block U+0600-U+06FF: the question is in Urdu
 SIMULATED_NOTE = ("Simulated demo data: ", "نقلی ڈیمو ڈیٹا: ")  # added by code, never left to the model
 ASK_RULES = (
@@ -606,9 +613,10 @@ ASK_RULES = (
 
 def answer_question(question: str, state: dict) -> dict:
     """Answer one visitor question from the pipeline state. Never raises; {"answer": str, "source": ...}."""
+    urdu = bool(URDU_SCRIPT.search(question))
     api_key = _groq_key()
     if not api_key:
-        return {"answer": ASK_OFF, "source": "off"}
+        return {"answer": ASK_OFF[urdu], "source": "off"}
     analysis, advice = state.get("analysis") or {}, state.get("advisory") or {}
     forecast, latest = state.get("forecast") or {}, (state.get("readings") or [{}])[-1]
     level = analysis.get("level")
@@ -630,7 +638,6 @@ def answer_question(question: str, state: dict) -> dict:
         "forecast_note": advice.get("forecast_note"),
         "vetted_advice": advice.get("audiences"),
     }
-    urdu = bool(URDU_SCRIPT.search(question))
     model = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
     body = {
         "model": model,
@@ -646,14 +653,14 @@ def answer_question(question: str, state: dict) -> dict:
         response = requests.post(GROQ_URL, headers={"Authorization": f"Bearer {api_key}"}, json=body,
                                  timeout=ASK_TIMEOUT_SECONDS)
         if response.status_code == 429:
-            return {"answer": ASK_BUSY, "source": "busy"}
+            return {"answer": ASK_BUSY[urdu], "source": "busy"}
         response.raise_for_status()
         answer = (response.json()["choices"][0]["message"]["content"] or "").replace("**", "").strip()
     except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as exc:
         log.warning("Ask SmogShield failed: %s", exc)
-        return {"answer": ASK_DOWN, "source": "down"}
+        return {"answer": ASK_DOWN[urdu], "source": "down"}
     if not answer or FOREIGN_SCALE_WORDS.search(answer):
-        return {"answer": ASK_UNSURE, "source": "fallback"}
+        return {"answer": ASK_UNSURE[urdu], "source": "fallback"}
     if latest.get("source") != "live":
         answer = SIMULATED_NOTE[urdu] + answer
     return {"answer": answer[:1200], "source": "ai"}

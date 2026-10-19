@@ -100,6 +100,8 @@ class UrduAdvisory(TypedDict):
     actions: list[str]
     forecast_note: str                      # Urdu forecast note, "" when there is none
     audiences: dict[Audience, list[str]]    # Urdu advice per group (always rule-based, never from the LLM)
+    time_note: str                          # Urdu time/trend note, "" when there is none
+    disclaimer: str
 
 
 class Advisory(TypedDict):
@@ -118,6 +120,7 @@ class Alert(TypedDict):
     """A notification shown in the dashboard. Owned by: alert agent."""
     severity: Literal["info", "warning", "critical"]
     message: str
+    message_ur: str         # the same message in Urdu (alerts stored before this field have none)
     created_at: str         # ISO 8601, UTC
     location: str
     level: Level            # analysis level that triggered the alert (forecast alerts: the forecast peak level)

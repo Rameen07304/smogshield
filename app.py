@@ -27,6 +27,16 @@ INDEX = WEB / "index.html"
 app.mount("/static", StaticFiles(directory=WEB), name="static")  # dashboard CSS, JS and fonts
 
 
+@app.middleware("http")
+async def always_fresh_pages(request, call_next):
+    """Browsers must revalidate pages and static files (a cheap 304 when unchanged), so after a git pull
+    or a restart nobody runs an old common.js next to a new app.js."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.get("/")
 def dashboard():
     return FileResponse(INDEX)
@@ -92,7 +102,7 @@ def set_scenario(name: str):
 def get_city():
     """The monitored city and the known cities, for the dashboard's city selector."""
     current = _known_city(os.getenv("MONITOR_CITY", monitor.DEFAULT_CITY)) or monitor.DEFAULT_CITY
-    return {"current": current, "options": list(monitor.CITIES)}
+    return {"current": current, "options": list(monitor.CITIES), "labels_ur": monitor.CITIES_UR}
 
 
 @app.post("/api/city/{name}")
