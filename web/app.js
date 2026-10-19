@@ -356,10 +356,51 @@ function renderAdvisory(s) {
   const model = LANG === "ur" ? "" : s.advisory?.ai_model;
   $("advice-source").hidden = !s.advisory;
   $("advice-source").toggleAttribute("data-ai", Boolean(model));
+  const message = shareText(s, adv);
+  $("share-wa").hidden = !message;
+  if (message) $("share-wa").href = `https://wa.me/?text=${encodeURIComponent(message)}`;
+  $("read-aloud").hidden = !("speechSynthesis" in window) || !adv.headline;
   $("advice-source").textContent = model
     ? t("Advice written by AI ({model} on Groq), checked against the NCAP categories.", { model: shortModel(model) })
     : t("Advice from SmogShield's NCAP rules.");
 }
+
+/** Today's advice as a WhatsApp message in the site language; simulated data is always marked */
+function shareText(s, adv) {
+  const latest = s.readings?.at(-1), a = s.analysis;
+  if (!latest || !a?.aqi || !adv.headline) return "";
+  const list = (lines) => (lines || []).slice(0, 3).map((line) => `• ${line}`);
+  return [
+    latest.source === "live" ? "" : `[${t("Simulated")}]`,
+    `SmogShield: ${cityName(latest.location)}${LANG === "ur" ? "،" : ","} ${levelLabel(a.level)} (${t("AQI")} ${a.aqi})`,
+    adv.headline,
+    ...list(adv.audiences?.general),
+    `${t("Children & schools")}:`, ...list(adv.audiences?.children).slice(0, 2),
+    adv.disclaimer,
+  ].filter(Boolean).join("\n");
+}
+
+/** Read the advice aloud with the browser's own speech. Urdu needs an Urdu voice on the device;
+ *  without one it reads the English advice instead of mispronouncing Urdu with an English voice. */
+$("read-aloud").addEventListener("click", () => {
+  const button = $("read-aloud");
+  if (speechSynthesis.speaking) { speechSynthesis.cancel(); return; }
+  const s = lastGood || {};
+  const urduVoice = speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith("ur"));
+  const useUrdu = LANG === "ur" && urduVoice;
+  const adv = useUrdu ? adviceInLanguage(s.advisory) : (s.advisory || {});
+  const text = [adv.headline, ...(adv.audiences?.general || []), useUrdu ? "" : "Children and schools.",
+    ...(adv.audiences?.children || [])].filter(Boolean).join(" ");
+  const speech = new SpeechSynthesisUtterance(text);
+  speech.lang = useUrdu ? urduVoice.lang : "en-US";
+  if (useUrdu) speech.voice = urduVoice;
+  speech.rate = 0.95;
+  speech.onstart = () => {  // no Urdu voice on this device: say so, since it reads the English advice
+    button.textContent = LANG === "ur" && !urduVoice ? t("Stop (reading in English: no Urdu voice)") : t("Stop reading");
+  };
+  speech.onend = speech.onerror = () => { button.textContent = t("Read aloud"); };
+  speechSynthesis.speak(speech);
+});
 
 /** "openai/gpt-oss-20b" -> "gpt-oss-20b" */
 const shortModel = (model) => model.split("/").pop();
@@ -671,6 +712,7 @@ function renderCities(data) {
     return dot;
   });
   map.replaceChildren(grid, ...dots);
+  $("days-note").hidden = !data.cities.some((c) => c.past_days?.length);
 
   // Ranked list: worst air first
   $("city-list").replaceChildren(...[...data.cities].sort((a, b) => (b.aqi ?? -1) - (a.aqi ?? -1)).map((c) => {
@@ -689,11 +731,29 @@ function renderCities(data) {
     const aqi = document.createElement("span");
     aqi.className = "city-row__aqi";
     aqi.textContent = c.aqi ?? "–";
-    row.append(name, tag, aqi);
+    row.append(name, pastDays(c.past_days), tag, aqi);
     row.addEventListener("click", () => chooseCity(c.city));
     li.append(row);
     return li;
   }));
+}
+
+/** The last 7 days as small squares coloured by level, with a count of Poor-or-worse days for screen readers */
+function pastDays(days) {
+  const strip = document.createElement("span");
+  strip.className = "days";
+  if (!days?.length) return strip;
+  const bad = days.filter((d) => ["poor", "very_poor", "severe"].includes(d.level)).length;
+  strip.setAttribute("role", "img");
+  strip.setAttribute("aria-label", t("{bad} of the last {n} days Poor or worse", { bad, n: days.length }));
+  strip.append(...days.map((d) => {
+    const day = document.createElement("i");
+    day.dataset.level = d.level in LEVELS ? d.level : "unknown";
+    day.title = `${new Date(`${d.date}T12:00:00+05:00`).toLocaleDateString(LANG === "ur" ? "ur" : [], { ...PKT, weekday: "short", day: "numeric", month: "short" })}: `
+      + `${levelLabel(d.level)} (${t("AQI")} ${d.aqi})`;
+    return day;
+  }));
+  return strip;
 }
 
 function chooseCity(city) {

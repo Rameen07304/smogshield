@@ -131,6 +131,11 @@ const UR = {
     "تمام سرگرمیاں اندر۔ دمے یا دل کے مرض والے طلبہ کے لیے گھر پر رہنا زیادہ محفوظ ہو سکتا ہے۔",
   "Emergency air. Closing schools or moving classes online is advisable.":
     "ہنگامی فضا۔ اسکول بند کرنا یا کلاسیں آن لائن کرنا مناسب ہے۔",
+  "Squares: the last 7 days, oldest first, coloured by each day's 24-hour average. Always real data.":
+    "خانے: پچھلے 7 دن، پرانا پہلے، ہر دن کی 24 گھنٹے کی اوسط کے رنگ میں۔ ہمیشہ اصل ڈیٹا۔",
+  "{bad} of the last {n} days Poor or worse": "پچھلے {n} دنوں میں سے {bad} دن خراب یا اس سے بدتر",
+  "Share on WhatsApp": "واٹس ایپ پر بھیجیں", "Read aloud": "سن کر پڑھیں", "Stop reading": "پڑھنا بند کریں",
+  "Stop (reading in English: no Urdu voice)": "بند کریں (اردو آواز نہیں، انگریزی میں پڑھ رہا ہے)",
   "Type": "قسم", "Now": "ابھی", "All cities": "تمام شہر",
   "Advice written by AI ({model} on Groq), checked against the NCAP categories.":
     "یہ مشورہ AI ‏({model}، Groq) نے لکھا اور NCAP زمروں سے جانچا گیا۔",

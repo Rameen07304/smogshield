@@ -126,7 +126,10 @@
       <p id="cities-empty" class="empty" data-i18n-init>Loading all cities…</p>
       <div class="cities__body">
         <div id="city-map" class="city-map" role="group" aria-labelledby="cities-title"></div>
-        <ol id="city-list" class="city-list" role="list"></ol>
+        <div>
+          <ol id="city-list" class="city-list" role="list"></ol>
+          <p id="days-note" class="cities__days-note" data-i18n hidden>Squares: the last 7 days, oldest first, coloured by each day's 24-hour average. Always real data.</p>
+        </div>
       </div>
     </section>
 
@@ -193,6 +196,10 @@
           <p id="advice-source" class="ask__basis" hidden></p>
           <p id="advice-note" class="advice__note" hidden></p>
           <p id="advice-forecast" class="advice__note" hidden></p>
+          <div class="advice__actions">
+            <a id="share-wa" class="btn" target="_blank" rel="noopener" hidden data-i18n>Share on WhatsApp</a>
+            <button id="read-aloud" class="btn" type="button" hidden data-i18n>Read aloud</button>
+          </div>
           <form id="ask" class="ask" autocomplete="off">
             <label for="ask-input" data-i18n>Ask about today's air</label>
             <div class="ask__row">

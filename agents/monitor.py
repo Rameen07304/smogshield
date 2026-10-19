@@ -214,6 +214,48 @@ def _cache_seconds() -> float:
     return minutes * 60
 
 
+PAST_DAYS = 7                    # the "last 7 days" strip on the city list
+PAST_DAYS_CACHE_SECONDS = 3600   # past days don't change, so one fetch per city per hour is plenty
+_past_days_cache: dict[str, tuple[float, list[dict]]] = {}
+
+
+def past_days(city: str) -> list[dict] | None:
+    """The last 7 full local days, oldest first: [{"date", "pm25", "aqi", "level"}] from the 24-hour average
+    PM2.5 (NCAP categories are defined on 24-hour averages). Live data only; None when it can't be fetched."""
+    from agents import analysis  # imported here: the monitor needs analysis for nothing else
+    if os.getenv("USE_MOCK", "").strip().lower() in {"1", "true", "yes"}:
+        return None  # offline mode: no network at all
+    cached = _past_days_cache.get(city)
+    if cached and time.monotonic() - cached[0] < PAST_DAYS_CACHE_SECONDS:
+        return [dict(d) for d in cached[1]]
+    try:
+        lat, lon = city_coordinates(city)
+        resp = requests.get(API_URL, params={"latitude": lat, "longitude": lon, "hourly": "pm2_5",
+                                             "past_days": PAST_DAYS, "forecast_days": 1, "timezone": "auto"},
+                            timeout=TIMEOUT_SECONDS)
+        resp.raise_for_status()
+        days = daily_averages(resp.json())
+    except Exception as e:  # the map works without it
+        log.warning("Past days unavailable for %s: %s", city, e)
+        return None
+    result = [{"date": d, "pm25": avg, **dict(zip(("aqi", "level"), analysis.pm25_to_aqi(avg)))} for d, avg in days]
+    _past_days_cache[city] = (time.monotonic(), result)
+    return [dict(d) for d in result]
+
+
+def daily_averages(data: dict) -> list[tuple[str, float]]:
+    """(local date, average PM2.5) for the last PAST_DAYS days before today, oldest first.
+    A day needs 18+ hourly values to count; today (still in progress) never does."""
+    hourly = data.get("hourly") or {}
+    days: dict[str, list[float]] = {}
+    for local_time, pm25 in zip(hourly.get("time") or [], hourly.get("pm2_5") or []):
+        if isinstance(pm25, (int, float)) and not isinstance(pm25, bool) and pm25 >= 0:
+            days.setdefault(local_time[:10], []).append(pm25)
+    today = max(days, default="")
+    full = [d for d in sorted(days) if d != today and len(days[d]) >= 18][-PAST_DAYS:]
+    return [(d, round(sum(days[d]) / len(days[d]), 1)) for d in full]
+
+
 def _fetch_live(city: str, lat: float | None = None, lon: float | None = None) -> list[Reading]:
     """Calls Open-Meteo and returns the recent window of clean Readings, oldest first. Raises on any problem."""
     if lat is None or lon is None:

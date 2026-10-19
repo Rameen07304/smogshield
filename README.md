@@ -34,6 +34,9 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - **Next school day:** the worst forecast air from 7 AM to 2 PM tomorrow (Monday when tomorrow is Sunday), and what schools should do, from "a normal day" to "move PE and assembly indoors" to "consider closing". Built for Lahore's winter smog season, when Punjab has closed schools for days at a time. It's a suggestion, not an official notice.
 - **Advice for 5 groups**, written by AI when it's switched on and always checked against the rules.
 - **Ask SmogShield:** questions in English or Urdu, answered from the live data.
+- **Share on WhatsApp:** one tap sends today's advice (headline, the general public, children and schools) to a family or school group, in the site's language. Simulated data is marked in the message.
+- **Read aloud:** the browser's built-in speech reads the advice, for people who find reading hard. It uses an Urdu voice when the device has one, and otherwise reads the English advice and says so.
+- **Last 7 days for every city:** seven small squares beside each city, coloured by each day's 24-hour average PM2.5 (the basis NCAP categories are defined on). Always real data, even during a demo scenario.
 - **Alert feed and history**, with optional Telegram delivery.
 - **The whole site in English or اردو:** right-to-left layout and the Nastaliq font.
 - **Demo scenarios** (always labelled SIMULATED) to show a smog emergency on stage.

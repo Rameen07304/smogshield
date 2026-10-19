@@ -590,8 +590,8 @@ def _valid_llm_advisory(candidate: object, audiences: dict) -> bool:
 ASK_MAX_CHARS = 300
 ASK_TIMEOUT_SECONDS = 15
 # Canned replies as (English, Urdu), picked by the question's script
-ASK_OFF = ("The assistant is switched off. The advice above still applies.",
-           "اسسٹنٹ بند ہے۔ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
+ASK_OFF = ("The assistant is switched off (no Groq API key on this server). The advice above still applies.",
+           "اسسٹنٹ بند ہے (اس سرور پر Groq API کلید نہیں)۔ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
 ASK_BUSY = ("The assistant is busy right now. Please try again in a minute; the advice above still applies.",
             "اسسٹنٹ اس وقت مصروف ہے۔ ایک منٹ بعد دوبارہ کوشش کریں؛ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
 ASK_DOWN = ("The assistant can't be reached right now. The advice above still applies.",
@@ -605,7 +605,8 @@ ASK_RULES = (
     "reading, its NCAP 2023 category and health impact, the forecast and the vetted advice per group. "
     "Reply in 2-3 short sentences of plain text (no markdown) in the language named by reply_language. "
     "Use only NCAP category names (Good, Satisfactory, Moderate, Poor, Very Poor, Severe); never say "
-    "unhealthy or hazardous. Never give a diagnosis, medicine names, doses or treatments; for symptoms, "
+    "unhealthy or hazardous. In Urdu, use the Urdu category name given as category_urdu and write AQI "
+    "as اے کیو آئی. Never give a diagnosis, medicine names, doses or treatments; for symptoms, "
     "advise seeing a doctor. Never invent numbers or times that are not in the context; times are local "
     "Pakistan time. If the question is not "
     "about air quality, outdoor activity or protection from air pollution, say you can only help with air "
@@ -630,6 +631,7 @@ def answer_question(question: str, state: dict) -> dict:
         "pm10_ugm3": latest.get("pm10"),
         "aqi": analysis.get("aqi"),
         "category": LEVEL_NAMES.get(level, ("Unknown (no data)",))[0],
+        "category_urdu": LEVEL_NAMES.get(level, ("", "نامعلوم (ڈیٹا نہیں)"))[1],
         "ncap_health_impact": NCAP_HEALTH_IMPACT.get(level),
         "trend": analysis.get("trend"),
         "next_6h_peak": six and {"category": LEVEL_NAMES.get(six.get("peak_level"), ("?",))[0],

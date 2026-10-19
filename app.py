@@ -132,7 +132,8 @@ def cities_summary():
             reading = monitor.fetch_air_quality(city)
         a = analysis.assess([reading])
         lat, lon = monitor.CITIES[city]
-        return {"city": city, "lat": lat, "lon": lon, "aqi": a["aqi"], "level": a["level"], "source": reading["source"]}
+        return {"city": city, "lat": lat, "lon": lon, "aqi": a["aqi"], "level": a["level"], "source": reading["source"],
+                "past_days": monitor.past_days(city)}  # always real past data, even in a demo scenario
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         return {"current": current, "cities": list(pool.map(one, monitor.CITIES))}

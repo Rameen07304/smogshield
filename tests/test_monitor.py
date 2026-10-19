@@ -324,3 +324,31 @@ class GraphNodeTest(MonitorTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PastDaysTest(unittest.TestCase):
+    """The 7-day strip: one 24-hour average per full local day before today."""
+
+    @staticmethod
+    def data(days: dict[str, list]) -> dict:
+        times, values = [], []
+        for day, hourly in days.items():
+            times += [f"{day}T{h:02d}:00" for h in range(len(hourly))]
+            values += hourly
+        return {"hourly": {"time": times, "pm2_5": values}}
+
+    def test_averages_full_days_and_skips_today(self):
+        days = {f"2026-10-{d:02d}": [float(d)] * 24 for d in range(10, 19)}  # 9 full days
+        days["2026-10-19"] = [500.0] * 24                                     # today: never counted
+        result = monitor.daily_averages(self.data(days))
+        self.assertEqual([d for d, _ in result], [f"2026-10-{d:02d}" for d in range(12, 19)])
+        self.assertEqual(result[-1], ("2026-10-18", 18.0))
+
+    def test_a_day_with_gaps_is_left_out(self):
+        days = {"2026-10-17": [40.0] * 12 + [None] * 12, "2026-10-18": [100.0, 120.0] * 12, "2026-10-19": [1.0]}
+        self.assertEqual(monitor.daily_averages(self.data(days)), [("2026-10-18", 110.0)])
+
+    def test_fetch_failure_is_none(self):
+        monitor._past_days_cache.clear()
+        with mock.patch.object(monitor.requests, "get", side_effect=requests.RequestException("offline")):
+            self.assertIsNone(monitor.past_days("Lahore"))

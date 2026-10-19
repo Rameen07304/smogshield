@@ -75,6 +75,7 @@ class ControlEndpointTest(unittest.TestCase):
     def test_forced_scenario_only_changes_the_monitored_city(self):
         app.set_city("Quetta")
         os.environ["MOCK_SCENARIO"] = "severe"
+        os.environ["USE_MOCK"] = "true"  # no network for the 7-day strip
         levels = {c["city"]: c["level"] for c in app.cities_summary()["cities"]}
         self.assertEqual(levels["Quetta"], "severe")
         self.assertEqual(levels["Karachi"], app.monitor.city_default_scenario("Karachi"))  # its own default, not severe
