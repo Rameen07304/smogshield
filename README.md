@@ -301,8 +301,8 @@ SmogShield is built on these open-source projects and open data, used under thei
 
 ## Team
 
-- **Rameen:** lead, orchestration, integration and reviews
-- **Dania:** dashboard (3 screens), alert agent, forecast agent, Telegram, most of the pipeline
-- **Fatima:** analysis agent, NCAP categories and PM10
-- **Rida:** advisory agent and guidance
-- **Halima:** monitor agent, cities, data documentation
+- **Rameen (team lead):** orchestration (the LangGraph pipeline), integration, the Ask SmogShield chatbot, the web server, code reviews and deployment
+- **Dania (frontend developer):** dashboard, History and Blog pages, alert agent, forecast agent and Telegram alerts
+- **Fatima (AI / analysis):** analysis agent: AQI calculation, Pakistan NCAP categories and PM10 support
+- **Rida (advisory):** advisory agent: health guidance for the 5 groups and the Groq AI integration
+- **Halima (data):** monitor agent, the 15 cities and the air quality data documentation
