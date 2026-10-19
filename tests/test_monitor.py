@@ -282,6 +282,25 @@ class CacheTest(MonitorTestCase):
         self.assertEqual(monitor._cache_seconds(), monitor.DEFAULT_CACHE_MINUTES * 60)
 
 
+class CitiesTest(MonitorTestCase):
+    def test_every_city_is_inside_pakistan(self):
+        for city, (lat, lon) in monitor.CITIES.items():
+            with self.subTest(city=city):
+                self.assertTrue(23 <= lat <= 37.5, lat)
+                self.assertTrue(60.5 <= lon <= 77.5, lon)
+
+    def test_every_city_has_a_mock_default(self):
+        data = json.loads(monitor.MOCK_FILE.read_text(encoding="utf-8"))
+        for city in monitor.CITIES:
+            with self.subTest(city=city):
+                self.assertIn(data["city_defaults"].get(city), data["scenarios"])
+
+    def test_new_city_lookup_is_case_insensitive(self):
+        self.assertEqual(monitor.city_coordinates(" kasur "), monitor.CITIES["Kasur"])
+        os.environ["USE_MOCK"] = "true"
+        self.assertEqual(monitor.fetch_air_quality("kasur")["location"], "Kasur")
+
+
 class GraphNodeTest(MonitorTestCase):
     def test_run_output_feeds_analysis(self):
         os.environ["MOCK_SCENARIO"] = "severe"

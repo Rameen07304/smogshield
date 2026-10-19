@@ -67,6 +67,12 @@ CITIES: dict[str, tuple[float, float]] = {
     "Quetta": (30.18, 66.98),
     "Gujranwala": (32.19, 74.19),
     "Sialkot": (32.49, 74.52),
+    # Punjab winter smog hotspots (Wikipedia infobox coordinates, checked against OpenStreetMap)
+    "Sheikhupura": (31.71, 73.99),
+    "Kasur": (31.12, 74.45),
+    "Sahiwal": (30.66, 73.11),
+    "Sargodha": (32.08, 72.67),
+    "Bahawalpur": (29.40, 71.68),
 }
 
 # (city, lat, lon) -> (time.monotonic() when fetched, window of readings). Only successes are cached.
