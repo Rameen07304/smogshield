@@ -306,6 +306,21 @@ class AskTest(unittest.TestCase):
             self.assertEqual(advisory.answer_question("Is it safe?", self.STATE)["source"], "fallback")
 
 
+class UrduAudiencesTest(unittest.TestCase):
+    def test_every_level_has_urdu_for_every_group_line_for_line(self):
+        for level, english in advisory.GUIDANCE.items():
+            for who in AUDIENCES:
+                with self.subTest(level=level, who=who):
+                    urdu = advisory.URDU_AUDIENCES[level][who]
+                    self.assertEqual(len(urdu), len(english[who]))
+                    self.assertTrue(all(advisory.URDU_SCRIPT.search(line) for line in urdu))
+
+    def test_output_carries_urdu_audiences_even_without_data(self):
+        for analysis in (make_analysis("poor"), None):
+            result = advisory.build_advisory(analysis)
+            self.assertEqual(set(result["urdu"]["audiences"]), set(AUDIENCES))
+
+
 class UrduNcapTest(unittest.TestCase):
     def test_urdu_headlines_use_ncap_level_names(self):
         old_us_words = ("غیر صحت بخش", "خطرناک")  # "unhealthy", "hazardous"

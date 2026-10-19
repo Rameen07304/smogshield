@@ -99,6 +99,7 @@ class UrduAdvisory(TypedDict):
     headline: str
     actions: list[str]
     forecast_note: str                      # Urdu forecast note, "" when there is none
+    audiences: dict[Audience, list[str]]    # Urdu advice per group (always rule-based, never from the LLM)
 
 
 class Advisory(TypedDict):
