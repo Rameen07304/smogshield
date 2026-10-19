@@ -113,6 +113,7 @@ class Advisory(TypedDict):
     forecast_note: str                      # forecast context (worse soon / better by / best time), "" if none;
                                             # also listed in actions right after the time note
     disclaimer: str                         # "general guidance, not medical advice"
+    ai_model: str                           # Groq model that wrote actions + audiences; "" = rule-based
     urdu: UrduAdvisory
 
 

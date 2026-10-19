@@ -467,6 +467,7 @@ def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advis
         "time_note": note,
         "forecast_note": f_note,
         "disclaimer": DISCLAIMER,
+        "ai_model": "",
         "urdu": {
             "headline": urdu["headline"] if known else FALLBACK_HEADLINE_UR,
             "actions": lead_ur + urdu["actions"] + [DISCLAIMER_UR],
@@ -480,6 +481,7 @@ def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advis
     if llm_result:  # the headline stays the NCAP one, so it always matches the level shown beside it
         result["actions"] = lead + llm_result["actions"]
         result["audiences"] = llm_result["audiences"]
+        result["ai_model"] = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
     return result
 
 
@@ -666,7 +668,7 @@ def answer_question(question: str, state: dict) -> dict:
     # What the answer was grounded in, shown under it so people can see it is not made up
     based_on = {"city": latest.get("location"), "level": level, "aqi": analysis.get("aqi"),
                 "time": latest.get("timestamp"), "data_source": latest.get("source")}
-    return {"answer": answer[:1200], "source": "ai", "based_on": based_on}
+    return {"answer": answer[:1200], "source": "ai", "model": model, "based_on": based_on}
 
 
 def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:

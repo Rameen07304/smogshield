@@ -214,6 +214,7 @@ class GroqAdvisoryTest(unittest.TestCase):
         self.assertEqual(result["headline"], advisory.GUIDANCE["poor"]["headline"])  # always the NCAP one
         self.assertEqual(result["audiences"]["outdoor_workers"], ["LLM advice for outdoor_workers"])
         self.assertEqual(result["actions"][0], advisory.RISING_NOTE[0])
+        self.assertEqual(result["ai_model"], "test-model")  # the dashboard says the AI wrote it
         post.assert_called_once()
 
     def test_model_is_told_the_ncap_category_and_health_impact(self):
@@ -228,6 +229,7 @@ class GroqAdvisoryTest(unittest.TestCase):
         with mock.patch.object(advisory.requests, "post", return_value=reply):
             result = advisory.build_advisory(make_analysis("poor"))
         self.assertEqual(result["audiences"]["general"], advisory.GUIDANCE["poor"]["general"])
+        self.assertEqual(result["ai_model"], "")  # ...and says the rules wrote it
 
     def test_api_failure_uses_rule_based_advice(self):
         with mock.patch.object(advisory.requests, "post", side_effect=advisory.requests.RequestException("offline")):

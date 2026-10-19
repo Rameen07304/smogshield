@@ -329,7 +329,17 @@ function renderAdvisory(s) {
     fillList(`aud-${who}`, items, t("No specific advice for this group right now."));
   }
   $("advice-disclaimer").textContent = adv.disclaimer || t("General guidance, not medical advice.");
+  // Say who wrote the advice: the Urdu version is always the vetted rule-based text
+  const model = LANG === "ur" ? "" : s.advisory?.ai_model;
+  $("advice-source").hidden = !s.advisory;
+  $("advice-source").toggleAttribute("data-ai", Boolean(model));
+  $("advice-source").textContent = model
+    ? t("Advice written by AI ({model} on Groq), checked against the NCAP categories.", { model: shortModel(model) })
+    : t("Advice from SmogShield's NCAP rules.");
 }
+
+/** "openai/gpt-oss-20b" -> "gpt-oss-20b" */
+const shortModel = (model) => model.split("/").pop();
 
 // ---------- alert feed ----------
 
@@ -797,7 +807,8 @@ $("ask").addEventListener("submit", async (event) => {
     const b = reply.based_on;
     $("ask-basis").hidden = !b;
     if (b) {
-      $("ask-basis").textContent = `${t("Based on")}: ` + [cityName(b.city), levelLabel(b.level), `${t("AQI")} ${b.aqi}`,
+      $("ask-basis").textContent = (reply.model ? `${t("Answered by AI ({model} on Groq)", { model: shortModel(reply.model) })} · ` : "") +
+        `${t("Based on")}: ` + [cityName(b.city), levelLabel(b.level), `${t("AQI")} ${b.aqi}`,
         b.time && t("reading for {time}", { time: localTime(b.time) }), t(b.data_source === "live" ? "live" : "simulated")]
         .filter(Boolean).join(" · ");
     }

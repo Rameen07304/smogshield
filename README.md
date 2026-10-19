@@ -12,6 +12,99 @@ monitor ──► forecast ──► analysis ──► advisory ──► alert
 Agents are plain Python functions wired together with [LangGraph](https://github.com/langchain-ai/langgraph).
 They share one state object defined in [`schemas.py`](schemas.py). Each agent writes only its own key.
 
+## Problem
+
+Every winter, smog in Punjab pushes the air into the worst categories for days at a time. Schools close, hospitals fill with breathing problems, and outdoor workers keep working in it. Readings exist, but a number like "AQI 310" doesn't tell a parent, a teacher or a labourer what to do. Most of the advice that does exist is in English and uses US categories, not Pakistan's own scale.
+
+## Solution
+
+SmogShield turns hourly air-quality data into clear, timely advice for the people most at risk, in English and Urdu:
+
+- It reads PM2.5 and PM10 for 15 Pakistani cities and scores them on Pakistan's NCAP 2023 categories (Good to Severe).
+- It looks 24 hours ahead to warn before the air gets worse and to find the best time to go outside.
+- It writes advice for five groups: the public, children and schools, the elderly, people with heart or lung conditions, and outdoor workers.
+- It sends alerts that escalate with the air (info → warning → critical) without spamming, including predictive `[FORECAST]` alerts.
+- People can ask questions in plain English or Urdu ("Can my kids play outside this evening?") and get an answer grounded in the current reading.
+
+## Features
+
+- **Live dashboard:** AQI, NCAP category, trend and spike detection, and a ledger showing what each agent did.
+- **City map:** all 15 cities at a glance, worst air first. Click one to switch.
+- **24-hour forecast chart:** the peak, the best time to go out, and a daily outlook.
+- **Advice for 5 groups**, written by AI when it's switched on and always checked against the rules.
+- **Ask SmogShield:** questions in English or Urdu, answered from the live data.
+- **Alert feed and history**, with optional Telegram delivery.
+- **The whole site in English or اردو:** right-to-left layout and the Nastaliq font.
+- **Demo scenarios** (always labelled SIMULATED) to show a smog emergency on stage.
+
+## Screenshots
+
+| Dashboard | اردو |
+|---|---|
+| ![SmogShield dashboard in English](docs/screenshots/dashboard.png) | ![SmogShield dashboard in Urdu](docs/screenshots/dashboard-urdu.png) |
+
+![How it works page](docs/screenshots/how-it-works.png)
+
+## Tech stack
+
+- **Backend:** Python 3.11+, [LangGraph](https://github.com/langchain-ai/langgraph) (agent orchestration), FastAPI + uvicorn, requests.
+- **Frontend:** plain HTML, CSS and JavaScript (no framework, no build step, no CDNs), with the Noto Nastaliq Urdu font.
+- **Data:** [Open-Meteo](https://open-meteo.com) air-quality API (CAMS model data, no key needed).
+- **AI:** [Groq](https://groq.com) API running `openai/gpt-oss-20b` (configurable).
+- **Alerts:** dashboard feed, plus Telegram Bot API (optional).
+- **Tests:** Python `unittest` (235 tests, no network needed).
+
+## AI methodology
+
+SmogShield is a **multi-agent system**: five agents, orchestrated by LangGraph, share one state object.
+
+```
+monitor → forecast → analysis → advisory → alert
+```
+
+Where each kind of intelligence is used:
+
+| Part | Method | Why |
+|---|---|---|
+| **Forecast** | Hourly PM2.5/PM10 forecasts from the CAMS atmospheric model (via Open-Meteo), turned into peaks, trend, confidence (high 0–6 h, medium 6–24 h, low after) and the best ~2-hour window | A physics-based model is far more reliable than anything we could train in 3 days |
+| **Analysis** | US EPA AQI formula for PM2.5 and PM10, NCAP 2023 categories, trend by least squares, spike detection against the recent window | Health categories must be exact and explainable, so this is deterministic |
+| **Advisory** | **LLM** (`gpt-oss-20b` on Groq) writes advice for the 5 groups from the NCAP category, its NCAP health-impact text and our vetted rule-based advice | Advice that reads naturally and fits the situation, without inventing medical claims |
+| **Ask SmogShield** | **LLM** answers free-text questions in English or Urdu, given only the current reading, forecast, NCAP category and vetted advice | People ask in their own words; the answer stays tied to real data |
+| **Alert** | Rules: severity from the level, escalation, cooldown, forecast warnings | Alerts must be predictable and never spam |
+
+**Guardrails on the LLM (so judges and users can trust it):**
+
+- **The model never decides the air category.** The NCAP headline and category always come from the analysis agent.
+- **Replies are rejected** when they are invalid JSON, have the wrong shape, are missing a group, or use another scale's words ("unhealthy", "hazardous"). The rule-based advice is used instead.
+- **The code picks the reply language** (Urdu script in, Urdu out). Simulated data is labelled by code, not by the model.
+- **Usage is efficient:** advice is cached for 10 minutes per level, a failure isn't retried for 1 minute, and requests use low reasoning effort. Rate limits show a calm "busy" message.
+- **The dashboard says who wrote the advice**, either "Advice written by AI (gpt-oss-20b on Groq)" or "Advice from SmogShield's NCAP rules". Every Ask answer shows "Answered by AI" and the data it was based on.
+- **The AI is opt-in.** It needs `LLM_ADVISORY_ENABLED=true` and `GROQ_API_KEY` in `.env` (see [Advisory](#advisory)). Without them, everything still works on the rules.
+
+**Third-party AI APIs:** Groq (`openai/gpt-oss-20b`). **Data APIs:** Open-Meteo (CAMS, Copernicus Atmosphere Monitoring Service).
+
+## Known limitations
+
+- **Model data, not ground sensors.** CAMS covers cells about 40 km wide, so nearby cities (Islamabad and Rawalpindi) can show the same values.
+- **The AQI is an hourly estimate.** Official AQI uses 24-hour averages, so other sites can show different numbers.
+- **The forecast is CAMS's.** We haven't trained our own model yet.
+- **AI advice is English only.** The Urdu advice is rule-based and machine-drafted, and still needs review by a native speaker.
+- **The Groq free tier has rate limits.** When they are hit, the app falls back to the rules.
+- **It's a single demo server with no login.** It runs on 127.0.0.1 only, and the city and scenario are shared by everyone using it.
+- **Not medical advice.** It is general guidance only.
+
+## Future work
+
+- **Ground sensors:** blend in PEPA and community sensors (such as PurpleAir).
+- **Our own forecast model:** a trained correction on top of CAMS for each city.
+- **Reach people off the web:** SMS and WhatsApp alerts.
+- **Schools:** a mode for deciding about closures and PE.
+- **More languages:** Punjabi and Sindhi, and AI-written Urdu advice once it has been reviewed.
+
+## AI tools used in development
+
+The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (235 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
+
 ## Quick start
 
 Requires Python 3.11+.

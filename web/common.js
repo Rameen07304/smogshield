@@ -116,7 +116,11 @@ const UR = {
   "with a sudden spike in the latest hour": "تازہ ترین گھنٹے میں اچانک اضافے کے ساتھ",
   "Spike · {v}": "اچانک اضافہ · {v}", "The chart appears once the server responds.": "سرور کے جواب دینے پر چارٹ ظاہر ہوگا۔",
   // all cities
-  "Based on": "بنیاد", "Data may be delayed: the latest reading is {h} hours old.":
+  "Based on": "بنیاد",
+  "Advice written by AI ({model} on Groq), checked against the NCAP categories.":
+    "یہ مشورہ AI ‏({model}، Groq) نے لکھا اور NCAP زمروں سے جانچا گیا۔",
+  "Advice from SmogShield's NCAP rules.": "یہ مشورہ SmogShield کے NCAP اصولوں سے ہے۔",
+  "Answered by AI ({model} on Groq)": "جواب AI ‏({model}، Groq) نے دیا", "Data may be delayed: the latest reading is {h} hours old.":
     "ڈیٹا میں تاخیر ہو سکتی ہے: تازہ ترین ریڈنگ {h} گھنٹے پرانی ہے۔",
   "Air across Pakistan": "پاکستان بھر میں ہوا", "Choose a city to see it in detail.": "تفصیل دیکھنے کے لیے کوئی شہر منتخب کریں۔",
   "Loading all cities…": "تمام شہر لوڈ ہو رہے ہیں…", "The map appears once the server responds.": "سرور کے جواب دینے پر نقشہ ظاہر ہوگا۔",
@@ -225,6 +229,10 @@ const UR_HTML = {
     + "، جدول 1 کے مطابق ہیں۔ ہم تازہ ترین گھنٹہ استعمال کرتے ہیں؛ سرکاری اے کیو آئی لمبی اوسط لیتا ہے، اس لیے دوسری سائٹس مختلف اعداد دکھا سکتی ہیں۔",
   factSim: "<strong>ڈیمو منظرنامے نقلی ہیں، اور ہمیشہ واضح۔</strong> نقلی ڈیٹا کا بینر، ہر اسکرین پر نشان، اور ہر الرٹ پر "
     + "نقلی کا ٹیگ۔ نقلی الرٹس ٹیلیگرام پر نہیں بھیجے جاتے جب تک ہم اسے آن نہ کریں۔",
+  factAi: "<strong>AI کہاں ہے۔</strong> ایک لارج لینگویج ماڈل ‏(gpt-oss-20b، Groq) ہر گروہ کے لیے مشورہ لکھتا ہے "
+    + "اور SmogShield سے پوچھے گئے سوالوں کا جواب انگریزی یا اردو میں دیتا ہے۔ اسے صرف موجودہ ریڈنگ، پیش گوئی، NCAP زمرہ "
+    + "اور ہمارا جانچا ہوا مشورہ دکھایا جاتا ہے، اور غلط زمرہ ناموں، غلط شکل یا ناکامی والا جواب اصولوں پر مبنی مشورے سے "
+    + "بدل دیا جاتا ہے۔ پیش گوئی CAMS ماحولیاتی ماڈل سے آتی ہے۔",
   factMedical: "<strong>عمومی رہنمائی، طبی مشورہ نہیں۔</strong> محتاط مشورہ، بغیر طبی دعووں، خوراک یا علاج کے۔",
   factFallback: "<strong>نقلی ڈیٹا پر متبادل۔</strong> اگر لائیو ذریعہ ناکام ہو یا 10 سیکنڈ سے زیادہ لے، تو مانیٹر واضح طور پر "
     + "نشان زدہ نقلی ڈیٹا پر منتقل ہو جاتا ہے، اور اگر وہ فائل بھی نہ ہو تو اندرونی ریڈنگ پر۔ پائپ لائن کبھی نہیں رکتی۔",
