@@ -118,6 +118,18 @@
       </section>
     </div>
 
+    <section class="cities" aria-labelledby="cities-title">
+      <div class="panel__head">
+        <h2 id="cities-title" data-i18n>Air across Pakistan</h2>
+        <p class="cities__note" data-i18n>Choose a city to see it in detail.</p>
+      </div>
+      <p id="cities-empty" class="empty" data-i18n-init>Loading all cities…</p>
+      <div class="cities__body">
+        <div id="city-map" class="city-map" role="group" aria-labelledby="cities-title"></div>
+        <ol id="city-list" class="city-list" role="list"></ol>
+      </div>
+    </section>
+
     <div class="panels">
       <section class="panel panel--chart" aria-labelledby="chart-title">
         <div class="panel__head">

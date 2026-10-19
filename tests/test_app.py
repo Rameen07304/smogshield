@@ -64,6 +64,21 @@ class ControlEndpointTest(unittest.TestCase):
         self.assertEqual(question, "Is it safe?")
         self.assertEqual(state["analysis"]["level"], "poor")
 
+    def test_cities_summary_lists_every_city_once(self):
+        os.environ["USE_MOCK"] = "true"  # no network
+        result = app.cities_summary()
+        self.assertEqual([c["city"] for c in result["cities"]], list(app.monitor.CITIES))
+        for c in result["cities"]:
+            self.assertIn(c["level"], app.analysis.HAZARDOUS_LEVELS | {"good", "satisfactory", "moderate"})
+            self.assertEqual(c["source"], "mock")
+
+    def test_forced_scenario_only_changes_the_monitored_city(self):
+        app.set_city("Quetta")
+        os.environ["MOCK_SCENARIO"] = "severe"
+        levels = {c["city"]: c["level"] for c in app.cities_summary()["cities"]}
+        self.assertEqual(levels["Quetta"], "severe")
+        self.assertEqual(levels["Karachi"], app.monitor.city_default_scenario("Karachi"))  # its own default, not severe
+
     def test_unknown_city_is_404_and_changes_nothing(self):
         app.set_city("Multan")
         with self.assertRaises(app.HTTPException) as caught:

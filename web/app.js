@@ -560,6 +560,123 @@ function showOffline(error) {
   if (!feedLoaded) $("feed-empty").textContent = t("Alerts appear once the server responds.");
 }
 
+// ---------- all cities: map to scale + ranked list (clicking either switches the dashboard) ----------
+
+// Extent of the 15 cities with a margin (degrees). No borders are drawn: positions are to scale, nothing more.
+const MAP = { lonMin: 66.2, lonMax: 75.4, latMin: 24.2, latMax: 34.9 };
+const CITIES_MS = 60000;  // live readings are cached for 10 min, so once a minute is plenty
+const DOT = 34;           // dot diameter in px; dots closer than this are nudged apart
+let lastCities = null;
+
+function renderCities(data) {
+  lastCities = data;
+  $("cities-empty").hidden = true;
+  const map = $("city-map");
+  const width = map.clientWidth, height = map.clientHeight;
+  if (!width) return;
+
+  // Project to pixels, then nudge overlapping dots apart (Islamabad and Rawalpindi are 11 km apart)
+  const pos = data.cities.map((c) => ({
+    ...c,
+    x: ((c.lon - MAP.lonMin) / (MAP.lonMax - MAP.lonMin)) * width,
+    y: ((MAP.latMax - c.lat) / (MAP.latMax - MAP.latMin)) * height,
+  }));
+  for (let round = 0; round < 40; round++) {
+    for (const a of pos) {
+      for (const b of pos) {
+        if (a === b) continue;
+        const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+        if (d < DOT + 2) {
+          const push = (DOT + 2 - d) / 2;
+          a.x -= (dx / d) * push; a.y -= (dy / d) * push;
+          b.x += (dx / d) * push; b.y += (dy / d) * push;
+        }
+      }
+    }
+  }
+
+  // A faint graticule every 2 degrees, labelled at the edge
+  const grid = svg("svg", { class: "city-map__grid", width, height, "aria-hidden": "true" });
+  for (let lat = 26; lat <= 34; lat += 2) {
+    const y = ((MAP.latMax - lat) / (MAP.latMax - MAP.latMin)) * height;
+    grid.append(svg("line", { x1: 0, x2: width, y1: y, y2: y }), svg("text", { x: 4, y: y - 4 }, `${lat}°N`));
+  }
+  for (let lon = 68; lon <= 74; lon += 2) {
+    const x = ((lon - MAP.lonMin) / (MAP.lonMax - MAP.lonMin)) * width;
+    grid.append(svg("line", { x1: x, x2: x, y1: 0, y2: height }), svg("text", { x: x + 4, y: height - 6 }, `${lon}°E`));
+  }
+
+  const dots = pos.map((c) => {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "city-dot";
+    dot.dataset.level = c.level;
+    dot.style.left = `${c.x}px`;
+    dot.style.top = `${c.y}px`;
+    dot.textContent = c.aqi ?? "–";
+    dot.title = `${cityName(c.city)}: ${levelLabel(c.level)}`;
+    dot.setAttribute("aria-label", `${cityName(c.city)}, ${levelLabel(c.level)}, ${t("AQI")} ${c.aqi}`);
+    dot.setAttribute("aria-pressed", String(c.city === data.current));
+    dot.addEventListener("click", () => chooseCity(c.city));
+    // The name only where it has room (crowded Punjab dots rely on the list and the tooltip)
+    const crowded = pos.some((o) => o !== c && Math.abs(o.x - c.x) < 90 && Math.abs(o.y - c.y) < DOT);
+    if (!crowded || c.city === data.current) {
+      const name = document.createElement("span");
+      // crowded: beside the dot, not below it (and on the left near the right edge)
+      name.className = crowded ? `city-dot__name city-dot__name--${c.x > width * 0.7 ? "left" : "side"}` : "city-dot__name";
+      name.textContent = cityName(c.city);
+      dot.append(name);
+    }
+    return dot;
+  });
+  map.replaceChildren(grid, ...dots);
+
+  // Ranked list: worst air first
+  $("city-list").replaceChildren(...[...data.cities].sort((a, b) => (b.aqi ?? -1) - (a.aqi ?? -1)).map((c) => {
+    const li = document.createElement("li");
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "city-row";
+    row.setAttribute("aria-pressed", String(c.city === data.current));
+    const name = document.createElement("span");
+    name.className = "city-row__name";
+    name.textContent = cityName(c.city);
+    const tag = document.createElement("span");
+    tag.className = "level-tag";
+    tag.dataset.level = c.level;
+    tag.textContent = levelLabel(c.level);
+    const aqi = document.createElement("span");
+    aqi.className = "city-row__aqi";
+    aqi.textContent = c.aqi ?? "–";
+    row.append(name, tag, aqi);
+    row.addEventListener("click", () => chooseCity(c.city));
+    li.append(row);
+    return li;
+  }));
+}
+
+function chooseCity(city) {
+  if (city === lastCities?.current) return;
+  $("city").value = city;
+  changeControl(`/api/city/${encodeURIComponent(city)}`, t("Switching to {city}…", { city: cityName(city) }),
+                t("Now showing {city}.", { city: cityName(city) }));
+}
+
+let citiesTimer = null;
+async function pollCities() {
+  clearTimeout(citiesTimer);
+  try {
+    renderCities(await getJSON("/api/cities"));
+  } catch (error) {
+    console.error(error);
+    if (!lastCities) $("cities-empty").textContent = t("The map appears once the server responds.");
+  } finally {
+    citiesTimer = setTimeout(pollCities, CITIES_MS);
+  }
+}
+
+new ResizeObserver(() => { if (lastCities) renderCities(lastCities); }).observe($("city-map"));
+
 // ---------- demo controls (city, scenario, emergency button) ----------
 
 let controlsLoaded = false;
@@ -607,6 +724,7 @@ async function changeControl(url, busyText, doneText) {
     await getJSON(url, { method: "POST" });
     setControlStatus(doneText);
     poll();
+    pollCities();  // the map follows the city and scenario
   } catch (error) {
     console.error(error);
     setControlStatus(t("Couldn't change that setting. Is the server running?"), "error");
@@ -699,6 +817,7 @@ async function poll() {
 // Switching language re-renders the last data at once (no reload, no new pipeline run)
 document.addEventListener("languagechange", () => {
   if (lastGood) render(lastGood);
+  if (lastCities) renderCities(lastCities);
   if (lastFeed) {  // rebuild the items in the new language, without "new alert" animation or announcement
     $("feed").replaceChildren();
     feedItems.clear();
@@ -713,3 +832,4 @@ loadControls().catch((error) => {
   setControlStatus(t("Demo controls unavailable until the server responds."), "error");
 });
 poll();
+pollCities();

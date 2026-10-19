@@ -132,6 +132,12 @@ def mock_scenarios() -> list[str]:
     return list(_load_mock_data()["scenarios"])
 
 
+def city_default_scenario(city: str) -> str:
+    """The mock scenario a city shows by default (its own line in city_defaults)."""
+    data = _load_mock_data()
+    return data["city_defaults"].get(_canonical_city(city), data["default_scenario"])
+
+
 def mock_readings(city: str = DEFAULT_CITY, scenario: str | None = None, window: int = WINDOW) -> list[Reading]:
     """The last `window` mock readings for a scenario, oldest first, sliding forward with the clock."""
     data = _load_mock_data()

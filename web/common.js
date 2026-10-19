@@ -115,6 +115,9 @@ const UR = {
     "{n} گھنٹہ وار ریڈنگز میں PM2.5 {first} سے {last} µg/m³ ہوا: {trend}",
   "with a sudden spike in the latest hour": "تازہ ترین گھنٹے میں اچانک اضافے کے ساتھ",
   "Spike · {v}": "اچانک اضافہ · {v}", "The chart appears once the server responds.": "سرور کے جواب دینے پر چارٹ ظاہر ہوگا۔",
+  // all cities
+  "Air across Pakistan": "پاکستان بھر میں ہوا", "Choose a city to see it in detail.": "تفصیل دیکھنے کے لیے کوئی شہر منتخب کریں۔",
+  "Loading all cities…": "تمام شہر لوڈ ہو رہے ہیں…", "The map appears once the server responds.": "سرور کے جواب دینے پر نقشہ ظاہر ہوگا۔",
   // forecast
   "Next 24 hours": "اگلے 24 گھنٹے", "Loading the forecast…": "پیش گوئی لوڈ ہو رہی ہے…",
   "No forecast available right now.": "اس وقت پیش گوئی دستیاب نہیں۔", "Best time": "بہترین وقت",
