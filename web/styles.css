@@ -133,6 +133,7 @@ a:hover { text-decoration-thickness: 2px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 a.btn { text-decoration: none; }
 .advice__actions { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+.hero__actions { margin-block: var(--s3) var(--s4); }
 .btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-ink); }
 .btn--primary:hover:not(:disabled) { background: var(--accent-text); border-color: var(--accent-text); }
 .btn--danger { color: var(--danger); border-color: var(--danger-line); }

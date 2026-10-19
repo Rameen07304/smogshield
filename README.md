@@ -185,12 +185,13 @@ The code is in [`agents/analysis.py`](agents/analysis.py).
 | `GET /` | The live dashboard (Screen 1) |
 | `GET /how` | How it works (Screen 2): the agent pipeline, a live example, data honesty and safeguards |
 | `GET /api/status` | Runs the whole pipeline once and returns `readings`, `forecast`, `analysis`, `advisory`, `alerts` (new alerts from this run). The dashboard polls it every 5 s. |
-| `POST /api/ask` | "Ask SmogShield": body `{"question": "..."}` (1–300 characters, English or Urdu). Runs the pipeline once and asks Groq to answer only from the current reading, forecast, NCAP category and vetted advice. Returns `{"answer", "source"}`; `source` is `ai`, or `off` / `busy` / `down` / `fallback` with a calm message. Needs `LLM_ADVISORY_ENABLED=true` and a Groq key. |
+| `POST /api/ask` | "Ask SmogShield": body `{"question": "..."}` (1–300 characters, English or Urdu). Runs the pipeline once and asks Groq to answer only from the current reading, forecast, NCAP category and vetted advice. Returns `{"answer", "source", "model", "based_on"}`; `source` is `ai`, or `off` / `busy` / `down` / `fallback` with a calm message. Needs `LLM_ADVISORY_ENABLED=true` and a Groq key. |
 | `GET /api/alerts?limit=20` | The alert feed, newest first |
 | `GET /api/scenario` | The forced mock scenario (`live` = none) and the list of options |
 | `POST /api/scenario/{name}` | Demo control: force a scenario, or `live` to go back. Also clears the alert memory so the new scenario alerts right away. Lasts until the server restarts. |
 | `GET /api/city` | The monitored city and the list of known cities |
 | `POST /api/city/{name}` | Switch the monitored city (any case; unknown names give 404). Lasts until the server restarts. |
+| `GET /api/cities` | Every city for the map: latest `aqi`, `level`, `source`, and `past_days` (the last 7 full days from each day's 24-hour average PM2.5, always real data; `null` when it can't be fetched or `USE_MOCK=true`) |
 | `GET /static/...` | Dashboard files from `web/` |
 
 Open the dashboard in Urdu with `http://localhost:8000/?lang=ur` (the language toggle is remembered per browser).

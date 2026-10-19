@@ -401,9 +401,17 @@ $("read-aloud").addEventListener("click", () => {
   const s = lastGood || {};
   const urduVoice = speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith("ur"));
   const useUrdu = LANG === "ur" && urduVoice;
+  // The plain answers first, then the advice for everyone. Without an Urdu voice it reads the English
+  // version, since an English voice can't pronounce Urdu script.
+  const say = useUrdu ? t : (text) => text;
   const adv = useUrdu ? adviceInLanguage(s.advisory) : (s.advisory || {});
-  const text = [adv.headline, ...(adv.audiences?.general || []), useUrdu ? "" : "Children and schools.",
-    ...(adv.audiences?.children || [])].filter(Boolean).join(" ");
+  const level = levelOf(s.analysis || {});
+  const school = s.forecast?.school_day;
+  const text = [
+    say("Can I go outside?"), say(OUTSIDE[level] ?? OUTSIDE.unknown),
+    school?.peak_level in SCHOOL_ADVICE ? `${say("Schools tomorrow?")} ${say(SCHOOL_ADVICE[school.peak_level])}` : "",
+    adv.headline, ...(adv.audiences?.general || []),
+  ].filter(Boolean).join(" ");
   const speech = new SpeechSynthesisUtterance(text);
   speech.lang = useUrdu ? urduVoice.lang : "en-US";
   if (useUrdu) speech.voice = urduVoice;
