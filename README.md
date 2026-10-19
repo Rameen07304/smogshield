@@ -39,7 +39,7 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - **Share on WhatsApp:** one tap sends today's advice (headline, the general public, children and schools) to a family or school group, in the site's language. Simulated data is marked in the message.
 - **Read aloud:** the browser's built-in speech reads the plain answers and today's advice, for people who find reading hard. It uses an Urdu voice when the device has one, and otherwise reads the English advice and says so.
 - **Last 7 days for every city:** seven small squares beside each city, coloured by each day's 24-hour average PM2.5 (the basis NCAP categories are defined on). Always real data, even during a demo scenario.
-- **Alert feed and history**, with optional Telegram delivery.
+- **Active alerts and history:** the dashboard shows only what needs attention now for the city on screen (Poor or worse now, Poor or worse forecast within 6 hours, or a sudden spike); the History page keeps every alert. Warning and critical alerts can also go to Telegram.
 - **Smog guides (blog):** six short articles in English and Urdu: precautions for everyone (with what to do at each NCAP level), children and schools, older people, asthma and heart and lung conditions, what to avoid so you don't add to the smog, and how to improve the air at home and outside.
 - **The whole site in English or اردو:** right-to-left layout and the Nastaliq font.
 - **Demo scenarios** (always labelled SIMULATED) to show a smog emergency on stage.
@@ -61,7 +61,7 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - **Data:** [Open-Meteo](https://open-meteo.com) air-quality API (CAMS model data, no key needed).
 - **AI:** [Groq](https://groq.com) API running `openai/gpt-oss-20b` (configurable).
 - **Alerts:** dashboard feed, plus Telegram Bot API (optional).
-- **Tests:** Python `unittest` (246 tests, no network needed).
+- **Tests:** Python `unittest` (248 tests, no network needed).
 
 ## AI methodology
 
@@ -113,7 +113,7 @@ Where each kind of intelligence is used:
 
 ## AI tools used in development
 
-The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (246 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
+The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (248 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
 
 ## Quick start
 
@@ -251,9 +251,11 @@ The rule-based health guidance is informed by Pakistan's [National Clean Air Pol
 |----------|---------|--------------|
 | `ALERT_COOLDOWN_MINUTES` | `30` | After an alert, how long before the same place can alert again for a spike or after recovering. Getting worse always alerts immediately. |
 | `ALERT_MEMORY_HOURS` | `3` | Alert memory older than this is forgotten, so a level that stays high alerts again. Memory is also cleared at startup whenever `USE_MOCK` or `MOCK_SCENARIO` forces mock data. |
-| `TELEGRAM_BOT_TOKEN` | placeholder | Telegram bot token. A **secret**: put it in `.env` only. Leave the placeholder to use only the dashboard feed. |
+| `TELEGRAM_BOT_TOKEN` | placeholder | Telegram bot token. A **secret**: put it in `.env` only. Leave the placeholder to use only the dashboard feed. Only `warning` and `critical` alerts are sent; `info` alerts (Moderate air) stay in the feed. |
 | `TELEGRAM_CHAT_ID` | placeholder | The chat or group the bot posts to. |
 | `ALERT_SIMULATIONS_TO_TELEGRAM` | `false` | Alerts from mock data are marked `[SIMULATION]` and stay in the dashboard feed. `true` also sends them to Telegram (e.g. to test the bot). |
+
+**Active alerts on the dashboard:** the panel shows at most two alerts for the city on screen, from the last 3 hours (the alert memory), in the same live or simulated mode as the data: the newest alert about conditions now, while the air is still Poor or worse or it was a sudden spike, and the newest forecast warning, while the air hasn't reached the forecast level yet. Every alert, including `info` ones and other cities, stays on the History page. Each alert has a `spike` flag (older stored alerts read as `false`).
 
 **Predictive alerts:** when the air is better than Poor now but the forecast reaches Poor or worse within 6 hours, the alert agent sends a `warning` (never `critical`) starting with `[FORECAST]`, with kind `forecast`. It uses the same cooldown, memory expiry, `[SIMULATION]` and Telegram rules as other alerts, does not repeat for the same forecast peak, and stays quiet when a current-conditions alert already covers that level. Alerts stored before `kind` existed read as `current`.
 

@@ -428,7 +428,9 @@ const shortModel = (model) => model.split("/").pop();
 
 // ---------- alert feed ----------
 
-const FEED_LIMIT = 20;
+// The dashboard shows only alerts that need attention now; History has every one
+const FEED_LIMIT = 100;  // everything the alert store keeps, filtered below
+const ACTIVE_HOURS = 3;  // same as the alert agent's memory (ALERT_MEMORY_HOURS): it re-alerts after this
 const SIM_PREFIX = "[SIMULATION] ";
 const SEVERITY = {  // the shape beside each word is drawn in CSS, so colour is never the only cue
   info: { label: "Info" },
@@ -488,7 +490,47 @@ function updateAlertItem(li, a) {
   li.querySelector(".alert-item__meta").textContent = `${localTime(a.created_at)} · ${deliveryText(a)}`;
 }
 
-function renderFeed(feed) {
+const LEVEL_RANK = Object.keys(LEVELS).filter((level) => level !== "unknown");  // good ... severe
+const rankOf = (level) => LEVEL_RANK.indexOf(level);
+
+/** What needs attention now, at most two alerts, newest first. Candidates: the city on screen, the last few
+ *  hours, warning or critical (Poor or worse, now or forecast) or a sudden spike, and the same live or
+ *  simulated data as the dashboard. Of those, the newest one about conditions now, while the air is still
+ *  Poor or worse (or it was a spike), and the newest forecast warning, while it is newer than that and the
+ *  air hasn't already reached the forecast level. Older ones are in History. */
+function activeAlerts(feed) {
+  const latest = lastGood?.readings?.at(-1);
+  if (!latest) return [];
+  const simulatedNow = latest.source !== "live";
+  const since = Date.now() - ACTIVE_HOURS * 3600 * 1000;
+  const candidates = feed.filter((a) => a.location === latest.location
+    && Date.parse(a.created_at) >= since
+    && (a.severity === "warning" || a.severity === "critical" || a.spike === true)
+    && a.message.startsWith(SIM_PREFIX) === simulatedNow);  // the feed is newest first
+
+  const levelNow = rankOf(levelOf(lastGood.analysis));
+  const current = candidates.find((a) => a.kind !== "forecast");
+  const forecast = candidates.find((a) => a.kind === "forecast");
+  const shown = [];
+  if (current && (levelNow >= rankOf("poor") || current.spike === true)) shown.push(current);
+  if (forecast && (!current || forecast.created_at > current.created_at) && levelNow < rankOf(forecast.level)) {
+    shown.push(forecast);
+  }
+  return shown.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+let feedContext = null;  // city and live/simulated the panel was built for
+
+function renderFeed(allAlerts) {
+  const latest = lastGood?.readings?.at(-1);
+  const context = latest ? `${latest.location}|${latest.source}` : null;
+  if (context !== feedContext) {  // another city or data mode: rebuild, without "new alert" animation
+    $("feed").replaceChildren();
+    feedItems.clear();
+    feedLoaded = false;
+    feedContext = context;
+  }
+  const feed = activeAlerts(allAlerts);
   const list = $("feed");
   const keys = feed.map(alertKey);
   // Drop items that are no longer in the feed
@@ -517,7 +559,10 @@ function renderFeed(feed) {
   }
 
   $("feed-empty").hidden = feed.length > 0;
-  $("feed-empty").textContent = t("No alerts yet. They appear here when air quality crosses a threshold or spikes.");
+  $("feed-empty").textContent = latest
+    ? t("No active alerts for {city}. Warnings appear here when the air reaches Poor, is forecast to, or spikes suddenly.",
+        { city: cityName(latest.location) })
+    : t("Alerts appear once the server responds.");
   $("feed-count").hidden = feed.length === 0;
   $("feed-count").textContent = feed.length === 1 ? t("1 alert") : t("{n} alerts", { n: feed.length });
   $("feed-error").hidden = true;

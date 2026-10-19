@@ -18,8 +18,8 @@ When mock data is forced (USE_MOCK / MOCK_SCENARIO), the first run in a new proc
 memory, so a rehearsal never swallows the demo's alert.
 
 Delivery: every alert goes into the feed (the dashboard reads it). If TELEGRAM_BOT_TOKEN and
-TELEGRAM_CHAT_ID are set it is also sent to Telegram, in a background thread so the pipeline
-never waits for it: the feed entry starts as status "queued" and is updated to "sent", or to
+TELEGRAM_CHAT_ID are set, warning and critical alerts are also sent to Telegram (info alerts stay
+in the feed), in a background thread so the pipeline never waits for it: the feed entry starts as status "queued" and is updated to "sent", or to
 "failed: ..." (channel "feed") with a logged warning. A Telegram failure is never raised.
 Alerts based on mock data start with "[SIMULATION]" and are NOT sent to Telegram unless
 ALERT_SIMULATIONS_TO_TELEGRAM=true, so a demo can never look like a real emergency.
@@ -60,6 +60,7 @@ FEED_SIZE = 100                 # keep the newest N alerts in the feed
 DEFAULT_COOLDOWN_MINUTES = 30   # override with ALERT_COOLDOWN_MINUTES
 DEFAULT_MEMORY_HOURS = 3        # override with ALERT_MEMORY_HOURS
 TELEGRAM_TIMEOUT_SECONDS = 3
+EXTERNAL_SEVERITIES = {"warning", "critical"}  # only these go to Telegram; info alerts stay in the feed
 
 # Levels from best to worst; the list index is the severity rank
 LEVEL_ORDER = ["good", "satisfactory", "moderate", "poor", "very_poor", "severe"]
@@ -181,9 +182,13 @@ def deliver(alert: Alert, simulated: bool = False) -> Alert:
     """Queues the alert on the external channel if configured, and returns at once.
 
     The caller writes the returned alert to the feed; the background send updates it later.
-    Simulated (mock-data) alerts stay in the feed unless ALERT_SIMULATIONS_TO_TELEGRAM=true.
+    Only warning and critical alerts go out, so a phone buzzes only when people need to act; info
+    alerts stay in the feed. Simulated (mock-data) alerts stay in the feed unless ALERT_SIMULATIONS_TO_TELEGRAM=true.
     """
     channel = _external_channel()
+    if channel is not None and alert.get("severity") not in EXTERNAL_SEVERITIES:
+        log.info("Info alert kept in the feed only (only warning and critical alerts go to Telegram)")
+        channel = None
     if channel is not None and simulated and not _simulations_allowed_out():
         log.info("Simulated alert kept in the feed only (set ALERT_SIMULATIONS_TO_TELEGRAM=true to send it)")
         channel = None
@@ -271,7 +276,8 @@ def read_feed(limit: int = 50) -> list[Alert]:
     """Newest alerts first, for the dashboard. Alerts stored before `kind` existed read as "current",
     and before `message_ur` existed show their English message (the file itself is never rewritten)."""
     with _lock:
-        return [{**a, "kind": a.get("kind", "current"), "message_ur": a.get("message_ur", a["message"])}
+        return [{**a, "kind": a.get("kind", "current"), "message_ur": a.get("message_ur", a["message"]),
+                 "spike": a.get("spike", False)}
                 for a in _load()["feed"][: max(limit, 0)]]
 
 
@@ -315,6 +321,7 @@ def _process(state: SmogState) -> list[Alert]:
                 "location": location,
                 "level": level,
                 "kind": "current",
+                "spike": analysis.get("is_spike") is True,
                 "channel": "feed",
                 "status": "sent",
             }, simulated))
@@ -338,6 +345,7 @@ def _process(state: SmogState) -> list[Alert]:
                 "location": location,
                 "level": six["peak_level"],
                 "kind": "forecast",
+                "spike": False,
                 "channel": "feed",
                 "status": "sent",
             }, f_simulated))

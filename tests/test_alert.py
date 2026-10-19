@@ -270,6 +270,17 @@ class DeliveryTest(AlertTestCase):
         with mock.patch.object(alert.requests, "post", return_value=mock.Mock(ok=False, status_code=401)):
             self.assertEqual(self.raise_alert()["status"], "failed: telegram: HTTP 401")
 
+    def test_info_alerts_stay_off_telegram(self):
+        # Moderate air raises an info alert: it goes in the feed, but nobody's phone buzzes for it
+        os.environ.update(TELEGRAM_BOT_TOKEN=FAKE_TOKEN, TELEGRAM_CHAT_ID="42")
+        state = state_for([50] * 6)
+        self.assertEqual(state["analysis"]["level"], "moderate")
+        with mock.patch.object(alert.requests, "post", side_effect=AssertionError("info sent to Telegram")):
+            raised = alert.run(state)["alerts"][0]
+        self.assertEqual(raised["severity"], "info")
+        self.assertEqual((raised["channel"], raised["status"]), ("feed", "sent"))
+        self.assertEqual(alert.read_feed()[0]["channel"], "feed")
+
 
 class SimulationTest(AlertTestCase):
     def setUp(self):
@@ -530,12 +541,19 @@ class KindCompatibilityTest(AlertTestCase):
         alert.STORE_FILE.write_text(json.dumps({"memory": {}, "feed": [old]}), encoding="utf-8")
         before = alert.STORE_FILE.read_bytes()
         feed = alert.read_feed()
-        self.assertEqual(feed[0]["kind"], "current")
+        self.assertEqual((feed[0]["kind"], feed[0]["spike"]), ("current", False))
         self.assertEqual(set(feed[0]), set(Alert.__annotations__))
         self.assertEqual(alert.STORE_FILE.read_bytes(), before)              # nothing written back
 
     def test_new_current_alerts_have_kind_current(self):
         self.assertEqual(alert.run(state_for([300] * 6))["alerts"][0]["kind"], "current")
+
+    def test_spike_alerts_are_marked(self):
+        state = state_for([8, 8, 8, 8, 8, 40])
+        self.assertTrue(state["analysis"]["is_spike"])
+        self.assertTrue(alert.run(state)["alerts"][0]["spike"])
+        alert.reset_memory()
+        self.assertFalse(alert.run(state_for([300] * 6))["alerts"][0]["spike"])
 
 
 if __name__ == "__main__":

@@ -168,6 +168,9 @@ const UR = {
   "Simulated forecast": "نقلی پیش گوئی", "The forecast appears once the server responds.": "سرور کے جواب دینے پر پیش گوئی ظاہر ہوگی۔",
   // alert feed
   "Alerts": "الرٹس", "Loading alerts…": "الرٹس لوڈ ہو رہے ہیں…", "All alerts in History": "تمام الرٹس ہسٹری میں",
+  "Active alerts": "فعال الرٹس",
+  "No active alerts for {city}. Warnings appear here when the air reaches Poor, is forecast to, or spikes suddenly.":
+    "{city} کے لیے کوئی فعال الرٹ نہیں۔ جب ہوا خراب ہو جائے، اس کی پیش گوئی ہو، یا اچانک بگڑے تو انتباہ یہاں ظاہر ہوں گے۔",
   "Couldn't refresh alerts. Showing the last ones received.": "الرٹس تازہ نہیں ہو سکے۔ آخری موصول شدہ دکھائے جا رہے ہیں۔",
   "No alerts yet. They appear here when air quality crosses a threshold or spikes.":
     "ابھی کوئی الرٹ نہیں۔ جب ہوا کا معیار حد سے بڑھے یا اچانک بگڑے تو یہاں ظاہر ہوں گے۔",

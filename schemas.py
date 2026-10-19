@@ -136,6 +136,7 @@ class Alert(TypedDict):
     level: Level            # analysis level that triggered the alert (forecast alerts: the forecast peak level)
     kind: Literal["current", "forecast"]  # current conditions, or a predictive alert from the forecast;
                                           # stored alerts from before this field read as "current"
+    spike: bool             # raised (also) for a sudden spike; stored alerts from before this field read as False
     channel: Literal["feed", "telegram"]  # where it was delivered (the feed always gets a copy)
     status: str             # "sent"; "queued" while Telegram sends in the background;
                             # "failed: <why>" if Telegram failed and only the feed has it
