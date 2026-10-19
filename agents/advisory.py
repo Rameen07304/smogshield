@@ -239,7 +239,133 @@ URDU: dict[str, dict] = {
         ],
     },
 }
-FALLBACK_HEADLINE_UR = "ہوا کے معیار کا ڈیٹا اس وقت دستیاب نہیں۔ احتیاط کریں۔"
+
+# Urdu advice per audience, line for line with GUIDANCE. Machine-drafted: ask a native speaker to review.
+URDU_AUDIENCES: dict[str, dict[str, list[str]]] = {
+    "good": {
+        "general": ["معمول کی بیرونی سرگرمیاں جاری رکھیں۔"],
+        "children": ["بچوں کا باہر کھیلنا اور اسکول کے کھیل معمول کے مطابق جاری رہ سکتے ہیں۔"],
+        "elderly": ["معمول کی بیرونی سرگرمیاں ٹھیک ہیں۔"],
+        "respiratory_heart": ["کسی خاص احتیاط کی ضرورت نہیں۔ اپنے معمول کے علاج کے منصوبے پر عمل کریں۔"],
+        "outdoor_workers": ["باہر کا معمول کا کام ٹھیک ہے۔ باقاعدہ وقفے لیں اور پانی پیتے رہیں۔"],
+    },
+    "satisfactory": {
+        "general": ["زیادہ تر لوگوں کے لیے بیرونی سرگرمیاں ٹھیک ہیں۔"],
+        "children": [
+            "بچوں کا باہر کھیلنا ٹھیک ہے۔",
+            "آلودگی سے زیادہ حساس بچوں میں کھانسی یا سانس پھولنے پر نظر رکھیں۔",
+        ],
+        "elderly": ["بیرونی سرگرمیاں ٹھیک ہیں۔ اگر آپ زیادہ حساس ہیں تو لمبی یا تھکا دینے والی سیر مختصر رکھیں۔"],
+        "respiratory_heart": [
+            "اگر آپ زیادہ حساس ہیں تو بیرونی سرگرمیاں مختصر اور ہلکی رکھیں۔",
+            "کھانسی، سانس میں سیٹی یا سانس پھولنے پر نظر رکھیں۔",
+        ],
+        "outdoor_workers": [
+            "زیادہ تر بیرونی کام جاری رہ سکتا ہے، لیکن باقاعدہ وقفے لیں اور علامات پر نظر رکھیں۔",
+            "اگر کام غیر معمولی طور پر مشکل لگے تو مشقت کم کریں اور صاف ہوا والی جگہ چلے جائیں۔",
+        ],
+    },
+    "moderate": {
+        "general": [
+            "زیادہ تر لوگ بیرونی سرگرمیاں جاری رکھ سکتے ہیں، لیکن طویل یا سخت مشقت کم کریں۔",
+            "کھانسی، سانس لینے میں دشواری یا غیر معمولی تھکن محسوس ہو تو صاف ہوا میں وقفہ لیں۔",
+        ],
+        "children": [
+            "طویل یا سخت بیرونی سرگرمی کم کریں اور زیادہ وقفے دیں۔",
+            "اسکول: سخت پی ای اور کھیل مختصر کریں یا انہیں اندر منتقل کریں۔",
+        ],
+        "elderly": [
+            "طویل یا سخت بیرونی سرگرمی کم کریں۔",
+            "آلودگی کے عروج کے اوقات میں کھڑکیاں بند رکھیں۔",
+        ],
+        "respiratory_heart": [
+            "طویل یا سخت بیرونی سرگرمی کم کریں۔",
+            "اپنے دمہ یا دل کے ایکشن پلان پر عمل کریں اور تجویز کردہ دوائیں پاس رکھیں۔",
+            "آلودگی سانس کی علامات بڑھا سکتی ہے؛ کھانسی، سانس میں سیٹی، سینے میں جکڑن یا غیر معمولی تھکن پر نظر رکھیں۔",
+        ],
+        "outdoor_workers": [
+            "طویل یا بھاری بیرونی کام کم کریں اور صاف ہوا والی جگہ پر بار بار وقفے لیں۔",
+            "گرد والے یا زیادہ مشقت والے کاموں کے دوران ٹھیک سے فٹ N95/KN95 ماسک پہنیں۔",
+        ],
+    },
+    "poor": {
+        "general": [
+            "طویل یا سخت بیرونی سرگرمی کم کریں اور زیادہ وقفے لیں۔",
+            "باریک ذرات کی آلودگی سانس پر اثر ڈال سکتی ہے؛ باہر N95/KN95 ماسک پہنیں۔",
+            "کھڑکیاں بند رکھیں اور اگر ہو سکے تو گھر میں ایئر پیوریفائر چلائیں۔",
+        ],
+        "children": [
+            "طویل یا سخت بیرونی سرگرمی سے گریز کریں۔",
+            "اسکول: پی ای، کھیل اور اسمبلی اندر منتقل کریں۔",
+        ],
+        "elderly": [
+            "طویل یا سخت بیرونی سرگرمی سے گریز کریں اور باہر کم وقت گزاریں۔",
+            "بزرگوں پر سانس اور دل کے اثرات زیادہ ہو سکتے ہیں؛ باہر N95/KN95 ماسک پہنیں۔",
+        ],
+        "respiratory_heart": [
+            "طویل یا سخت بیرونی سرگرمی سے گریز کریں اور جہاں ممکن ہو گھر کے اندر رہیں۔",
+            "آلودگی سانس اور دل کی بیماریوں کو بگاڑ سکتی ہے؛ اپنے ایکشن پلان پر عمل کریں اور تجویز کردہ دوائیں پاس رکھیں۔",
+            "علامات بگڑیں تو ڈاکٹر سے رابطہ کریں۔",
+        ],
+        "outdoor_workers": [
+            "جہاں ممکن ہو طویل یا بھاری بیرونی کام سے گریز کریں اور بار بار اندر وقفے لیں۔",
+            "ٹھیک سے فٹ N95/KN95 ماسک پہنیں اور مشقت کم کریں۔",
+            "سانس لینے میں دشواری، سینے میں درد یا شدید علامات ہوں تو کام روکیں اور طبی مدد لیں۔",
+        ],
+    },
+    "very_poor": {
+        "general": [
+            "طویل یا سخت بیرونی سرگرمی سے گریز کریں اور سرگرمیاں گھر کے اندر منتقل کریں۔",
+            "باہر جاتے وقت ہمیشہ N95/KN95 ماسک پہنیں۔",
+            "کھڑکیاں اور دروازے بند رکھیں اور اگر ہو سکے تو ایئر پیوریفائر چلائیں۔",
+        ],
+        "children": [
+            "بچوں کو گھر کے اندر رکھیں اور باہر کھیلنا منسوخ کریں۔",
+            "بچوں کے نشوونما پاتے پھیپھڑے آلودہ ہوا سے متاثر ہو سکتے ہیں؛ اسکول سرگرمیاں کھڑکیاں بند کر کے اندر کریں۔",
+        ],
+        "elderly": [
+            "جتنا ممکن ہو گھر کے اندر رہیں۔",
+            "باہر جانا ضروری ہو تو N95/KN95 ماسک پہنیں۔",
+        ],
+        "respiratory_heart": [
+            "گھر کے اندر رہیں اور ہر قسم کی بیرونی جسمانی سرگرمی سے گریز کریں۔",
+            "بہت زیادہ آلودگی سانس اور دل کی بیماریوں کو بگاڑ سکتی ہے؛ اپنے ایکشن پلان پر عمل کریں اور تجویز کردہ دوائیں پاس رکھیں۔",
+            "علامات بگڑیں تو طبی مدد لیں۔",
+        ],
+        "outdoor_workers": [
+            "غیر ضروری بیرونی کام ملتوی کریں اور جہاں ممکن ہو کام اندر منتقل کریں۔",
+            "اگر کام جاری رکھنا ضروری ہو تو صاف ہوا میں بار بار وقفے لیں اور ٹھیک سے فٹ N95/KN95 ماسک پہنیں۔",
+            "سانس لینے میں دشواری، سینے میں درد یا شدید علامات ہوں تو کام روکیں اور طبی مدد لیں۔",
+        ],
+    },
+    "severe": {
+        "general": [
+            "کھڑکیاں اور دروازے بند کر کے گھر کے اندر رہیں۔",
+            "تمام بیرونی سرگرمیوں سے گریز کریں۔",
+            "اگر باہر جانا ناگزیر ہو تو N95/KN95 ماسک پہنیں۔",
+            "اگر ہو سکے تو گھر میں ایئر پیوریفائر چلائیں۔",
+        ],
+        "children": [
+            "بچوں کو کھڑکیاں بند کر کے گھر کے اندر رکھیں۔",
+            "بچوں کے نشوونما پاتے پھیپھڑے خاص طور پر حساس ہیں؛ اسکول بیرونی سرگرمیاں منسوخ کریں اور بندش کے سرکاری اعلانات پر عمل کریں۔",
+        ],
+        "elderly": [
+            "کھڑکیاں اور دروازے بند کر کے گھر کے اندر رہیں۔",
+            "بزرگوں کو سانس اور دل کے زیادہ خطرات ہو سکتے ہیں؛ بزرگ رشتہ داروں اور پڑوسیوں کی خبر لیتے رہیں۔",
+        ],
+        "respiratory_heart": [
+            "کھڑکیاں اور دروازے بند کر کے گھر کے اندر رہیں اور ہر قسم کی مشقت سے گریز کریں۔",
+            "شدید آلودگی سانس اور دل کی بیماریوں کو بگاڑ سکتی ہے؛ اپنے ایکشن پلان پر عمل کریں اور تجویز کردہ دوائیں پاس رکھیں۔",
+            "سانس لینے میں دشواری یا سینے میں درد ہو تو فوراً طبی مدد لیں۔",
+        ],
+        "outdoor_workers": [
+            "بیرونی کام روکیں یا ملتوی کریں اور صاف ہوا والی اندرونی جگہ پر رہیں۔",
+            "اگر کسی ہنگامی صورت میں باہر جانا پڑے تو ٹھیک سے فٹ N95/KN95 ماسک پہنیں اور کام جتنا ہو سکے مختصر رکھیں۔",
+            "سانس لینے میں دشواری یا سینے میں درد ہو تو فوراً طبی مدد لیں۔",
+        ],
+    },
+}
+FALLBACK_HEADLINE_UR ="ہوا کے معیار کا ڈیٹا اس وقت دستیاب نہیں۔ احتیاط کریں۔"
 
 # Time context from trend and spike: (English, Urdu)
 SPIKE_NOTE = (
@@ -345,6 +471,9 @@ def build_advisory(analysis: dict | None, forecast: dict | None = None) -> Advis
             "headline": urdu["headline"] if known else FALLBACK_HEADLINE_UR,
             "actions": lead_ur + urdu["actions"] + [DISCLAIMER_UR],
             "forecast_note": f_note_ur,
+            "time_note": note_ur,
+            "disclaimer": DISCLAIMER_UR,
+            "audiences": {a: list(lines) for a, lines in URDU_AUDIENCES[level].items()},
         },
     }
     llm_result = _llm_advisory(analysis, result) if known else None
@@ -458,10 +587,15 @@ def _valid_llm_advisory(candidate: object, audiences: dict) -> bool:
 
 ASK_MAX_CHARS = 300
 ASK_TIMEOUT_SECONDS = 15
-ASK_OFF = "The assistant is switched off. The advice above still applies."
-ASK_BUSY = "The assistant is busy right now. Please try again in a minute; the advice above still applies."
-ASK_DOWN = "The assistant can't be reached right now. The advice above still applies."
-ASK_UNSURE = "Sorry, I couldn't give a reliable answer. Please follow the advice above."
+# Canned replies as (English, Urdu), picked by the question's script
+ASK_OFF = ("The assistant is switched off. The advice above still applies.",
+           "اسسٹنٹ بند ہے۔ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
+ASK_BUSY = ("The assistant is busy right now. Please try again in a minute; the advice above still applies.",
+            "اسسٹنٹ اس وقت مصروف ہے۔ ایک منٹ بعد دوبارہ کوشش کریں؛ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
+ASK_DOWN = ("The assistant can't be reached right now. The advice above still applies.",
+            "اسسٹنٹ سے اس وقت رابطہ نہیں ہو سکتا۔ اوپر دیا گیا مشورہ اب بھی لاگو ہے۔")
+ASK_UNSURE = ("Sorry, I couldn't give a reliable answer. Please follow the advice above.",
+              "معذرت، میں قابلِ اعتماد جواب نہیں دے سکا۔ براہ کرم اوپر دیے گئے مشورے پر عمل کریں۔")
 URDU_SCRIPT = re.compile("[؀-ۿ]")  # Arabic-script block U+0600-U+06FF: the question is in Urdu
 SIMULATED_NOTE = ("Simulated demo data: ", "نقلی ڈیمو ڈیٹا: ")  # added by code, never left to the model
 ASK_RULES = (
@@ -479,9 +613,10 @@ ASK_RULES = (
 
 def answer_question(question: str, state: dict) -> dict:
     """Answer one visitor question from the pipeline state. Never raises; {"answer": str, "source": ...}."""
+    urdu = bool(URDU_SCRIPT.search(question))
     api_key = _groq_key()
     if not api_key:
-        return {"answer": ASK_OFF, "source": "off"}
+        return {"answer": ASK_OFF[urdu], "source": "off"}
     analysis, advice = state.get("analysis") or {}, state.get("advisory") or {}
     forecast, latest = state.get("forecast") or {}, (state.get("readings") or [{}])[-1]
     level = analysis.get("level")
@@ -503,7 +638,6 @@ def answer_question(question: str, state: dict) -> dict:
         "forecast_note": advice.get("forecast_note"),
         "vetted_advice": advice.get("audiences"),
     }
-    urdu = bool(URDU_SCRIPT.search(question))
     model = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
     body = {
         "model": model,
@@ -519,17 +653,20 @@ def answer_question(question: str, state: dict) -> dict:
         response = requests.post(GROQ_URL, headers={"Authorization": f"Bearer {api_key}"}, json=body,
                                  timeout=ASK_TIMEOUT_SECONDS)
         if response.status_code == 429:
-            return {"answer": ASK_BUSY, "source": "busy"}
+            return {"answer": ASK_BUSY[urdu], "source": "busy"}
         response.raise_for_status()
         answer = (response.json()["choices"][0]["message"]["content"] or "").replace("**", "").strip()
     except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as exc:
         log.warning("Ask SmogShield failed: %s", exc)
-        return {"answer": ASK_DOWN, "source": "down"}
+        return {"answer": ASK_DOWN[urdu], "source": "down"}
     if not answer or FOREIGN_SCALE_WORDS.search(answer):
-        return {"answer": ASK_UNSURE, "source": "fallback"}
+        return {"answer": ASK_UNSURE[urdu], "source": "fallback"}
     if latest.get("source") != "live":
         answer = SIMULATED_NOTE[urdu] + answer
-    return {"answer": answer[:1200], "source": "ai"}
+    # What the answer was grounded in, shown under it so people can see it is not made up
+    based_on = {"city": latest.get("location"), "level": level, "aqi": analysis.get("aqi"),
+                "time": latest.get("timestamp"), "data_source": latest.get("source")}
+    return {"answer": answer[:1200], "source": "ai", "based_on": based_on}
 
 
 def forecast_note(level: str, forecast: dict | None) -> tuple[str, str]:

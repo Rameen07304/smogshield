@@ -21,68 +21,72 @@
       <span>SmogShield</span>
     </div>
     <nav class="site-nav" aria-label="Pages">
-      <a href="/">Live dashboard</a>
-      <a href="/how">How it works</a>
-      <a href="/history" aria-current="page">History</a>
+      <a href="/" data-i18n>Live dashboard</a>
+      <a href="/how" data-i18n>How it works</a>
+      <a href="/history" aria-current="page" data-i18n>History</a>
     </nav>
+    <div class="lang-switch" role="group" aria-label="Language / زبان">
+      <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
+      <button type="button" data-lang="ur" aria-pressed="false" lang="ur">اردو</button>
+    </div>
   </header>
 
   <main id="content" class="page">
     <section class="intro">
-      <h1>Alert history</h1>
-      <p class="intro__pitch">Every alert the Alert agent raised, newest first: when, where, how urgent, and whether it was delivered.</p>
+      <h1 data-i18n>Alert history</h1>
+      <p class="intro__pitch" data-i18n>Every alert the Alert agent raised, newest first: when, where, how urgent, and whether it was delivered.</p>
     </section>
 
     <section class="panel" aria-labelledby="history-title">
       <div class="panel__head">
-        <h2 id="history-title" class="how__h2 how__h2--inline">Alerts</h2>
+        <h2 id="history-title" class="how__h2 how__h2--inline" data-i18n>Alerts</h2>
         <span id="history-count" class="chip" hidden></span>
       </div>
       <p id="history-offline" class="live__offline" role="status" hidden></p>
 
       <form id="filters" class="filters" aria-label="Filter alerts">
         <fieldset class="segmented">
-          <legend>Urgency</legend>
-          <label><input type="radio" name="urgency" value="all" checked><span>All <i data-count="urgency-all"></i></span></label>
-          <label data-sev="info"><input type="radio" name="urgency" value="info"><span>Info <i data-count="urgency-info"></i></span></label>
-          <label data-sev="warning"><input type="radio" name="urgency" value="warning"><span>Warning <i data-count="urgency-warning"></i></span></label>
-          <label data-sev="critical"><input type="radio" name="urgency" value="critical"><span>Critical <i data-count="urgency-critical"></i></span></label>
+          <legend data-i18n>Urgency</legend>
+          <label><input type="radio" name="urgency" value="all" checked><span><b data-i18n>All</b> <i data-count="urgency-all"></i></span></label>
+          <label data-sev="info"><input type="radio" name="urgency" value="info"><span><b data-i18n>Info</b> <i data-count="urgency-info"></i></span></label>
+          <label data-sev="warning"><input type="radio" name="urgency" value="warning"><span><b data-i18n>Warning</b> <i data-count="urgency-warning"></i></span></label>
+          <label data-sev="critical"><input type="radio" name="urgency" value="critical"><span><b data-i18n>Critical</b> <i data-count="urgency-critical"></i></span></label>
         </fieldset>
         <fieldset class="segmented">
-          <legend>Source</legend>
-          <label><input type="radio" name="source" value="all" checked><span>All <i data-count="source-all"></i></span></label>
-          <label><input type="radio" name="source" value="real"><span>Real <i data-count="source-real"></i></span></label>
-          <label><input type="radio" name="source" value="simulated"><span>Simulated <i data-count="source-simulated"></i></span></label>
+          <legend data-i18n>Source</legend>
+          <label><input type="radio" name="source" value="all" checked><span><b data-i18n>All</b> <i data-count="source-all"></i></span></label>
+          <label><input type="radio" name="source" value="real"><span><b data-i18n>Real</b> <i data-count="source-real"></i></span></label>
+          <label><input type="radio" name="source" value="simulated"><span><b data-i18n>Simulated</b> <i data-count="source-simulated"></i></span></label>
         </fieldset>
       </form>
 
-      <p id="history-empty" class="empty">Loading alerts…</p>
+      <p id="history-empty" class="empty" data-i18n-init>Loading alerts…</p>
       <p id="history-nomatch" class="empty" hidden>
-        No alerts match these filters.
-        <button id="clear-filters" class="btn btn--plain" type="button">Show all alerts</button>
+        <span data-i18n>No alerts match these filters.</span>
+        <button id="clear-filters" class="btn btn--plain" type="button" data-i18n>Show all alerts</button>
       </p>
       <div class="table-wrap">
         <table id="history-table" class="history" hidden>
           <caption class="visually-hidden">Past alerts, newest first</caption>
           <thead>
             <tr>
-              <th scope="col">Time</th>
-              <th scope="col">Location</th>
-              <th scope="col">Level</th>
-              <th scope="col">Urgency</th>
-              <th scope="col">Message</th>
-              <th scope="col">Channel</th>
-              <th scope="col">Delivery</th>
+              <th scope="col" data-i18n>Time</th>
+              <th scope="col" data-i18n>Location</th>
+              <th scope="col" data-i18n>Level</th>
+              <th scope="col" data-i18n>Urgency</th>
+              <th scope="col" data-i18n>Message</th>
+              <th scope="col" data-i18n>Channel</th>
+              <th scope="col" data-i18n>Delivery</th>
             </tr>
           </thead>
           <tbody id="history-rows"></tbody>
         </table>
       </div>
-      <p class="history__note">Shows the newest 100 alerts, which is everything the alert store keeps.</p>
+      <p class="history__note" data-i18n>Shows the newest 100 alerts, which is everything the alert store keeps.</p>
     </section>
   </main>
 
-  <footer class="footer">
+  <footer class="footer" data-i18n-html="footer">
     Air quality data: <a href="https://open-meteo.com">Open-Meteo</a>, based on CAMS ENSEMBLE data
     (Copernicus Atmosphere Monitoring Service). Categories: Pakistan National Clean Air Policy 2023.
   </footer>

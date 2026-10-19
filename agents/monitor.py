@@ -74,6 +74,13 @@ CITIES: dict[str, tuple[float, float]] = {
     "Sargodha": (32.08, 72.67),
     "Bahawalpur": (29.40, 71.68),
 }
+# Urdu city names for the Urdu interface and Urdu alert messages
+CITIES_UR: dict[str, str] = {
+    "Lahore": "لاہور", "Karachi": "کراچی", "Islamabad": "اسلام آباد", "Rawalpindi": "راولپنڈی",
+    "Faisalabad": "فیصل آباد", "Multan": "ملتان", "Peshawar": "پشاور", "Quetta": "کوئٹہ",
+    "Gujranwala": "گوجرانوالہ", "Sialkot": "سیالکوٹ", "Sheikhupura": "شیخوپورہ", "Kasur": "قصور",
+    "Sahiwal": "ساہیوال", "Sargodha": "سرگودھا", "Bahawalpur": "بہاولپور",
+}
 
 # (city, lat, lon) -> (time.monotonic() when fetched, window of readings). Only successes are cached.
 _live_cache: dict[tuple[str, float, float], tuple[float, list[Reading]]] = {}
@@ -123,6 +130,12 @@ def city_coordinates(city: str) -> tuple[float, float]:
 def mock_scenarios() -> list[str]:
     """Names of the available mock scenarios (for the dashboard's demo control)."""
     return list(_load_mock_data()["scenarios"])
+
+
+def city_default_scenario(city: str) -> str:
+    """The mock scenario a city shows by default (its own line in city_defaults)."""
+    data = _load_mock_data()
+    return data["city_defaults"].get(_canonical_city(city), data["default_scenario"])
 
 
 def mock_readings(city: str = DEFAULT_CITY, scenario: str | None = None, window: int = WINDOW) -> list[Reading]:

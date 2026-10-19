@@ -1,7 +1,8 @@
 // SmogShield dashboard (Screen 1): polls /api/status and renders each panel.
 // Rules: textContent only (never inject API data as HTML), keep the last good data on screen
 // when a poll fails, and never leave a panel blank.
-// Needs common.js first (POLL_MS, LEVELS, TREND_WORDS, $, getJSON, localTime, levelOf).
+// Needs common.js first (POLL_MS, LEVELS, $, getJSON, localTime, levelOf, and the language helpers t,
+// levelLabel, trendWord, cityName, LANG). Every visible string goes through t() so the site works in Urdu.
 "use strict";
 
 const SCENARIO_LABELS = {
@@ -16,6 +17,7 @@ const SCENARIO_LABELS = {
 };
 
 let lastGood = null;  // the last /api/status that rendered fine
+const STALE_HOURS = 2;  // a live reading older than this gets a "may be delayed" note (the source updates hourly)
 
 // ---------- panels ----------
 
@@ -27,21 +29,21 @@ function renderHero(s) {
 
   $("hero").dataset.level = level;
   $("hero-aqi").textContent = known && a.aqi != null ? a.aqi : "—";
-  $("hero-category").textContent = LEVELS[level].label;
+  $("hero-category").textContent = levelLabel(level);
 
   const place = $("hero-place");
   place.replaceChildren();
   if (latest) {
     const city = document.createElement("strong");
-    city.textContent = latest.location;
-    place.append(city, ` · reading for ${localTime(latest.timestamp)}`);
+    city.textContent = cityName(latest.location);
+    place.append(city, ` · ${t("reading for {time}", { time: localTime(latest.timestamp) })}`);
   } else {
-    place.textContent = "No current readings";
+    place.textContent = t("No current readings");
   }
 
   $("hero-summary").textContent = known
-    ? s.advisory?.headline || LEVELS[level].label
-    : "No valid readings right now. Take precautions until data is back.";
+    ? adviceInLanguage(s.advisory).headline || levelLabel(level)
+    : t("No valid readings right now. Take precautions until data is back.");
 
   const marker = $("scale-marker");
   marker.hidden = !known;
@@ -58,8 +60,15 @@ function renderHero(s) {
       pm10.textContent = `${latest.pm10} µg/m³`;
       facts.append(" · PM10 ", pm10);
     }
-    facts.append(` · ${TREND_WORDS[a.trend] ?? a.trend}`);
-    if (a.dominant_pollutant === "pm10") facts.append(" · AQI driven by PM10");
+    facts.append(` · ${trendWord(a.trend)}`);
+    if (a.dominant_pollutant === "pm10") facts.append(` · ${t("AQI driven by PM10")}`);
+    const age = Math.floor((Date.now() - Date.parse(latest.timestamp)) / 3.6e6);
+    if (latest.source === "live" && age >= STALE_HOURS) {
+      const stale = document.createElement("small");
+      stale.className = "hero__stale";
+      stale.textContent = t("Data may be delayed: the latest reading is {h} hours old.", { h: age });
+      facts.append(stale);
+    }
     const over = targetNote(latest);
     if (over) {
       const note = document.createElement("small");
@@ -68,9 +77,9 @@ function renderHero(s) {
       facts.append(note);
     }
   } else {
-    facts.textContent = a.reason || "Waiting for valid readings.";
+    facts.textContent = (LANG === "en" && a.reason) || t("Waiting for valid readings.");
   }
-  document.title = `${known ? `AQI ${a.aqi} ${LEVELS[level].label}` : "Data unavailable"} | SmogShield`;
+  document.title = `${known ? `${t("AQI")} ${a.aqi} ${levelLabel(level)}` : levelLabel("unknown")} | SmogShield`;
 }
 
 /** "PM2.5 is 2.4× the national 24-hour target" when a pollutant is above its NCAP target, else "" */
@@ -79,10 +88,11 @@ function targetNote(latest) {
   for (const [key, name] of [["pm25", "PM2.5"], ["pm10", "PM10"]]) {
     const value = latest[key], target = NATIONAL_TARGETS[key];
     if (typeof value === "number" && value > target) {
-      parts.push(`${name} is ${(value / target).toFixed(1)}× the national 24-hour target (${target} µg/m³)`);
+      parts.push(t("{name} is {x}× the national 24-hour target ({target} µg/m³)",
+                   { name, x: (value / target).toFixed(1), target }));
     }
   }
-  return parts.length ? `${parts.join("; ")}. Hourly value vs a 24-hour target.` : "";
+  return parts.length ? `${parts.join("; ")}. ${t("Hourly value vs a 24-hour target.")}` : "";
 }
 
 // PM2.5 band tops (µg/m³) for the NCAP categories under US EPA AQI math, drawn as threshold lines on the chart.
@@ -109,13 +119,13 @@ function niceMax(value) {
   return [1, 2, 2.5, 5, 10].map((m) => m * step).find((n) => n >= target);
 }
 
-let lastChart = null;  // what the chart last drew, so it can redraw on resize
+const drawn = new Map();  // svg id -> [points, options] it last drew, so both charts redraw on resize
+const hourLabel = (iso) => new Date(iso).toLocaleTimeString([], { ...PKT, hour: "numeric" });  // "8 AM"
 
 function renderChart(s) {
   const a = s.analysis || {};
   const readings = (s.readings || []).filter((r) => typeof r.pm25 === "number");
   const known = levelOf(a) !== "unknown" && readings.length > 0;
-  lastChart = known ? { readings, analysis: a } : null;
 
   const trendChip = $("trend-chip");
   trendChip.hidden = !known;
@@ -123,39 +133,111 @@ function renderChart(s) {
     const rate = Math.abs(a.trend_per_hour ?? 0);
     trendChip.dataset.trend = a.trend;
     trendChip.textContent = a.trend === "stable"
-      ? "Steady"
-      : `${a.trend === "rising" ? "Rising" : "Falling"} ${rate} µg/m³ per hour`;
+      ? t("Steady")
+      : t(a.trend === "rising" ? "Rising {rate} µg/m³ per hour" : "Falling {rate} µg/m³ per hour", { rate });
   }
   $("spike-chip").hidden = !(known && a.is_spike);
 
   $("chart").toggleAttribute("hidden", !known);  // <svg> has no .hidden property, so set the attribute
   $("chart-empty").hidden = known;
   if (!known) {
-    $("chart-empty").textContent = "No valid readings to chart right now.";
+    drawn.delete("chart");
+    $("chart-empty").textContent = t("No valid readings to chart right now.");
     $("chart-summary").textContent = "";
     return;
   }
-  drawChart(readings, a);
+  // Every value labelled, the latest hour emphasised, a spike flagged on the latest point
+  drawSeries("chart", readings.map((r) => ({ label: hourLabel(r.timestamp), value: r.pm25 })),
+             { emphasis: readings.length - 1, spikeAt: a.is_spike ? readings.length - 1 : -1 });
 
   const first = readings[0].pm25, last = readings.at(-1).pm25;
-  const hours = readings.length > 1 ? ` over ${readings.length} hourly readings` : "";
   $("chart-summary").textContent =
-    `PM2.5 went from ${first} to ${last} µg/m³${hours}: ${TREND_WORDS[a.trend] ?? a.trend}` +
-    (a.is_spike ? ", with a sudden spike in the latest hour." : ".");
+    t("PM2.5 went from {first} to {last} µg/m³ over {n} hourly readings: {trend}",
+      { first, last, n: readings.length, trend: trendWord(a.trend) }) +
+    (a.is_spike ? `, ${t("with a sudden spike in the latest hour")}.` : ".");
 }
 
-/** Draws at the real pixel width, so text stays the same readable size on any screen */
-function drawChart(readings, analysis) {
-  const chart = $("chart");
+/** The next 24 hours from the forecast agent, the best time to go out, and the coming days */
+function renderForecast(s) {
+  const f = s.forecast || {};
+  const hours = (f.hourly || []).filter((p) => typeof p.pm25 === "number");
+  const known = hours.length > 1;
+  $("forecast-chart").toggleAttribute("hidden", !known);
+  $("forecast-empty").hidden = known;
+  $("forecast-source").hidden = !known || f.source === "live";
+  if (!known) {
+    drawn.delete("forecast-chart");
+    $("forecast-empty").textContent = t("No forecast available right now.");
+    $("forecast-summary").textContent = "";
+    $("best-chip").hidden = true;
+    $("outlook").replaceChildren();
+    return;
+  }
+
+  // Best ~2-hour window to go outside, shaded on the chart (end is exclusive)
+  const best = f.best_time;
+  const from = best ? hours.findIndex((p) => Date.parse(p.time) === Date.parse(best.start)) : -1;
+  const to = from >= 0 ? Math.min(from + Math.round((Date.parse(best.end) - Date.parse(best.start)) / 3.6e6) - 1, hours.length - 1) : -1;
+  $("best-chip").hidden = from < 0;
+  if (from >= 0) $("best-chip").textContent = t("Best time outside: {from}–{to}", { from: localTime(best.start), to: localTime(best.end) });
+
+  const values = hours.map((p) => p.pm25);
+  const peak = values.indexOf(Math.max(...values));
+  drawSeries("forecast-chart", hours.map((p) => ({ label: hourLabel(p.time), value: Math.round(p.pm25) })), {
+    emphasis: 0, valuesAt: [0, peak], labelFromStart: true,
+    highlight: from >= 0 ? { from, to, label: t("Best time") } : null,
+  });
+  $("forecast-summary").textContent = t("Peaks at {level} (AQI {aqi}) around {time}. A model estimate: most reliable for the next 6 hours.", {
+    level: levelLabel(hours[peak].level), aqi: hours[peak].aqi, time: localTime(hours[peak].time),
+  });
+
+  // Coming days: the worst hour of each day
+  const dayName = (date) => new Date(`${date}T12:00:00+05:00`).toLocaleDateString(LANG === "ur" ? "ur" : [], { ...PKT, weekday: "long" });
+  $("outlook").replaceChildren(...(f.outlook || []).slice(0, 4).map((day, i) => {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.className = "outlook__day";
+    name.textContent = i === 0 ? t("Today") : dayName(day.date);
+    const tag = document.createElement("span");
+    tag.className = "level-tag";
+    tag.dataset.level = day.peak_level in LEVELS ? day.peak_level : "unknown";
+    tag.textContent = levelLabel(day.peak_level);
+    const aqi = document.createElement("span");
+    aqi.className = "outlook__aqi";
+    aqi.textContent = t("peak AQI {aqi}", { aqi: day.peak_aqi });
+    li.append(name, tag, aqi);
+    return li;
+  }));
+}
+
+/**
+ * One line chart for both the recent readings and the forecast, drawn at the real pixel width so text
+ * stays the same readable size on any screen. points: [{label, value}].
+ * options: emphasis (index drawn larger), spikeAt (index flagged), valuesAt (indexes to label, default all),
+ * labelFromStart (thin hour labels from the first point instead of the last), highlight {from, to, label}.
+ */
+function drawSeries(id, points, options = {}) {
+  drawn.set(id, [points, options]);
+  const { emphasis = -1, spikeAt = -1, valuesAt = null, labelFromStart = false, highlight = null } = options;
+  const chart = $(id);
   const width = Math.max(chart.parentElement.clientWidth, 280);
   const height = Math.round(Math.min(Math.max(width * 0.42, 220), 380));
   const pad = { left: 52, right: 124, top: 34, bottom: 40 };
-  const values = readings.map((r) => r.pm25);
+  const values = points.map((p) => p.value);
   const top = niceMax(Math.max(...values));
   const plotW = width - pad.left - pad.right, plotH = height - pad.top - pad.bottom;
   const x = (i) => pad.left + (values.length < 2 ? plotW / 2 : (i * plotW) / (values.length - 1));
   const y = (v) => pad.top + plotH * (1 - Math.min(v, top) / top);
+  const step = plotW / Math.max(values.length - 1, 1);
   const nodes = [];
+
+  // Highlighted window (best time to go out), behind everything else
+  if (highlight) {
+    const x1 = x(highlight.from) - step / 2, x2 = x(highlight.to) + step / 2;
+    nodes.push(svg("rect", { class: "chart__best", x: Math.max(x1, pad.left), y: pad.top,
+                             width: Math.min(x2, pad.left + plotW) - Math.max(x1, pad.left), height: plotH }));
+    nodes.push(svg("text", { class: "chart__best-label", x: (x1 + x2) / 2, y: pad.top - 10, "text-anchor": "middle" }, highlight.label));
+  }
 
   // Category thresholds as hairlines, each band named on the right (the level colour lives in the hero only)
   let floor = 0;
@@ -168,34 +250,32 @@ function drawChart(readings, analysis) {
     }
     if (h >= 16) {
       nodes.push(svg("text", { x: width - pad.right + 28, y: (y(floor) + y(bandTop)) / 2,  // clear of the spike ring
-                               "dominant-baseline": "middle", class: "chart__band-label" }, LEVELS[level].label.replace(" for sensitive groups", " (sens.)")));
+                               "dominant-baseline": "middle", class: "chart__band-label" }, levelLabel(level)));
     }
     floor = ceiling;
   }
 
-  // Y axis: 0 and the top value; X axis: every hour
+  // Y axis: 0 and the top value; X axis: hour labels, thinned so they never collide
   nodes.push(svg("text", { x: pad.left - 10, y: y(0), "text-anchor": "end", "dominant-baseline": "middle" }, "0"));
   nodes.push(svg("text", { x: pad.left - 10, y: y(top), "text-anchor": "end", "dominant-baseline": "middle" }, top));
-  const hourLabel = (iso) => new Date(iso).toLocaleTimeString([], { hour: "numeric" });  // "8 AM"
-  const every = plotW / Math.max(values.length - 1, 1) < 56 ? 2 : 1;  // thin out labels on narrow screens
-  readings.forEach((r, i) => {
-    if ((values.length - 1 - i) % every === 0) {  // always keep the latest hour
-      nodes.push(svg("text", { x: x(i), y: height - 12, "text-anchor": "middle" }, hourLabel(r.timestamp)));
+  const every = Math.max(1, Math.ceil(56 / step));
+  points.forEach((p, i) => {
+    if ((labelFromStart ? i : values.length - 1 - i) % every === 0) {
+      nodes.push(svg("text", { x: x(i), y: height - 12, "text-anchor": "middle" }, p.label));
     }
   });
 
-  // Line, points and every value (the spiking point gets its value in the flag instead)
-  const spikeAt = analysis.is_spike ? values.length - 1 : -1;
+  // Line, points and values (the spiking point gets its value in the flag instead)
+  const dense = values.length > 12;
   nodes.push(svg("polyline", { class: "chart__line", points: values.map((v, i) => `${x(i)},${y(v)}`).join(" ") }));
   values.forEach((v, i) => {
-    const latest = i === values.length - 1;
-    nodes.push(svg("circle", { class: "chart__point", cx: x(i), cy: y(v), r: latest ? 8 : 5 }));
-    if (i !== spikeAt) {
+    nodes.push(svg("circle", { class: "chart__point", cx: x(i), cy: y(v), r: i === emphasis ? 8 : dense ? 3 : 5 }));
+    if (i !== spikeAt && (!valuesAt || valuesAt.includes(i))) {
       nodes.push(svg("text", { class: "chart__value", x: x(i), y: y(v) - 14, "text-anchor": "middle" }, v));
     }
   });
 
-  // Spike marker on the latest point: a ring plus a flag with the value
+  // Spike marker: a ring plus a flag with the value
   if (spikeAt >= 0) {
     const cx = x(spikeAt), cy = y(values[spikeAt]);
     nodes.push(svg("circle", { class: "chart__spike-ring", cx, cy, r: 14 }));
@@ -203,7 +283,7 @@ function drawChart(readings, analysis) {
     const flagX = Math.min(cx - flagW / 2, width - flagW - 2);
     nodes.push(svg("rect", { class: "chart__spike-flag", x: flagX, y: flagY, width: flagW, height: 24, rx: 3 }));
     nodes.push(svg("text", { x: flagX + flagW / 2, y: flagY + 12, "text-anchor": "middle", "dominant-baseline": "middle",
-                             class: "chart__spike-label" }, `Spike · ${values[spikeAt]}`));
+                             class: "chart__spike-label" }, t("Spike · {v}", { v: values[spikeAt] })));
   }
 
   chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -212,18 +292,20 @@ function drawChart(readings, analysis) {
   chart.replaceChildren(...nodes);
 }
 
-new ResizeObserver(() => {
-  if (lastChart) drawChart(lastChart.readings, lastChart.analysis);
-}).observe(document.querySelector(".chart"));
+const redraw = new ResizeObserver(() => {
+  for (const [id, [points, options]] of drawn) drawSeries(id, points, options);
+});
+for (const figure of document.querySelectorAll(".chart")) redraw.observe(figure);
 
 // ---------- advisory ----------
 
 const AUDIENCES = ["general", "children", "elderly", "respiratory_heart", "outdoor_workers"];
-const LANG_KEY = "smogshield.lang";
-let adviceLang = "en";
-try { if (localStorage.getItem(LANG_KEY) === "ur") adviceLang = "ur"; } catch { /* storage blocked: English */ }
-const langParam = new URLSearchParams(location.search).get("lang");  // ?lang=ur to open in Urdu
-if (langParam === "en" || langParam === "ur") adviceLang = langParam;
+
+/** The advisory in the site language: the backend sends English plus an Urdu version (adv.urdu) */
+function adviceInLanguage(adv = {}) {
+  if (LANG !== "ur" || !adv.urdu) return adv;
+  return { ...adv.urdu, audiences: adv.urdu.audiences ?? { general: adv.urdu.actions } };
+}
 
 function fillList(id, items, emptyText) {
   const list = $(id);
@@ -236,42 +318,18 @@ function fillList(id, items, emptyText) {
 }
 
 function renderAdvisory(s) {
-  const adv = s.advisory || {};
-  $("advice-headline").textContent = adv.headline || "Advice is unavailable right now. Take care outdoors.";
+  const adv = adviceInLanguage(s.advisory || {});
+  $("advice-headline").textContent = adv.headline || t("Advice is unavailable right now. Take care outdoors.");
   $("advice-note").textContent = adv.time_note || "";
   $("advice-note").hidden = !adv.time_note;
   $("advice-forecast").textContent = adv.forecast_note || "";
   $("advice-forecast").hidden = !adv.forecast_note;
   for (const who of AUDIENCES) {
     const items = adv.audiences?.[who] ?? (who === "general" ? adv.actions : []);
-    fillList(`aud-${who}`, items, "No specific advice for this group right now.");
+    fillList(`aud-${who}`, items, t("No specific advice for this group right now."));
   }
-  $("urdu-headline").textContent = adv.urdu?.headline || "اردو رہنمائی اس وقت دستیاب نہیں۔";
-  fillList("urdu-actions", adv.urdu?.actions, "براہ کرم انگریزی رہنمائی دیکھیں۔");
-  $("advice-disclaimer").textContent = adv.disclaimer || "General guidance, not medical advice.";
-  applyLanguage();
+  $("advice-disclaimer").textContent = adv.disclaimer || t("General guidance, not medical advice.");
 }
-
-/** English: headline + four groups. Urdu: the Urdu block replaces the headline and the general group. */
-function applyLanguage() {
-  const urdu = adviceLang === "ur";
-  $("advice-en").hidden = urdu;
-  $("advice-ur").hidden = !urdu;
-  $("urdu-scope").hidden = !urdu;
-  document.querySelector('.audience[data-audience="general"]').hidden = urdu;
-  for (const button of document.querySelectorAll(".lang-toggle button")) {
-    button.setAttribute("aria-pressed", String(button.dataset.lang === adviceLang));
-  }
-}
-
-for (const button of document.querySelectorAll(".lang-toggle button")) {
-  button.addEventListener("click", () => {
-    adviceLang = button.dataset.lang;
-    try { localStorage.setItem(LANG_KEY, adviceLang); } catch { /* fine: just not remembered */ }
-    applyLanguage();
-  });
-}
-applyLanguage();
 
 // ---------- alert feed ----------
 
@@ -282,15 +340,16 @@ const SEVERITY = {  // the shape beside each word is drawn in CSS, so colour is 
   warning: { label: "Warning" },
   critical: { label: "Critical" },
 };
+let lastFeed = null;
 const feedItems = new Map();  // alert key -> <li>, so existing items are updated, never re-created
 let feedLoaded = false;
 
 const alertKey = (a) => `${a.created_at}|${a.location}|${a.level}|${a.message}`;
 
 function deliveryText(a) {
-  if (a.status === "queued") return "Sending to Telegram…";
-  if (a.status === "sent") return a.channel === "telegram" ? "Sent via Telegram" : "Dashboard feed";
-  return "Telegram failed, kept in the feed";
+  if (a.status === "queued") return t("Sending to Telegram…");
+  if (a.status === "sent") return t(a.channel === "telegram" ? "Sent via Telegram" : "Dashboard feed");
+  return t("Telegram failed, kept in the feed");
 }
 
 function buildAlertItem(a) {
@@ -305,22 +364,29 @@ function buildAlertItem(a) {
   top.className = "alert-item__top";
   const badge = document.createElement("span");
   badge.className = "sev-badge";
-  badge.textContent = sev.label;
+  badge.textContent = t(sev.label);
   top.append(badge);
   if (simulated) {
     const tag = document.createElement("span");
     tag.className = "sim-tag";
-    tag.textContent = "Simulated";
+    tag.textContent = t("Simulated");
     top.append(tag);
   }
   const message = document.createElement("p");
   message.className = "alert-item__message";
-  message.textContent = simulated ? a.message.slice(SIM_PREFIX.length) : a.message;
+  message.dir = "auto";  // an English message keeps left-to-right order inside the Urdu page
+  message.textContent = alertText(a);
   const meta = document.createElement("p");
   meta.className = "alert-item__meta";
   li.append(top, message, meta);
   updateAlertItem(li, a);
   return li;
+}
+
+/** The alert message in the site language, without the [SIMULATION] prefix (shown as a tag instead) */
+function alertText(a) {
+  const text = (LANG === "ur" && a.message_ur) || a.message;
+  return text.startsWith(SIM_PREFIX) ? text.slice(SIM_PREFIX.length) : text;
 }
 
 function updateAlertItem(li, a) {
@@ -356,20 +422,21 @@ function renderFeed(feed) {
   }
 
   $("feed-empty").hidden = feed.length > 0;
-  $("feed-empty").textContent = "No alerts yet. They appear here when air quality crosses a threshold or spikes.";
+  $("feed-empty").textContent = t("No alerts yet. They appear here when air quality crosses a threshold or spikes.");
   $("feed-count").hidden = feed.length === 0;
-  $("feed-count").textContent = `${feed.length} ${feed.length === 1 ? "alert" : "alerts"}`;
+  $("feed-count").textContent = feed.length === 1 ? t("1 alert") : t("{n} alerts", { n: feed.length });
   $("feed-error").hidden = true;
   if (fresh.length) {
     $("announcer").textContent = fresh.reverse()
-      .map((a) => `${a.severity} alert: ${a.message.replace(SIM_PREFIX, "simulation: ")}`).join(" ");
+      .map((a) => t("{sev} alert: {msg}", { sev: t(SEVERITY[a.severity]?.label ?? a.severity), msg: alertText(a) })).join(" ");
   }
   feedLoaded = true;
 }
 
 async function refreshFeed() {
   try {
-    renderFeed(await getJSON(`/api/alerts?limit=${FEED_LIMIT}`));
+    lastFeed = await getJSON(`/api/alerts?limit=${FEED_LIMIT}`);
+    renderFeed(lastFeed);
   } catch (error) {
     console.error(error);
     $("feed-error").hidden = !feedLoaded;  // before the first load, the "Loading…" text stays
@@ -391,25 +458,25 @@ function pipelineOutputs(s) {
   const alerts = s.alerts || [];
   return {
     monitor: latest
-      ? `${readings.length} hourly ${readings.length === 1 ? "reading" : "readings"} · ${latest.source === "live" ? "live" : "simulated"}`
-      : "No readings",
+      ? `${t("{n} hourly readings", { n: readings.length })} · ${t(latest.source === "live" ? "live" : "simulated")}`
+      : t("No readings"),
     forecast: forecastOutput(s.forecast),
     analysis: level === "unknown"
-      ? "No valid readings"
-      : `AQI ${a.aqi} · ${TREND_WORDS[a.trend] ?? a.trend}${a.is_spike ? " · spike!" : ""}`,
-    advisory: s.advisory?.audiences ? "Advice for 5 groups + Urdu" : "Cautious default advice",
+      ? t("No valid readings")
+      : `${t("AQI")} ${a.aqi} · ${trendWord(a.trend)}${a.is_spike ? ` · ${t("spike!")}` : ""}`,
+    advisory: t(s.advisory?.audiences ? "Advice for 5 groups + Urdu" : "Cautious default advice"),
     alert: alerts.length
-      ? `${alerts[0].severity.toUpperCase()} alert raised`
-      : level === "unknown" ? "No alert without data" : "No new alert",
+      ? t("{sev} alert raised", { sev: t(SEVERITY[alerts[0].severity]?.label ?? alerts[0].severity) })
+      : t(level === "unknown" ? "No alert without data" : "No new alert"),
   };
 }
 
 /** "Next 6 h: peaks Poor (AQI 236)" from the forecast agent's summary, or why there is none */
 function forecastOutput(f) {
   const six = f?.next_6h;
-  if (!six) return "No forecast available";
-  const peak = LEVELS[six.peak_level]?.label ?? six.peak_level;
-  return `Next 6 h peaks ${peak} (AQI ${six.peak_aqi})${f.source === "live" ? "" : " · simulated"}`;
+  if (!six) return t("No forecast available");
+  return t("Next 6 h peaks {level} (AQI {aqi})", { level: levelLabel(six.peak_level), aqi: six.peak_aqi }) +
+    (f.source === "live" ? "" : ` · ${t("simulated")}`);
 }
 
 let lastOutputs = "";  // the confirm sequence replays only when an agent's output actually changed
@@ -420,9 +487,9 @@ function renderPipeline(s) {
   const changed = key !== lastOutputs;
   lastOutputs = key;
   for (const step of STEPS) $(`out-${step}`).textContent = outputs[step];
-  const at = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const at = new Date().toLocaleTimeString([], { ...PKT, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   $("pipeline-run").dataset.at = at;
-  $("pipeline-run").textContent = `Last run ${at} · refreshes every ${POLL_MS / 1000} s`;
+  $("pipeline-run").textContent = t("Last run {at} · refreshes every {s} s", { at, s: POLL_MS / 1000 });
 
   // Light the nodes up one after another, then leave them all "done"
   flowTimers.forEach(clearTimeout);
@@ -443,7 +510,7 @@ function pipelineOffline() {
   flowTimers.forEach(clearTimeout);
   for (const node of document.querySelectorAll(".node")) node.dataset.state = "error";
   lastOutputs = "";  // replay the sequence when the server comes back
-  $("pipeline-run").textContent = "Pipeline unreachable: waiting for the server…";
+  $("pipeline-run").textContent = t("Pipeline unreachable: waiting for the server…");
 }
 
 /** LIVE badge or the SIMULATED banner, decided by the data's own source field */
@@ -452,19 +519,19 @@ function renderMode(s) {
   const badge = $("mode-badge");
   if (!latest) {
     badge.dataset.mode = "loading";
-    badge.textContent = "No data";
+    badge.textContent = t("No data");
     $("simulated").hidden = true;
     return;
   }
   const simulated = latest.source !== "live";
   badge.dataset.mode = simulated ? "simulated" : "live";
-  badge.textContent = simulated ? "Simulated" : "Live";
+  badge.textContent = t(simulated ? "Simulated" : "Live");
   $("simulated").hidden = !simulated;
   // Explain why: a chosen demo scenario, or live data failing and the backend falling back to mock
   const liveChosen = controlsLoaded && $("scenario").value === "live";
-  $("simulated-why").textContent = liveChosen
+  $("simulated-why").textContent = t(liveChosen
     ? "Live data is unavailable right now, so these are simulated readings, not real air quality."
-    : "Demo scenario: these are not real air quality readings.";
+    : "Demo scenario: these are not real air quality readings.");
 }
 
 function render(s) {
@@ -472,6 +539,7 @@ function render(s) {
   renderHero(s);
   renderPipeline(s);
   renderChart(s);
+  renderForecast(s);
   renderAdvisory(s);
 }
 
@@ -479,28 +547,155 @@ function showOffline(error) {
   console.error(error);
   pipelineOffline();
   $("mode-badge").dataset.mode = "offline";  // never claim LIVE while we can't reach the server
-  $("mode-badge").textContent = "Offline";
+  $("mode-badge").textContent = t("Offline");
   const banner = $("offline");
   banner.hidden = false;
   if (lastGood) {
     // Keep every panel as it was: stale data is far more useful on stage than an empty screen
-    banner.textContent = `Can't reach the SmogShield server. Showing data from ${$("pipeline-run").dataset.at || "the last refresh"}; retrying…`;
+    banner.textContent = t("Can't reach the SmogShield server. Showing data from {at}; retrying…",
+                           { at: $("pipeline-run").dataset.at || t("the last refresh") });
     return;
   }
-  banner.textContent = "Can't reach the SmogShield server yet. Retrying every few seconds…";
+  banner.textContent = t("Can't reach the SmogShield server yet. Retrying every few seconds…");
   // Nothing received yet: say so in each panel instead of "Loading…" forever
-  $("hero-category").textContent = "Not connected";
-  $("hero-place").textContent = "Waiting for the server";
-  $("hero-summary").textContent = "Start it with: uvicorn app:app";
-  $("chart-empty").textContent = "The chart appears once the server responds.";
-  $("advice-headline").textContent = "Advice appears once the server responds.";
-  for (const who of AUDIENCES) fillList(`aud-${who}`, [], "Waiting for the server…");
-  if (!feedLoaded) $("feed-empty").textContent = "Alerts appear once the server responds.";
+  $("hero-category").textContent = t("Not connected");
+  $("hero-place").textContent = t("Waiting for the server");
+  $("hero-summary").textContent = t("Start it with: uvicorn app:app");
+  $("chart-empty").textContent = t("The chart appears once the server responds.");
+  $("forecast-empty").textContent = t("The forecast appears once the server responds.");
+  $("advice-headline").textContent = t("Advice appears once the server responds.");
+  for (const who of AUDIENCES) fillList(`aud-${who}`, [], t("Waiting for the server…"));
+  if (!feedLoaded) $("feed-empty").textContent = t("Alerts appear once the server responds.");
 }
+
+// ---------- all cities: map to scale + ranked list (clicking either switches the dashboard) ----------
+
+// Extent of the 15 cities with a margin (degrees). No borders are drawn: positions are to scale, nothing more.
+const MAP = { lonMin: 66.2, lonMax: 75.4, latMin: 24.2, latMax: 34.9 };
+const CITIES_MS = 60000;  // live readings are cached for 10 min, so once a minute is plenty
+const DOT = 34;           // dot diameter in px; dots closer than this are nudged apart
+let lastCities = null;
+
+function renderCities(data) {
+  lastCities = data;
+  $("cities-empty").hidden = true;
+  const map = $("city-map");
+  const width = map.clientWidth, height = map.clientHeight;
+  if (!width) return;
+
+  // Project to pixels, then nudge overlapping dots apart (Islamabad and Rawalpindi are 11 km apart)
+  const pos = data.cities.map((c) => ({
+    ...c,
+    x: ((c.lon - MAP.lonMin) / (MAP.lonMax - MAP.lonMin)) * width,
+    y: ((MAP.latMax - c.lat) / (MAP.latMax - MAP.latMin)) * height,
+  }));
+  for (let round = 0; round < 40; round++) {
+    for (const a of pos) {
+      for (const b of pos) {
+        if (a === b) continue;
+        const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+        if (d < DOT + 2) {
+          const push = (DOT + 2 - d) / 2;
+          a.x -= (dx / d) * push; a.y -= (dy / d) * push;
+          b.x += (dx / d) * push; b.y += (dy / d) * push;
+        }
+      }
+    }
+  }
+
+  // A faint graticule every 2 degrees, labelled at the edge
+  const grid = svg("svg", { class: "city-map__grid", width, height, "aria-hidden": "true" });
+  for (let lat = 26; lat <= 34; lat += 2) {
+    const y = ((MAP.latMax - lat) / (MAP.latMax - MAP.latMin)) * height;
+    grid.append(svg("line", { x1: 0, x2: width, y1: y, y2: y }), svg("text", { x: 4, y: y - 4 }, `${lat}°N`));
+  }
+  for (let lon = 68; lon <= 74; lon += 2) {
+    const x = ((lon - MAP.lonMin) / (MAP.lonMax - MAP.lonMin)) * width;
+    grid.append(svg("line", { x1: x, x2: x, y1: 0, y2: height }), svg("text", { x: x + 4, y: height - 6 }, `${lon}°E`));
+  }
+
+  const dots = pos.map((c) => {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "city-dot";
+    dot.dataset.level = c.level;
+    dot.style.left = `${c.x}px`;
+    dot.style.top = `${c.y}px`;
+    dot.textContent = c.aqi ?? "–";
+    dot.title = `${cityName(c.city)}: ${levelLabel(c.level)}`;
+    dot.setAttribute("aria-label", `${cityName(c.city)}, ${levelLabel(c.level)}, ${t("AQI")} ${c.aqi}`);
+    dot.setAttribute("aria-pressed", String(c.city === data.current));
+    dot.addEventListener("click", () => chooseCity(c.city));
+    // The name only where it has room (crowded Punjab dots rely on the list and the tooltip)
+    const crowded = pos.some((o) => o !== c && Math.abs(o.x - c.x) < 90 && Math.abs(o.y - c.y) < DOT);
+    if (!crowded || c.city === data.current) {
+      const name = document.createElement("span");
+      // crowded: beside the dot, not below it (and on the left near the right edge)
+      name.className = crowded ? `city-dot__name city-dot__name--${c.x > width * 0.7 ? "left" : "side"}` : "city-dot__name";
+      name.textContent = cityName(c.city);
+      dot.append(name);
+    }
+    return dot;
+  });
+  map.replaceChildren(grid, ...dots);
+
+  // Ranked list: worst air first
+  $("city-list").replaceChildren(...[...data.cities].sort((a, b) => (b.aqi ?? -1) - (a.aqi ?? -1)).map((c) => {
+    const li = document.createElement("li");
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "city-row";
+    row.setAttribute("aria-pressed", String(c.city === data.current));
+    const name = document.createElement("span");
+    name.className = "city-row__name";
+    name.textContent = cityName(c.city);
+    const tag = document.createElement("span");
+    tag.className = "level-tag";
+    tag.dataset.level = c.level;
+    tag.textContent = levelLabel(c.level);
+    const aqi = document.createElement("span");
+    aqi.className = "city-row__aqi";
+    aqi.textContent = c.aqi ?? "–";
+    row.append(name, tag, aqi);
+    row.addEventListener("click", () => chooseCity(c.city));
+    li.append(row);
+    return li;
+  }));
+}
+
+function chooseCity(city) {
+  if (city === lastCities?.current) return;
+  $("city").value = city;
+  changeControl(`/api/city/${encodeURIComponent(city)}`, t("Switching to {city}…", { city: cityName(city) }),
+                t("Now showing {city}.", { city: cityName(city) }));
+}
+
+let citiesTimer = null;
+async function pollCities() {
+  clearTimeout(citiesTimer);
+  try {
+    renderCities(await getJSON("/api/cities"));
+  } catch (error) {
+    console.error(error);
+    if (!lastCities) $("cities-empty").textContent = t("The map appears once the server responds.");
+  } finally {
+    citiesTimer = setTimeout(pollCities, CITIES_MS);
+  }
+}
+
+new ResizeObserver(() => { if (lastCities) renderCities(lastCities); }).observe($("city-map"));
 
 // ---------- demo controls (city, scenario, emergency button) ----------
 
 let controlsLoaded = false;
+let linkedCity = new URLSearchParams(location.search).get("city");  // ?city=Kasur opens that city, once
+
+/** Keeps ?city= in the address in step with the city on screen, so the link can be shared */
+function syncCityInUrl(city) {
+  const params = new URLSearchParams(location.search);
+  params.set("city", city);
+  history.replaceState(null, "", `?${params}`);
+}
 
 function fillSelect(select, options, current, labelFor) {
   select.replaceChildren(...options.map((value) => {
@@ -515,10 +710,18 @@ function fillSelect(select, options, current, labelFor) {
 /** Puts the selects back in sync with what the server really has */
 async function loadControls() {
   const [city, scenario] = await Promise.all([getJSON("/api/city"), getJSON("/api/scenario")]);
-  fillSelect($("city"), city.options, city.current, (name) => name);
+  CITY_UR = city.labels_ur || CITY_UR;
+  fillSelect($("city"), city.options, city.current, cityName);
   fillSelect($("scenario"), scenario.options, scenario.current,
-             (name) => SCENARIO_LABELS[name] ?? name.replaceAll("_", " "));
+             (name) => t(SCENARIO_LABELS[name] ?? name.replaceAll("_", " ")));
   controlsLoaded = true;
+  const wanted = linkedCity && city.options.find((c) => c.toLowerCase() === linkedCity.trim().toLowerCase());
+  linkedCity = null;
+  if (wanted && wanted !== city.current) {
+    chooseCity(wanted);  // reloads the controls (and the address) once the switch is done
+  } else {
+    syncCityInUrl(city.current);
+  }
   setControlsBusy(false);
 }
 
@@ -544,9 +747,10 @@ async function changeControl(url, busyText, doneText) {
     await getJSON(url, { method: "POST" });
     setControlStatus(doneText);
     poll();
+    pollCities();  // the map follows the city and scenario
   } catch (error) {
     console.error(error);
-    setControlStatus("Couldn't change that setting. Is the server running?", "error");
+    setControlStatus(t("Couldn't change that setting. Is the server running?"), "error");
   } finally {
     try { await loadControls(); } catch { setControlsBusy(false); }
   }
@@ -554,19 +758,20 @@ async function changeControl(url, busyText, doneText) {
 
 $("city").addEventListener("change", (event) => {
   const city = event.target.value;
-  changeControl(`/api/city/${encodeURIComponent(city)}`, `Switching to ${city}…`, `Now showing ${city}.`);
+  changeControl(`/api/city/${encodeURIComponent(city)}`, t("Switching to {city}…", { city: cityName(city) }),
+                t("Now showing {city}.", { city: cityName(city) }));
 });
 
 $("scenario").addEventListener("change", (event) => {
   const name = event.target.value;
-  const label = SCENARIO_LABELS[name] ?? name;
-  changeControl(`/api/scenario/${encodeURIComponent(name)}`, `Switching to “${label}”…`,
-                name === "live" ? "Back to live data." : `Demo scenario: ${label} (simulated).`);
+  const label = t(SCENARIO_LABELS[name] ?? name);
+  changeControl(`/api/scenario/${encodeURIComponent(name)}`, t("Switching to “{label}”…", { label }),
+                name === "live" ? t("Back to live data.") : t("Demo scenario: {label} (simulated).", { label }));
 });
 
 $("emergency").addEventListener("click", () => {
-  changeControl("/api/scenario/severe", "Triggering a simulated smog emergency…",
-                "Smog emergency triggered (simulated data).");
+  changeControl("/api/scenario/severe", t("Triggering a simulated smog emergency…"),
+                t("Smog emergency triggered (simulated data)."));
 });
 
 // ---------- Ask SmogShield (one question, answered from the current reading) ----------
@@ -578,7 +783,8 @@ $("ask").addEventListener("submit", async (event) => {
   const answer = $("ask-answer");
   answer.hidden = false;
   answer.dataset.state = "loading";
-  answer.textContent = "Thinking…";  // textContent only: the answer comes from an AI model
+  answer.textContent = t("Thinking…");  // textContent only: the answer comes from an AI model
+  $("ask-basis").hidden = true;
   $("ask-input").disabled = $("ask-button").disabled = true;
   try {
     const reply = await getJSON("/api/ask", {
@@ -588,10 +794,17 @@ $("ask").addEventListener("submit", async (event) => {
     });
     answer.dataset.state = reply.source === "ai" ? "" : "note";  // off / busy / unsure: calm, not an error
     answer.textContent = reply.answer;
+    const b = reply.based_on;
+    $("ask-basis").hidden = !b;
+    if (b) {
+      $("ask-basis").textContent = `${t("Based on")}: ` + [cityName(b.city), levelLabel(b.level), `${t("AQI")} ${b.aqi}`,
+        b.time && t("reading for {time}", { time: localTime(b.time) }), t(b.data_source === "live" ? "live" : "simulated")]
+        .filter(Boolean).join(" · ");
+    }
   } catch (error) {
     console.error(error);
     answer.dataset.state = "error";
-    answer.textContent = "Couldn't reach SmogShield. The advice above still applies.";
+    answer.textContent = t("Couldn't reach SmogShield. The advice above still applies.");
   } finally {
     $("ask-input").disabled = $("ask-button").disabled = false;
     $("ask-input").focus();
@@ -632,8 +845,22 @@ async function poll() {
   }
 }
 
+// Switching language re-renders the last data at once (no reload, no new pipeline run)
+document.addEventListener("languagechange", () => {
+  if (lastGood) render(lastGood);
+  if (lastCities) renderCities(lastCities);
+  if (lastFeed) {  // rebuild the items in the new language, without "new alert" animation or announcement
+    $("feed").replaceChildren();
+    feedItems.clear();
+    feedLoaded = false;
+    renderFeed(lastFeed);
+  }
+  if (controlsLoaded) loadControls().catch(console.error);
+});
+
 loadControls().catch((error) => {
   console.error(error);
-  setControlStatus("Demo controls unavailable until the server responds.", "error");
+  setControlStatus(t("Demo controls unavailable until the server responds."), "error");
 });
 poll();
+pollCities();

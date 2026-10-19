@@ -42,6 +42,8 @@ from pathlib import Path
 
 import requests
 
+from agents.advisory import LEVEL_NAMES  # (English, Urdu) level names
+from agents.monitor import CITIES_UR
 from schemas import Alert, SmogState
 
 log = logging.getLogger(__name__)
@@ -64,6 +66,7 @@ LEVEL_ORDER = ["good", "satisfactory", "moderate", "poor", "very_poor", "severe"
 THRESHOLD = "moderate"              # lowest level that raises an alert on its own
 SIMULATION_PREFIX = "[SIMULATION] "  # on every alert built from mock data
 FORECAST_PREFIX = "[FORECAST] "      # on every predictive alert
+FORECAST_PREFIX_UR = "[پیش گوئی] "    # the same, on the Urdu message
 FORECAST_HORIZON_HOURS = 6           # predictive alerts look this far ahead
 FORECAST_TRIGGER = "poor"            # predict only when the forecast reaches this level or worse
 FORECAST_SEVERITY = "warning"        # a prediction is never critical
@@ -269,10 +272,11 @@ def _redact(text: str) -> str:
 # ---------- feed + memory store (var/alerts.json) ----------
 
 def read_feed(limit: int = 50) -> list[Alert]:
-    """Newest alerts first, for the dashboard. Alerts stored before `kind` existed read as "current"
-    (the file itself is never rewritten for this)."""
+    """Newest alerts first, for the dashboard. Alerts stored before `kind` existed read as "current",
+    and before `message_ur` existed show their English message (the file itself is never rewritten)."""
     with _lock:
-        return [{**a, "kind": a.get("kind", "current")} for a in _load()["feed"][: max(limit, 0)]]
+        return [{**a, "kind": a.get("kind", "current"), "message_ur": a.get("message_ur", a["message"])}
+                for a in _load()["feed"][: max(limit, 0)]]
 
 
 def reset_memory() -> None:
@@ -306,10 +310,11 @@ def _process(state: SmogState) -> list[Alert]:
         )
         alerts: list[Alert] = []
         if alert_now:
-            message = _message(location, level, analysis, advisory)
+            prefix = SIMULATION_PREFIX if simulated else ""
             alerts.append(_record(store, {
                 "severity": urgency_for(level),
-                "message": SIMULATION_PREFIX + message if simulated else message,
+                "message": prefix + _message(location, level, analysis, advisory),
+                "message_ur": prefix + _message_ur(location, level, analysis, advisory),
                 "created_at": now.isoformat(timespec="seconds"),
                 "location": location,
                 "level": level,
@@ -328,10 +333,11 @@ def _process(state: SmogState) -> list[Alert]:
         )
         if predict:
             f_simulated = simulated or forecast.get("source") != "live"
-            message = FORECAST_PREFIX + _forecast_message(location, analysis, forecast)
+            prefix = SIMULATION_PREFIX if f_simulated else ""
             alerts.append(_record(store, {
                 "severity": FORECAST_SEVERITY,
-                "message": SIMULATION_PREFIX + message if f_simulated else message,
+                "message": prefix + FORECAST_PREFIX + _forecast_message(location, analysis, forecast),
+                "message_ur": prefix + FORECAST_PREFIX_UR + _forecast_message_ur(location, analysis, forecast),
                 "created_at": now.isoformat(timespec="seconds"),
                 "location": location,
                 "level": six["peak_level"],
@@ -351,23 +357,35 @@ def _record(store: dict, alert: Alert, simulated: bool) -> Alert:
     return alert
 
 
-def _forecast_message(location: str, analysis: dict, forecast: dict) -> str:
-    """'Lahore: forecast to reach Unhealthy (AQI 172) around 19:00, within 6 hours (now AQI 142). ...'"""
+def _onset_clock(forecast: dict) -> str | None:
+    """Local "HH:MM" when the forecast first reaches its 6-hour peak level (the time to plan around)."""
     six = forecast["next_6h"]
-    peak = six["peak_level"]
-    rank = LEVEL_ORDER.index(peak)
-    # when that level is first reached (the time to plan around), not when it peaks
+    rank = LEVEL_ORDER.index(six["peak_level"])
     onset = next((p["time"] for p in forecast.get("hourly") or []
                   if p.get("hours_ahead", 99) < FORECAST_HORIZON_HOURS and p.get("level") in LEVEL_ORDER
                   and LEVEL_ORDER.index(p["level"]) >= rank), six.get("peak_time"))
     try:
-        at = (datetime.fromisoformat(onset).astimezone(timezone.utc) + LOCAL_UTC_OFFSET).strftime("%H:%M")
-        when = f"around {at}, "
+        return (datetime.fromisoformat(onset).astimezone(timezone.utc) + LOCAL_UTC_OFFSET).strftime("%H:%M")
     except (TypeError, ValueError):
-        when = ""
-    return (f"{location}: forecast to reach {LEVEL_LABELS[peak]} (AQI {six.get('peak_aqi', '?')}) {when}"
-            f"within {FORECAST_HORIZON_HOURS} hours (now AQI {analysis.get('aqi', '?')}, "
+        return None
+
+
+def _forecast_message(location: str, analysis: dict, forecast: dict) -> str:
+    """'Lahore: forecast to reach Poor (AQI 214) around 19:00, within 6 hours (now AQI 142, Moderate). ...'"""
+    six, at = forecast["next_6h"], _onset_clock(forecast)
+    when = f"around {at}, " if at else ""
+    return (f"{location}: forecast to reach {LEVEL_LABELS[six['peak_level']]} (AQI {six.get('peak_aqi', '?')}) "
+            f"{when}within {FORECAST_HORIZON_HOURS} hours (now AQI {analysis.get('aqi', '?')}, "
             f"{LEVEL_LABELS.get(analysis.get('level'), '?')}). Plan indoor activities.")
+
+
+def _forecast_message_ur(location: str, analysis: dict, forecast: dict) -> str:
+    six, at = forecast["next_6h"], _onset_clock(forecast)
+    when = f"تقریباً {at} تک " if at else ""
+    now_level = LEVEL_NAMES.get(analysis.get("level"), ("", "?"))[1]
+    return (f"{CITIES_UR.get(location, location)}: اگلے {FORECAST_HORIZON_HOURS} گھنٹوں میں {when}"
+            f"{LEVEL_NAMES[six['peak_level']][1]} (اے کیو آئی {six.get('peak_aqi', '?')}) تک پہنچنے کی پیش گوئی "
+            f"(ابھی اے کیو آئی {analysis.get('aqi', '?')}، {now_level})۔ اندرونی سرگرمیوں کا منصوبہ بنائیں۔")
 
 
 def _message(location: str, level: str, analysis: dict, advisory: dict) -> str:
@@ -378,6 +396,18 @@ def _message(location: str, level: str, analysis: dict, advisory: dict) -> str:
         parts.append(advisory["time_note"])
     elif analysis.get("is_spike") is True:
         parts.append("Sudden spike in pollution.")
+    return " ".join(parts)
+
+
+def _message_ur(location: str, level: str, analysis: dict, advisory: dict) -> str:
+    urdu = advisory.get("urdu") or {}
+    parts = [f"{CITIES_UR.get(location, location)}: اے کیو آئی {analysis.get('aqi', '?')} ({LEVEL_NAMES[level][1]})۔"]
+    if urdu.get("headline"):
+        parts.append(urdu["headline"])
+    if urdu.get("time_note"):
+        parts.append(urdu["time_note"])
+    elif analysis.get("is_spike") is True:
+        parts.append("آلودگی میں اچانک اضافہ۔")
     return " ".join(parts)
 
 

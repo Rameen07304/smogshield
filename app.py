@@ -5,6 +5,7 @@ Then open http://localhost:8000
 """
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -18,13 +19,23 @@ from fastapi.responses import FileResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
-from agents import advisory, alert, monitor  # noqa: E402
+from agents import advisory, alert, analysis, monitor  # noqa: E402
 from graph import run_once  # noqa: E402
 
 app = FastAPI(title="SmogShield")
 WEB = Path(__file__).parent / "web"
 INDEX = WEB / "index.html"
 app.mount("/static", StaticFiles(directory=WEB), name="static")  # dashboard CSS, JS and fonts
+
+
+@app.middleware("http")
+async def always_fresh_pages(request, call_next):
+    """Browsers must revalidate pages and static files (a cheap 304 when unchanged), so after a git pull
+    or a restart nobody runs an old common.js next to a new app.js."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.get("/")
@@ -92,7 +103,7 @@ def set_scenario(name: str):
 def get_city():
     """The monitored city and the known cities, for the dashboard's city selector."""
     current = _known_city(os.getenv("MONITOR_CITY", monitor.DEFAULT_CITY)) or monitor.DEFAULT_CITY
-    return {"current": current, "options": list(monitor.CITIES)}
+    return {"current": current, "options": list(monitor.CITIES), "labels_ur": monitor.CITIES_UR}
 
 
 @app.post("/api/city/{name}")
@@ -103,6 +114,28 @@ def set_city(name: str):
         raise HTTPException(404, f"Unknown city {name!r}")
     os.environ["MONITOR_CITY"] = city
     return get_city()
+
+
+@app.get("/api/cities")
+def cities_summary():
+    """Every city's latest AQI and level, for the map. Live readings are cached per city (10 min), fetched in
+    parallel. With a demo scenario forced, only the monitored city shows it; the others show their own
+    simulated default, so the map stays varied and is still labelled simulated."""
+    current = get_city()["current"]
+    forced = monitor._mock_requested()
+
+    def one(city: str) -> dict:
+        if forced:
+            scenario = os.getenv("MOCK_SCENARIO") if city == current else monitor.city_default_scenario(city)
+            reading = monitor.fetch_air_quality(city, scenario=scenario or None)
+        else:
+            reading = monitor.fetch_air_quality(city)
+        a = analysis.assess([reading])
+        lat, lon = monitor.CITIES[city]
+        return {"city": city, "lat": lat, "lon": lon, "aqi": a["aqi"], "level": a["level"], "source": reading["source"]}
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        return {"current": current, "cities": list(pool.map(one, monitor.CITIES))}
 
 
 def _known_city(name: str) -> str | None:

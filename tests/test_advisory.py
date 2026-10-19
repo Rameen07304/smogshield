@@ -286,7 +286,10 @@ class AskTest(unittest.TestCase):
         with mock.patch.object(advisory.requests, "post", return_value=self._reply("**Poor**: PE andar karein.")) as post:
             result = advisory.answer_question("کیا بچے باہر کھیل سکتے ہیں؟", self.STATE)
         # simulated data is labelled by code (in the question's language), and markdown is stripped
-        self.assertEqual(result, {"answer": advisory.SIMULATED_NOTE[1] + "Poor: PE andar karein.", "source": "ai"})
+        self.assertEqual(result["answer"], advisory.SIMULATED_NOTE[1] + "Poor: PE andar karein.")
+        self.assertEqual(result["source"], "ai")
+        self.assertEqual(result["based_on"], {"city": "Lahore", "level": "poor", "aqi": 100,
+                                              "time": None, "data_source": "mock"})
         sent = json.loads(post.call_args.kwargs["json"]["messages"][1]["content"])
         self.assertEqual(sent["question"], "کیا بچے باہر کھیل سکتے ہیں؟")          # Urdu reaches the model intact
         self.assertEqual(sent["reply_language"], "Urdu")
@@ -304,6 +307,21 @@ class AskTest(unittest.TestCase):
     def test_other_scales_words_are_not_shown(self):
         with mock.patch.object(advisory.requests, "post", return_value=self._reply("The air is Very Unhealthy.")):
             self.assertEqual(advisory.answer_question("Is it safe?", self.STATE)["source"], "fallback")
+
+
+class UrduAudiencesTest(unittest.TestCase):
+    def test_every_level_has_urdu_for_every_group_line_for_line(self):
+        for level, english in advisory.GUIDANCE.items():
+            for who in AUDIENCES:
+                with self.subTest(level=level, who=who):
+                    urdu = advisory.URDU_AUDIENCES[level][who]
+                    self.assertEqual(len(urdu), len(english[who]))
+                    self.assertTrue(all(advisory.URDU_SCRIPT.search(line) for line in urdu))
+
+    def test_output_carries_urdu_audiences_even_without_data(self):
+        for analysis in (make_analysis("poor"), None):
+            result = advisory.build_advisory(analysis)
+            self.assertEqual(set(result["urdu"]["audiences"]), set(AUDIENCES))
 
 
 class UrduNcapTest(unittest.TestCase):
