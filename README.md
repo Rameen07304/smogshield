@@ -28,14 +28,15 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 
 ## Features
 
+- **Plain answers first:** the top of the dashboard answers "Can I go outside?" and "Schools tomorrow?" in everyday English or Urdu, right beside the AQI.
 - **Live dashboard:** AQI, NCAP category, trend and spike detection, and a ledger showing what each agent did.
 - **City map:** all 15 cities at a glance, worst air first. Click one to switch.
 - **24-hour forecast chart:** the peak, the best time to go out, and a daily outlook.
-- **Next school day:** the worst forecast air from 7 AM to 2 PM tomorrow (Monday when tomorrow is Sunday), and what schools should do, from "a normal day" to "move PE and assembly indoors" to "consider closing". Built for Lahore's winter smog season, when Punjab has closed schools for days at a time. It's a suggestion, not an official notice.
+- **Schools tomorrow?** The worst forecast air from 7 AM to 2 PM on the next school day (Monday when tomorrow is Sunday), and what schools should do, from "a normal school day" to "move PE and assembly indoors" to "closing or moving classes online is advisable". Built for Lahore's winter smog season, when Punjab has closed schools for days at a time. It's a suggestion, not an official notice.
 - **Advice for 5 groups**, written by AI when it's switched on and always checked against the rules.
 - **Ask SmogShield:** questions in English or Urdu, answered from the live data.
 - **Share on WhatsApp:** one tap sends today's advice (headline, the general public, children and schools) to a family or school group, in the site's language. Simulated data is marked in the message.
-- **Read aloud:** the browser's built-in speech reads the advice, for people who find reading hard. It uses an Urdu voice when the device has one, and otherwise reads the English advice and says so.
+- **Read aloud:** the browser's built-in speech reads the plain answers and today's advice, for people who find reading hard. It uses an Urdu voice when the device has one, and otherwise reads the English advice and says so.
 - **Last 7 days for every city:** seven small squares beside each city, coloured by each day's 24-hour average PM2.5 (the basis NCAP categories are defined on). Always real data, even during a demo scenario.
 - **Alert feed and history**, with optional Telegram delivery.
 - **The whole site in English or اردو:** right-to-left layout and the Nastaliq font.
@@ -56,7 +57,7 @@ SmogShield turns hourly air-quality data into clear, timely advice for the peopl
 - **Data:** [Open-Meteo](https://open-meteo.com) air-quality API (CAMS model data, no key needed).
 - **AI:** [Groq](https://groq.com) API running `openai/gpt-oss-20b` (configurable).
 - **Alerts:** dashboard feed, plus Telegram Bot API (optional).
-- **Tests:** Python `unittest` (235 tests, no network needed).
+- **Tests:** Python `unittest` (241 tests, no network needed).
 
 ## AI methodology
 
@@ -95,19 +96,20 @@ Where each kind of intelligence is used:
 - **AI advice is English only.** The Urdu advice is rule-based and machine-drafted, and still needs review by a native speaker.
 - **The Groq free tier has rate limits.** When they are hit, the app falls back to the rules.
 - **It's a single demo server with no login.** It runs on 127.0.0.1 only, and the city and scenario are shared by everyone using it.
+- **Read aloud depends on the device.** Few devices have an Urdu voice, so in Urdu mode it usually reads the English advice (and says so).
 - **Not medical advice.** It is general guidance only.
 
 ## Future work
 
 - **Ground sensors:** blend in PEPA and community sensors (such as PurpleAir).
 - **Our own forecast model:** a trained correction on top of CAMS for each city.
-- **Reach people off the web:** SMS and WhatsApp alerts.
-- **Schools:** a mode for deciding about closures and PE.
+- **Reach people off the web:** automatic SMS and WhatsApp alerts (today, people share by hand with the WhatsApp button).
+- **Schools:** a page for principals with the week ahead, and alerts the evening before a bad school day.
 - **More languages:** Punjabi and Sindhi, and AI-written Urdu advice once it has been reviewed.
 
 ## AI tools used in development
 
-The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (235 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
+The team used AI coding assistants (Claude Code and GitHub Copilot) to help write and review code. We read, tested (241 automated tests plus manual tests in both languages, at desktop and phone widths) and understand everything we submit. The AI *inside* the product is the Groq LLM described above.
 
 ## Quick start
 
@@ -144,8 +146,8 @@ The tests need no network and never send real messages: they clear `TELEGRAM_*` 
 | Path | What it is |
 |------|-----------|
 | `schemas.py` | Contracts between agents. Change these as a team. |
-| `agents/monitor.py` | Fetches the last 6 hours from Open-Meteo, falls back to mock data |
-| `agents/forecast.py` | Hourly PM2.5 forecast from Open-Meteo: next 24 h (AQI, level, confidence), 6 h and 24 h summaries, best ~2-hour window to go outside, multi-day outlook; falls back to a scripted mock forecast |
+| `agents/monitor.py` | Fetches the last 6 hours from Open-Meteo, falls back to mock data; also the last 7 daily averages for the city list |
+| `agents/forecast.py` | Hourly PM2.5 forecast from Open-Meteo: next 24 h (AQI, level, confidence), 6 h and 24 h summaries, best ~2-hour window to go outside, multi-day outlook, next school day; falls back to a scripted mock forecast |
 | `agents/analysis.py` | PM2.5 and PM10 → AQI estimate, NCAP category, trend, spike flag (see [How the AQI is calculated](#how-the-aqi-is-calculated)) |
 | `agents/advisory.py` | Level and forecast → guidance per audience, including outdoor workers, plus a forecast note (+ Urdu); optional Groq enhancement with rule-based fallback |
 | `agents/alert.py` | Decides whether to alert, how loudly, and delivers it, including predictive `[FORECAST]` alerts |
@@ -184,6 +186,7 @@ The code is in [`agents/analysis.py`](agents/analysis.py).
 |-----------------|--------------|
 | `GET /` | The live dashboard (Screen 1) |
 | `GET /how` | How it works (Screen 2): the agent pipeline, a live example, data honesty and safeguards |
+| `GET /history` | Alert history (Screen 3): every stored alert, filterable by urgency, real or simulated, type (now or forecast) and city |
 | `GET /api/status` | Runs the whole pipeline once and returns `readings`, `forecast`, `analysis`, `advisory`, `alerts` (new alerts from this run). The dashboard polls it every 5 s. |
 | `POST /api/ask` | "Ask SmogShield": body `{"question": "..."}` (1–300 characters, English or Urdu). Runs the pipeline once and asks Groq to answer only from the current reading, forecast, NCAP category and vetted advice. Returns `{"answer", "source", "model", "based_on"}`; `source` is `ai`, or `off` / `busy` / `down` / `fallback` with a calm message. Needs `LLM_ADVISORY_ENABLED=true` and a Groq key. |
 | `GET /api/alerts?limit=20` | The alert feed, newest first |
@@ -214,9 +217,9 @@ Settings live in `.env`, which `app.py` and `graph.py` load at startup. Copy `.e
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `LLM_ADVISORY_ENABLED` | `false` | Opt in to Groq-generated English advice. The validated rule-based advice remains the fallback. |
+| `LLM_ADVISORY_ENABLED` | `false` | Opt in to the AI: Groq-written English advice and the Ask SmogShield chatbot. Needs `GROQ_API_KEY` too. The validated rule-based advice remains the fallback. |
 | `GROQ_API_KEY` | placeholder | Groq API key. Keep the real key in local `.env` only; never commit or share it publicly. |
-| `GROQ_MODEL` | `openai/gpt-oss-20b` | Groq model used for optional advisory generation. Fast and light on tokens; each Groq model has its own daily token quota (free tier: 200k/day for gpt-oss-120b). |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` | Groq model for the AI advice and Ask SmogShield. Fast and light on tokens; each Groq model has its own daily token quota (free tier: 200k/day for gpt-oss-120b). |
 
 When enabled, Groq receives the NCAP category name, its NCAP health impact and the rule-based advice to build on. It returns JSON with general actions and advice for all five audiences; the headline and the trend/forecast notes always stay rule-based. Answers are cached per level for 10 minutes (at most 6 calls per 10 minutes, so the free tier's 8,000 tokens/minute stays free for Ask SmogShield). Missing configuration, API failures, timeouts, invalid JSON, an invalid response shape, or a reply using another scale's category names (such as "unhealthy" or "hazardous") use the deterministic rule-based advice instead.
 
