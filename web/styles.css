@@ -351,9 +351,9 @@ select:disabled { opacity: .55; cursor: not-allowed; }
 .chip--best { border-color: var(--accent); background: var(--accent-weak); color: var(--accent-text); }
 .outlook__title { margin-top: var(--s5); font-size: 14px; }
 .outlook { list-style: none; padding: 0; margin-top: var(--s2); border-top: 1px solid var(--line); }
-.outlook li { display: grid; grid-template-columns: minmax(0, 1fr) auto 7.5rem; gap: var(--s3); align-items: center;
+.outlook li { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(7.5rem, auto); gap: var(--s3); align-items: center;
   padding: var(--s2) 0; border-bottom: 1px solid var(--line); font-size: 14px; }
-.outlook__aqi { color: var(--text-3); font-size: 13px; text-align: end; }
+.outlook__aqi { color: var(--text-3); font-size: 13px; text-align: end; white-space: nowrap; }
 .chart svg .chart__value { fill: var(--text-2); font-weight: 600; }
 .chart svg .chart__band-label { fill: var(--text-3); }
 .chart__spike-ring { fill: none; stroke: var(--warning); stroke-width: 3; }

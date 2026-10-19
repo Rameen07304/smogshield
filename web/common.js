@@ -118,7 +118,7 @@ const UR = {
   // forecast
   "Next 24 hours": "اگلے 24 گھنٹے", "Loading the forecast…": "پیش گوئی لوڈ ہو رہی ہے…",
   "No forecast available right now.": "اس وقت پیش گوئی دستیاب نہیں۔", "Best time": "بہترین وقت",
-  "Best time outside: {from}–{to}": "باہر جانے کا بہترین وقت: {from}–{to}",
+  "Best time outside: {from}–{to}": "باہر جانے کا بہترین وقت: {from} سے {to} تک",
   "Peaks at {level} (AQI {aqi}) around {time}. A model estimate: most reliable for the next 6 hours.":
     "تقریباً {time} پر زیادہ سے زیادہ {level} (اے کیو آئی {aqi})۔ یہ ماڈل کا اندازہ ہے: اگلے 6 گھنٹوں کے لیے سب سے قابلِ اعتماد۔",
   "Coming days": "آنے والے دن", "Today": "آج", "peak AQI {aqi}": "زیادہ سے زیادہ اے کیو آئی {aqi}",
