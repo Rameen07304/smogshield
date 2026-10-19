@@ -299,6 +299,17 @@ class AskTest(unittest.TestCase):
             self.assertEqual(advisory.answer_question("Is it safe?", self.STATE)["source"], "fallback")
 
 
+class UrduNcapTest(unittest.TestCase):
+    def test_urdu_headlines_use_ncap_level_names(self):
+        old_us_words = ("غیر صحت بخش", "خطرناک")  # "unhealthy", "hazardous"
+        for level, (_, urdu_name) in advisory.LEVEL_NAMES.items():
+            with self.subTest(level=level):
+                headline = advisory.URDU[level]["headline"].replace(chr(0x650), "")  # ignore the zer diacritic
+                self.assertIn(urdu_name, headline)
+                for word in old_us_words:
+                    self.assertNotIn(word, headline)
+
+
 class ContractTest(unittest.TestCase):
     def setUp(self):
         # The alert agent remembers past alerts in a file; use a fresh temp one per test
