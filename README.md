@@ -2,6 +2,8 @@
 
 A modular multi-agent system that monitors air quality and coordinates smog response in real time.
 
+**Live demo:** https://smogshield.onrender.com (in Urdu: https://smogshield.onrender.com/?lang=ur). Free hosting, so the first visit after a quiet spell takes about a minute to wake up.
+
 ```
 monitor ──► forecast ──► analysis ──► advisory ──► alert ──► dashboard
 (Open-Meteo (next 24 h,  (AQI, level,  (public      (feed /
@@ -143,7 +145,7 @@ The repo includes [`render.yaml`](render.yaml) for [Render](https://render.com)'
 
 1. Sign in to Render with GitHub, then **New → Blueprint** and pick this repository.
 2. When it asks for `GROQ_API_KEY`, paste your key. It's stored on Render, never in the repo.
-3. Wait for the build (a few minutes). Your link looks like `https://smogshield.onrender.com`.
+3. Wait for the build (a few minutes). Ours is live at https://smogshield.onrender.com.
 
 On a public link everyone shares one server, so two guards are on:
 - **Demo changes expire.** A visitor's scenario or city change goes back to live Lahore after 10 minutes (`DEMO_RESET_MINUTES`).
