@@ -569,6 +569,35 @@ $("emergency").addEventListener("click", () => {
                 "Smog emergency triggered (simulated data).");
 });
 
+// ---------- Ask SmogShield (one question, answered from the current reading) ----------
+
+$("ask").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const question = $("ask-input").value.trim();
+  if (!question) return;
+  const answer = $("ask-answer");
+  answer.hidden = false;
+  answer.dataset.state = "loading";
+  answer.textContent = "Thinking…";  // textContent only: the answer comes from an AI model
+  $("ask-input").disabled = $("ask-button").disabled = true;
+  try {
+    const reply = await getJSON("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    answer.dataset.state = reply.source === "ai" ? "" : "note";  // off / busy / unsure: calm, not an error
+    answer.textContent = reply.answer;
+  } catch (error) {
+    console.error(error);
+    answer.dataset.state = "error";
+    answer.textContent = "Couldn't reach SmogShield. The advice above still applies.";
+  } finally {
+    $("ask-input").disabled = $("ask-button").disabled = false;
+    $("ask-input").focus();
+  }
+});
+
 // ---------- polling ----------
 
 let pollTimer = null;

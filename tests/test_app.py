@@ -49,6 +49,21 @@ class ControlEndpointTest(unittest.TestCase):
         os.environ["MOCK_SCENARIO"] = "satisfactory"  # mock data: no network needed
         self.assertEqual(app.monitor.run({})["readings"][-1]["location"], "Karachi")
 
+    def test_ask_rejects_blank_and_overlong_questions(self):
+        with self.assertRaises(app.HTTPException) as caught:
+            app.ask(app.Question(question="   "))
+        self.assertEqual(caught.exception.status_code, 422)
+        with self.assertRaises(ValueError):  # pydantic's ValidationError is a ValueError
+            app.Question(question="x" * 301)
+
+    def test_ask_answers_from_a_fresh_pipeline_run(self):
+        os.environ["MOCK_SCENARIO"] = "poor"  # mock data: no network needed
+        with mock.patch.object(app.advisory, "answer_question", return_value={"answer": "ok", "source": "ai"}) as ask:
+            self.assertEqual(app.ask(app.Question(question=" Is it safe? ")), {"answer": "ok", "source": "ai"})
+        question, state = ask.call_args.args
+        self.assertEqual(question, "Is it safe?")
+        self.assertEqual(state["analysis"]["level"], "poor")
+
     def test_unknown_city_is_404_and_changes_nothing(self):
         app.set_city("Multan")
         with self.assertRaises(app.HTTPException) as caught:

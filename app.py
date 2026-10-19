@@ -16,8 +16,9 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s: %(m
 from fastapi import FastAPI, HTTPException  # noqa: E402
 from fastapi.responses import FileResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
 
-from agents import alert, monitor  # noqa: E402
+from agents import advisory, alert, monitor  # noqa: E402
 from graph import run_once  # noqa: E402
 
 app = FastAPI(title="SmogShield")
@@ -47,6 +48,19 @@ def alert_history():
 def status():
     """One full pass through all agents. The dashboard polls this."""
     return run_once()
+
+
+class Question(BaseModel):
+    question: str = Field(min_length=1, max_length=advisory.ASK_MAX_CHARS)
+
+
+@app.post("/api/ask")
+def ask(body: Question):
+    """Ask SmogShield: one question, answered by Groq from a fresh pipeline run (off unless LLM is enabled)."""
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(422, "Ask a question about the air")
+    return advisory.answer_question(question, run_once())
 
 
 @app.get("/api/alerts")

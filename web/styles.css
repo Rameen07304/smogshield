@@ -131,6 +131,8 @@ a:hover { text-decoration-thickness: 2px; }
 .btn:hover:not(:disabled) { background: var(--surface-2); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-ink); }
+.btn--primary:hover:not(:disabled) { background: var(--accent-text); border-color: var(--accent-text); }
 .btn--danger { color: var(--danger); border-color: var(--danger-line); }
 .btn--danger:hover:not(:disabled) { background: var(--danger-weak); border-color: var(--danger); }
 .btn--plain {
@@ -384,6 +386,24 @@ select:disabled { opacity: .55; cursor: not-allowed; }
 .advice__note { color: var(--text-2); font-size: 14px; }
 .advice__scope { color: var(--text-3); font-size: 13px; }
 .advice__disclaimer { margin-top: var(--s3); color: var(--text-3); font-size: 13px; }
+
+/* Ask SmogShield: one question, one answer, under the advice it is grounded in */
+.ask { margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--line); }
+.ask label { display: block; margin-bottom: var(--s2); font-size: 14px; font-weight: 600; }
+.ask__row { display: flex; gap: var(--s2); }
+.ask input {
+  flex: 1; min-width: 0; height: 36px; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); font: 400 14px/1 var(--font);
+  transition: border-color .15s var(--ease);
+}
+.ask input::placeholder { color: var(--text-3); }
+.ask input:hover:not(:disabled) { border-color: var(--text-3); }
+.ask input:disabled { opacity: .55; }
+.ask__answer { margin-top: var(--s3); padding: var(--s3) var(--s4); background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+.ask__answer:dir(rtl) { font-family: var(--urdu); font-size: 16px; line-height: 2.1; }
+.ask__answer:is([data-state="loading"], [data-state="note"]) { color: var(--text-2); }
+.ask__answer[data-state="error"] { color: var(--danger); }
 
 .lang-toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; }
 .lang-toggle button {
