@@ -32,6 +32,8 @@ def run_once() -> SmogState:
 
 
 if __name__ == "__main__":
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8")  # alerts include Urdu; Windows consoles default to cp1252
     import os
     import tempfile
     from pathlib import Path
