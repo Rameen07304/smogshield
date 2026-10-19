@@ -48,8 +48,8 @@ function buildRow(a) {
   const time = cell(null, "history__time");
   const stamp = document.createElement("time");
   stamp.dateTime = a.created_at;
-  stamp.append(span(isolate(when.toLocaleDateString([], { day: "numeric", month: "short" })), "history__date"),
-           span(isolate(when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })), "history__clock"));
+  stamp.append(span(isolate(when.toLocaleDateString([], { ...PKT, day: "numeric", month: "short" })), "history__date"),
+           span(isolate(when.toLocaleTimeString([], { ...PKT, hour: "2-digit", minute: "2-digit", second: "2-digit" })), "history__clock"));
   time.append(stamp);
 
   // Level: the category name on its AQI color

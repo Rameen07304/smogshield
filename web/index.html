@@ -134,6 +134,23 @@
         </figure>
       </section>
 
+      <section class="panel panel--forecast" aria-labelledby="forecast-title">
+        <div class="panel__head">
+          <h2 id="forecast-title" data-i18n>Next 24 hours</h2>
+          <div class="chips">
+            <span id="forecast-source" class="sim-tag" hidden data-i18n>Simulated forecast</span>
+            <span id="best-chip" class="chip chip--best" hidden></span>
+          </div>
+        </div>
+        <figure class="chart">
+          <svg id="forecast-chart" role="img" aria-labelledby="forecast-title forecast-summary" hidden></svg>
+          <p id="forecast-empty" class="empty" data-i18n-init>Loading the forecast…</p>
+          <figcaption id="forecast-summary" class="chart__summary"></figcaption>
+        </figure>
+        <h3 class="outlook__title" data-i18n>Coming days</h3>
+        <ol id="outlook" class="outlook" role="list"></ol>
+      </section>
+
       <section class="panel panel--feed" aria-labelledby="feed-title">
         <div class="panel__head">
           <h2 id="feed-title" data-i18n>Alert feed</h2>

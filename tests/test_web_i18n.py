@@ -59,6 +59,13 @@ class UrduCoverageTest(unittest.TestCase):
         self.assertEqual(sorted(texts - UR_KEYS), [], "add these to UR in web/common.js")
         self.assertEqual(sorted(html_keys - UR_HTML_KEYS), [], "add these to UR_HTML in web/common.js")
 
+    def test_every_time_on_screen_is_pakistan_time(self):
+        # The server writes times in Pakistan time; the page must too, whatever zone the computer is in
+        for script in WEB.glob("*.js"):
+            for line in script.read_text(encoding="utf-8").splitlines():
+                if "toLocale" in line:
+                    self.assertIn("PKT", line, f"{script.name}: {line.strip()}")
+
     def test_the_check_finds_real_strings(self):  # guards against the regexes silently matching nothing
         self.assertGreater(len(used_strings()), 80)
         self.assertGreater(len(page_strings()[0]), 60)

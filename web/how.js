@@ -27,7 +27,7 @@ function renderLive(s, feed) {
   badge.dataset.mode = latest ? (simulated ? "simulated" : "live") : "loading";
   badge.textContent = t(latest ? (simulated ? "Simulated data" : "Live data") : "No data");
   setText("live-updated", t("Updated {time}", {
-    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    time: new Date().toLocaleTimeString([], { ...PKT, hour: "2-digit", minute: "2-digit", second: "2-digit" }),
   }));
 
   // Monitor: the reading it fetched

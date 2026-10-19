@@ -31,7 +31,9 @@ async function getJSON(url, options = {}) {
   }
 }
 
-const localTime = (iso) => isolate(new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+// Every time on screen is Pakistan time (like the advice text from the server), whatever zone the computer is in
+const PKT = { timeZone: "Asia/Karachi" };
+const localTime = (iso) => isolate(new Date(iso).toLocaleTimeString([], { ...PKT, hour: "2-digit", minute: "2-digit" }));
 const levelOf = (analysis) => (analysis && analysis.level in LEVELS ? analysis.level : "unknown");
 
 // ---------- language: English / Urdu for the whole site ----------
@@ -113,6 +115,14 @@ const UR = {
     "{n} گھنٹہ وار ریڈنگز میں PM2.5 {first} سے {last} µg/m³ ہوا: {trend}",
   "with a sudden spike in the latest hour": "تازہ ترین گھنٹے میں اچانک اضافے کے ساتھ",
   "Spike · {v}": "اچانک اضافہ · {v}", "The chart appears once the server responds.": "سرور کے جواب دینے پر چارٹ ظاہر ہوگا۔",
+  // forecast
+  "Next 24 hours": "اگلے 24 گھنٹے", "Loading the forecast…": "پیش گوئی لوڈ ہو رہی ہے…",
+  "No forecast available right now.": "اس وقت پیش گوئی دستیاب نہیں۔", "Best time": "بہترین وقت",
+  "Best time outside: {from}–{to}": "باہر جانے کا بہترین وقت: {from}–{to}",
+  "Peaks at {level} (AQI {aqi}) around {time}. A model estimate: most reliable for the next 6 hours.":
+    "تقریباً {time} پر زیادہ سے زیادہ {level} (اے کیو آئی {aqi})۔ یہ ماڈل کا اندازہ ہے: اگلے 6 گھنٹوں کے لیے سب سے قابلِ اعتماد۔",
+  "Coming days": "آنے والے دن", "Today": "آج", "peak AQI {aqi}": "زیادہ سے زیادہ اے کیو آئی {aqi}",
+  "Simulated forecast": "نقلی پیش گوئی", "The forecast appears once the server responds.": "سرور کے جواب دینے پر پیش گوئی ظاہر ہوگی۔",
   // alert feed
   "Alert feed": "الرٹ فیڈ", "Loading alerts…": "الرٹس لوڈ ہو رہے ہیں…", "All alerts in History": "تمام الرٹس ہسٹری میں",
   "Couldn't refresh alerts. Showing the last ones received.": "الرٹس تازہ نہیں ہو سکے۔ آخری موصول شدہ دکھائے جا رہے ہیں۔",

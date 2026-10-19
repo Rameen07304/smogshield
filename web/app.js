@@ -111,13 +111,13 @@ function niceMax(value) {
   return [1, 2, 2.5, 5, 10].map((m) => m * step).find((n) => n >= target);
 }
 
-let lastChart = null;  // what the chart last drew, so it can redraw on resize
+const drawn = new Map();  // svg id -> [points, options] it last drew, so both charts redraw on resize
+const hourLabel = (iso) => new Date(iso).toLocaleTimeString([], { ...PKT, hour: "numeric" });  // "8 AM"
 
 function renderChart(s) {
   const a = s.analysis || {};
   const readings = (s.readings || []).filter((r) => typeof r.pm25 === "number");
   const known = levelOf(a) !== "unknown" && readings.length > 0;
-  lastChart = known ? { readings, analysis: a } : null;
 
   const trendChip = $("trend-chip");
   trendChip.hidden = !known;
@@ -133,11 +133,14 @@ function renderChart(s) {
   $("chart").toggleAttribute("hidden", !known);  // <svg> has no .hidden property, so set the attribute
   $("chart-empty").hidden = known;
   if (!known) {
+    drawn.delete("chart");
     $("chart-empty").textContent = t("No valid readings to chart right now.");
     $("chart-summary").textContent = "";
     return;
   }
-  drawChart(readings, a);
+  // Every value labelled, the latest hour emphasised, a spike flagged on the latest point
+  drawSeries("chart", readings.map((r) => ({ label: hourLabel(r.timestamp), value: r.pm25 })),
+             { emphasis: readings.length - 1, spikeAt: a.is_spike ? readings.length - 1 : -1 });
 
   const first = readings[0].pm25, last = readings.at(-1).pm25;
   $("chart-summary").textContent =
@@ -146,18 +149,87 @@ function renderChart(s) {
     (a.is_spike ? `, ${t("with a sudden spike in the latest hour")}.` : ".");
 }
 
-/** Draws at the real pixel width, so text stays the same readable size on any screen */
-function drawChart(readings, analysis) {
-  const chart = $("chart");
+/** The next 24 hours from the forecast agent, the best time to go out, and the coming days */
+function renderForecast(s) {
+  const f = s.forecast || {};
+  const hours = (f.hourly || []).filter((p) => typeof p.pm25 === "number");
+  const known = hours.length > 1;
+  $("forecast-chart").toggleAttribute("hidden", !known);
+  $("forecast-empty").hidden = known;
+  $("forecast-source").hidden = !known || f.source === "live";
+  if (!known) {
+    drawn.delete("forecast-chart");
+    $("forecast-empty").textContent = t("No forecast available right now.");
+    $("forecast-summary").textContent = "";
+    $("best-chip").hidden = true;
+    $("outlook").replaceChildren();
+    return;
+  }
+
+  // Best ~2-hour window to go outside, shaded on the chart (end is exclusive)
+  const best = f.best_time;
+  const from = best ? hours.findIndex((p) => Date.parse(p.time) === Date.parse(best.start)) : -1;
+  const to = from >= 0 ? Math.min(from + Math.round((Date.parse(best.end) - Date.parse(best.start)) / 3.6e6) - 1, hours.length - 1) : -1;
+  $("best-chip").hidden = from < 0;
+  if (from >= 0) $("best-chip").textContent = t("Best time outside: {from}–{to}", { from: localTime(best.start), to: localTime(best.end) });
+
+  const values = hours.map((p) => p.pm25);
+  const peak = values.indexOf(Math.max(...values));
+  drawSeries("forecast-chart", hours.map((p) => ({ label: hourLabel(p.time), value: Math.round(p.pm25) })), {
+    emphasis: 0, valuesAt: [0, peak], labelFromStart: true,
+    highlight: from >= 0 ? { from, to, label: t("Best time") } : null,
+  });
+  $("forecast-summary").textContent = t("Peaks at {level} (AQI {aqi}) around {time}. A model estimate: most reliable for the next 6 hours.", {
+    level: levelLabel(hours[peak].level), aqi: hours[peak].aqi, time: localTime(hours[peak].time),
+  });
+
+  // Coming days: the worst hour of each day
+  const dayName = (date) => new Date(`${date}T12:00:00+05:00`).toLocaleDateString(LANG === "ur" ? "ur" : [], { ...PKT, weekday: "long" });
+  $("outlook").replaceChildren(...(f.outlook || []).slice(0, 4).map((day, i) => {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.className = "outlook__day";
+    name.textContent = i === 0 ? t("Today") : dayName(day.date);
+    const tag = document.createElement("span");
+    tag.className = "level-tag";
+    tag.dataset.level = day.peak_level in LEVELS ? day.peak_level : "unknown";
+    tag.textContent = levelLabel(day.peak_level);
+    const aqi = document.createElement("span");
+    aqi.className = "outlook__aqi";
+    aqi.textContent = t("peak AQI {aqi}", { aqi: day.peak_aqi });
+    li.append(name, tag, aqi);
+    return li;
+  }));
+}
+
+/**
+ * One line chart for both the recent readings and the forecast, drawn at the real pixel width so text
+ * stays the same readable size on any screen. points: [{label, value}].
+ * options: emphasis (index drawn larger), spikeAt (index flagged), valuesAt (indexes to label, default all),
+ * labelFromStart (thin hour labels from the first point instead of the last), highlight {from, to, label}.
+ */
+function drawSeries(id, points, options = {}) {
+  drawn.set(id, [points, options]);
+  const { emphasis = -1, spikeAt = -1, valuesAt = null, labelFromStart = false, highlight = null } = options;
+  const chart = $(id);
   const width = Math.max(chart.parentElement.clientWidth, 280);
   const height = Math.round(Math.min(Math.max(width * 0.42, 220), 380));
   const pad = { left: 52, right: 124, top: 34, bottom: 40 };
-  const values = readings.map((r) => r.pm25);
+  const values = points.map((p) => p.value);
   const top = niceMax(Math.max(...values));
   const plotW = width - pad.left - pad.right, plotH = height - pad.top - pad.bottom;
   const x = (i) => pad.left + (values.length < 2 ? plotW / 2 : (i * plotW) / (values.length - 1));
   const y = (v) => pad.top + plotH * (1 - Math.min(v, top) / top);
+  const step = plotW / Math.max(values.length - 1, 1);
   const nodes = [];
+
+  // Highlighted window (best time to go out), behind everything else
+  if (highlight) {
+    const x1 = x(highlight.from) - step / 2, x2 = x(highlight.to) + step / 2;
+    nodes.push(svg("rect", { class: "chart__best", x: Math.max(x1, pad.left), y: pad.top,
+                             width: Math.min(x2, pad.left + plotW) - Math.max(x1, pad.left), height: plotH }));
+    nodes.push(svg("text", { class: "chart__best-label", x: (x1 + x2) / 2, y: pad.top - 10, "text-anchor": "middle" }, highlight.label));
+  }
 
   // Category thresholds as hairlines, each band named on the right (the level colour lives in the hero only)
   let floor = 0;
@@ -175,29 +247,27 @@ function drawChart(readings, analysis) {
     floor = ceiling;
   }
 
-  // Y axis: 0 and the top value; X axis: every hour
+  // Y axis: 0 and the top value; X axis: hour labels, thinned so they never collide
   nodes.push(svg("text", { x: pad.left - 10, y: y(0), "text-anchor": "end", "dominant-baseline": "middle" }, "0"));
   nodes.push(svg("text", { x: pad.left - 10, y: y(top), "text-anchor": "end", "dominant-baseline": "middle" }, top));
-  const hourLabel = (iso) => new Date(iso).toLocaleTimeString([], { hour: "numeric" });  // "8 AM"
-  const every = plotW / Math.max(values.length - 1, 1) < 56 ? 2 : 1;  // thin out labels on narrow screens
-  readings.forEach((r, i) => {
-    if ((values.length - 1 - i) % every === 0) {  // always keep the latest hour
-      nodes.push(svg("text", { x: x(i), y: height - 12, "text-anchor": "middle" }, hourLabel(r.timestamp)));
+  const every = Math.max(1, Math.ceil(56 / step));
+  points.forEach((p, i) => {
+    if ((labelFromStart ? i : values.length - 1 - i) % every === 0) {
+      nodes.push(svg("text", { x: x(i), y: height - 12, "text-anchor": "middle" }, p.label));
     }
   });
 
-  // Line, points and every value (the spiking point gets its value in the flag instead)
-  const spikeAt = analysis.is_spike ? values.length - 1 : -1;
+  // Line, points and values (the spiking point gets its value in the flag instead)
+  const dense = values.length > 12;
   nodes.push(svg("polyline", { class: "chart__line", points: values.map((v, i) => `${x(i)},${y(v)}`).join(" ") }));
   values.forEach((v, i) => {
-    const latest = i === values.length - 1;
-    nodes.push(svg("circle", { class: "chart__point", cx: x(i), cy: y(v), r: latest ? 8 : 5 }));
-    if (i !== spikeAt) {
+    nodes.push(svg("circle", { class: "chart__point", cx: x(i), cy: y(v), r: i === emphasis ? 8 : dense ? 3 : 5 }));
+    if (i !== spikeAt && (!valuesAt || valuesAt.includes(i))) {
       nodes.push(svg("text", { class: "chart__value", x: x(i), y: y(v) - 14, "text-anchor": "middle" }, v));
     }
   });
 
-  // Spike marker on the latest point: a ring plus a flag with the value
+  // Spike marker: a ring plus a flag with the value
   if (spikeAt >= 0) {
     const cx = x(spikeAt), cy = y(values[spikeAt]);
     nodes.push(svg("circle", { class: "chart__spike-ring", cx, cy, r: 14 }));
@@ -214,9 +284,10 @@ function drawChart(readings, analysis) {
   chart.replaceChildren(...nodes);
 }
 
-new ResizeObserver(() => {
-  if (lastChart) drawChart(lastChart.readings, lastChart.analysis);
-}).observe(document.querySelector(".chart"));
+const redraw = new ResizeObserver(() => {
+  for (const [id, [points, options]] of drawn) drawSeries(id, points, options);
+});
+for (const figure of document.querySelectorAll(".chart")) redraw.observe(figure);
 
 // ---------- advisory ----------
 
@@ -408,7 +479,7 @@ function renderPipeline(s) {
   const changed = key !== lastOutputs;
   lastOutputs = key;
   for (const step of STEPS) $(`out-${step}`).textContent = outputs[step];
-  const at = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const at = new Date().toLocaleTimeString([], { ...PKT, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   $("pipeline-run").dataset.at = at;
   $("pipeline-run").textContent = t("Last run {at} · refreshes every {s} s", { at, s: POLL_MS / 1000 });
 
@@ -460,6 +531,7 @@ function render(s) {
   renderHero(s);
   renderPipeline(s);
   renderChart(s);
+  renderForecast(s);
   renderAdvisory(s);
 }
 
@@ -482,6 +554,7 @@ function showOffline(error) {
   $("hero-place").textContent = t("Waiting for the server");
   $("hero-summary").textContent = t("Start it with: uvicorn app:app");
   $("chart-empty").textContent = t("The chart appears once the server responds.");
+  $("forecast-empty").textContent = t("The forecast appears once the server responds.");
   $("advice-headline").textContent = t("Advice appears once the server responds.");
   for (const who of AUDIENCES) fillList(`aud-${who}`, [], t("Waiting for the server…"));
   if (!feedLoaded) $("feed-empty").textContent = t("Alerts appear once the server responds.");
